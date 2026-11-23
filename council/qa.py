@@ -1265,6 +1265,223 @@ def latest_place_answer(candidates: list[dict], ort_name: str | None = None) -> 
     return answer
 
 
+# --- Überblick über einen Ort ------------------------------------------------
+#
+# „Was plant die Stadt für die Innenstadt?" fragt nach dem Ort INSGESAMT, nicht
+# nach einer Sache dort. Der semantische Weg beantwortet das schlecht: Der
+# Reranker bewertet, wie ähnlich ein Titel der Frage klingt, und eine Frage ohne
+# Thema ähnelt am meisten den Titeln, die den Ortsnamen tragen. Gemessen auf
+# Prod am 23.11.2026: Vier Beratungen des „Sofortprogramms … zur Unterstützung
+# der Innenstadt“ von 2021 standen vorn, das Sanierungsgebiet Mittlere
+# Innenstadt (Voruntersuchung und Entwicklungskonzept 2025/26) auf Rang 55 bis
+# 81 von 147. Die Antwort fand „keinen Gesamtplan“.
+#
+# Für so eine Frage trägt der Fragetext nichts außer dem Ort. Ausgewählt wird
+# deshalb ohne Semantik, wie beim „zuletzt“-Weg: die Vorgänge des Orts, nach
+# Wichtigkeit und Frische, je Vorgang höchstens zwei Beschlüsse.
+
+#: Wörter einer Überblicksfrage, die kein Thema nennen (gefaltet, s. _falte).
+#: „stand“ fehlt mit Absicht: „Wie ist der Stand bei der Cäcilienbrücke?“
+#: fragt nach EINER Sache, und dafür ist der semantische Weg der richtige.
+_OVERVIEW_FILLER = frozenset("""
+    was wie wo wer welche welcher welches welchen gibt gab es plant planen plante
+    geplant die der das den dem des ein eine einen stadt oldenburg oldenburger fuer
+    in im ins am an auf bei beim mit zu zum zur um rund ueber von vom aus passiert
+    passieren passierte entsteht entstehen tut tun macht sich neues neu neue los
+    aktuell aktuelle aktuellen gerade derzeit momentan zurzeit jetzt projekte
+    projekt vorhaben plaene planungen massnahmen beschlossen beschluesse
+    entschieden rat stadtrat ist sind wird werden wurde wurden soll sollen denn
+    eigentlich alles so und oder dort da hier mal gemacht getan kommt kommen
+    ansteht anstehen steht stehen entwickelt entwickeln entwicklung veraendert
+    veraendern tue bewegt vor
+""".split())
+
+#: Unter so vielen verorteten Beschlüssen lohnt kein eigener Weg — bei einem
+#: kleinen Ort kommt ohnehin alles in die Auswahl.
+OVERVIEW_MIN_DECISIONS = 25
+#: So viele Vorgänge kommen in den Antwortkontext, je Vorgang höchstens zwei
+#: Beschlüsse (der gewichtigste und der gewichtigste aus einer anderen Vorlage).
+OVERVIEW_MATTERS = 12
+OVERVIEW_PER_MATTER = 2
+#: Frische: Gewicht exp(-Monate/18), nach anderthalb Jahren also gut ein
+#: Drittel. Ein Beschluss von 2021 kommt so nur noch mit sehr hohem Wichtig-Wert
+#: nach vorn, ein Bericht von letzter Woche nicht allein durch sein Datum.
+OVERVIEW_DECAY_MONTHS = 18.0
+#: Wichtig-Wert, wenn keiner berechnet ist (der Median im Bestand liegt bei 28).
+OVERVIEW_DEFAULT_IMPORTANCE = 25
+
+PLACE_OVERVIEW_RULE = (
+    "\nÜBERBLICK ÜBER DEN ORT: Die Frage will wissen, was an diesem Ort insgesamt "
+    "läuft. Im Kontext stehen die wichtigsten Vorgänge mit Ortsbezug, nach "
+    "Wichtigkeit und Aktualität ausgewählt, je Vorgang höchstens zwei Beschlüsse. "
+    "Gliedere die Antwort nach Vorgängen: je Vorgang, worum es geht, der jüngste "
+    "Stand mit Datum und Ergebnis. Beginne mit den aktuellen und gewichtigen; "
+    "Älteres höchstens als kurzen Hintergrund. Behaupte keinen Gesamtplan, den der "
+    "Kontext nicht nennt — und schreibe auch nicht, es gebe keinen, nur weil der "
+    "Kontext aus einzelnen Vorgängen besteht."
+)
+
+
+def place_overview_question(question: str, place_name: str) -> bool:
+    """Fragt die Frage nach einem Ort insgesamt statt nach einer Sache dort?
+
+    Bleibt nach Abzug des Ortsnamens und der Füllwörter kein Wort übrig, nennt
+    sie kein Thema: „Was plant die Stadt für die Innenstadt?“, „Welche Projekte
+    gibt es in Osternburg?“, „Was wurde in Kreyenbrück beschlossen?“. Ein
+    einziges Sachwort reicht für den semantischen Weg: „Welche Radwege werden
+    in Osternburg gebaut?“.
+    """
+    place_words = set(_falte(place_name or "").split())
+    if not place_words:
+        return False
+    words = _falte(question or "").split()
+    if not place_words <= set(words):
+        return False
+    return not [w for w in words
+                if w not in place_words and w not in _OVERVIEW_FILLER and not w.isdigit()]
+
+
+def _title_head(title: str | None) -> str:
+    """Der Vorgang hinter einem Titel: „Sanierungsgebiet Mittlere Innenstadt –
+    Beginn der Vorbereitenden Untersuchung“ und „… – Übernahme der Kosten“ sind
+    ein Vorhaben in zwei Vorlagen. Der Teil vor dem ersten Gedankenstrich oder
+    Doppelpunkt, sofern er für sich etwas sagt; sonst der Titelkern."""
+    from council.matters import titelkern
+
+    text = " ".join((title or "").split())
+    head = re.split(r"\s[-–]\s|:\s", text, maxsplit=1)[0]
+    if head != text and len(head.split()) >= 2:
+        key = titelkern(head)
+        if key:
+            return key
+    return titelkern(text)
+
+
+def overview_entity_keys(entity_rows: list[dict], place_name: str,
+                         districts: set[str] | None = None) -> dict[int, list[str]]:
+    """Je Grundakte die Entitäten, über die der Ortsüberblick Vorgänge
+    zusammenlegt: „Stadionneubau Maastrichter Straße“ hält Bebauungsplan,
+    Bürgschaft und Vergabe zusammen, die je eigene Vorlagen haben.
+
+    Nicht dabei, aus denselben Gründen wie in ``matters.akte_von``: große Orte
+    (mehr als ``ORT_KLEBT_BIS`` Akten) und Stadtteile — die legten alles
+    zusammen, was dort liegt. Und nie der gefragte Ort selbst."""
+    from council.matters import ORT_KLEBT_BIS
+
+    asked = _falte(place_name or "")
+    districts = {_falte(d) for d in (districts or set())}
+    keys: dict[int, list[str]] = {}
+    for e in entity_rows:
+        name = _falte(str(e.get("name") or ""))
+        if not name or name == asked or name in districts:
+            continue
+        if (e.get("n") or 0) > ORT_KLEBT_BIS:
+            continue
+        keys.setdefault(e["matter_id"], []).append(e["slug"])
+    return keys
+
+
+def select_place_overview(rows: list[dict], today=None,
+                          matters: int = OVERVIEW_MATTERS,
+                          per_matter: int = OVERVIEW_PER_MATTER,
+                          entity_keys: dict[int, list[str]] | None = None) -> list[int]:
+    """Die Beschluss-ids für einen Ortsüberblick, in Kontext-Reihenfolge.
+
+    ``rows`` braucht je Beschluss ``id``, ``session_date``, ``title``,
+    ``template_number``, ``importance`` und ``matter_id`` (Grundakte, darf
+    fehlen). Beschlüsse, die eine Grundakte, eine Vorlagennummer, einen
+    Titelkopf oder eine Projekt-Entität (``entity_keys``, s.
+    :func:`overview_entity_keys`) teilen, sind ein Vorgang. Ein Vorgang zählt
+    mit seinem besten Beschluss: Wichtig-Wert mal Frische. Je Vorgang kommt der
+    beste nach vorn und, wenn es ihn gibt, der beste aus einer anderen
+    Grundakte. Dahinter folgen alle übrigen nach demselben Maß, damit das
+    Quellenband etwas zum Weiterlesen hat; Beschlüsse ohne Titel ganz hinten —
+    im Kontext stünde nur eine Nummer.
+    """
+    import math
+    from datetime import date as _date
+
+    from council.matters import vorlagen_basen
+
+    today = today or _date.today()
+    entity_keys = entity_keys or {}
+
+    def weight(row: dict) -> float:
+        try:
+            day = _date.fromisoformat(str(row.get("session_date") or "")[:10])
+        except ValueError:
+            return 0.0
+        months = max(0, (today - day).days) / 30.4
+        importance = row.get("importance")
+        value = OVERVIEW_DEFAULT_IMPORTANCE if importance is None else float(importance)
+        return value * math.exp(-months / OVERVIEW_DECAY_MONTHS)
+
+    # Vorgänge über gemeinsame Schlüssel zusammenlegen (Union-Find).
+    parent: dict[int, int] = {r["id"]: r["id"] for r in rows}
+
+    def root(i: int) -> int:
+        while parent[i] != i:
+            parent[i] = parent[parent[i]]
+            i = parent[i]
+        return i
+
+    first_with: dict[tuple, int] = {}
+    for row in rows:
+        keys: list[tuple] = [("m", row["matter_id"])] if row.get("matter_id") is not None else []
+        keys += [("v", nr) for nr in vorlagen_basen(row.get("template_number"))]
+        head = _title_head(row.get("title"))
+        if head:
+            keys.append(("t", head))
+        matter = row.get("matter_id")
+        if matter is not None:
+            keys += [("e", slug) for slug in entity_keys.get(matter, [])]
+        for key in keys:
+            if key in first_with:
+                parent[root(row["id"])] = root(first_with[key])
+            else:
+                first_with[key] = row["id"]
+
+    groups: dict[int, list[dict]] = {}
+    for row in rows:
+        if (row.get("title") or "").strip():
+            groups.setdefault(root(row["id"]), []).append(row)
+    score = {r["id"]: weight(r) for r in rows}
+    ranked = sorted(groups.values(), key=lambda g: -max(score[r["id"]] for r in g))
+
+    head_ids: list[int] = []
+    for group in ranked[:matters]:
+        order = sorted(group, key=lambda r: (-score[r["id"]], str(r.get("session_date") or "")))
+        picked = [order[0]]
+        # Der zweite aus einer ANDEREN Grundakte: Dieselbe Vorlage im Ausschuss
+        # und im Rat sagt zweimal dasselbe, „Beginn der Voruntersuchung“ neben
+        # „Ergebnis der Voruntersuchung“ zeigt, wie weit das Vorhaben ist.
+        for row in order[1:]:
+            if len(picked) >= per_matter:
+                break
+            if row.get("matter_id") is None or all(
+                    row.get("matter_id") != p.get("matter_id") for p in picked):
+                picked.append(row)
+        head_ids += [r["id"] for r in picked]
+    taken = set(head_ids)
+    rest = sorted((r for r in rows if r["id"] not in taken),
+                  key=lambda r: (not (r.get("title") or "").strip(), -score[r["id"]]))
+    return head_ids + [r["id"] for r in rest]
+
+
+def place_overview_ids(store, place_ids: list[int], place_name: str, today=None) -> list[int]:
+    """Die Auswahl für einen Ortsüberblick aus dem Bestand: Zeilen, Grundakten
+    und deren Entitäten holen, dann :func:`select_place_overview`."""
+    rows = store.place_overview_rows(list(place_ids))
+    matter_ids = sorted({r["matter_id"] for r in rows if r.get("matter_id") is not None})
+    try:
+        from council import geo
+        districts = set(geo.stadtteile())
+    except Exception:  # noqa: BLE001 — ohne Liste legt eben ein Stadtteil zusammen
+        districts = set()
+    keys = overview_entity_keys(store.matter_entity_rows(matter_ids), place_name, districts)
+    return select_place_overview(rows, today=today, entity_keys=keys)
+
+
 def _falte(text: str) -> str:
     """Suchnormalisierung: Kleinschreibung, Umlaute ausgeschrieben, alles
     Nicht-Alphanumerische zu Leerzeichen — macht „Cäcilienbrücke",
@@ -5523,7 +5740,9 @@ def _answer_messages(question: str, candidates: list[dict], typ: str = "topic",
                      # Fertige Bausteine des Routers aus eigenen Daten (seit der
                      # Auswertung 11.10.2026: „Seit dem jüngsten Beschluss",
                      # „Wo Ergebnisse stehen"); per NAME übergeben wie oben.
-                     extra_block: str = "") -> tuple[list[dict], dict]:
+                     extra_block: str = "",
+                     # Ortsüberblick (s. ``place_overview_question``) — per NAME.
+                     overview: bool = False) -> tuple[list[dict], dict]:
     vtext = _verlauf_zeilen(verlauf_ohne_dieselbe_frage(verlauf, question))
     gespraech = (f"Dies ist eine Anschlussfrage in einem Gespräch. Bisher:\n{vtext}\n"
                  f"{ANSCHLUSS_REGEL}\n\n"
@@ -5539,6 +5758,8 @@ def _answer_messages(question: str, candidates: list[dict], typ: str = "topic",
             "im Kontext als „Ortsbezug“. Verwechsle einen kleineren Ort nicht "
             "mit seinem größeren Ortsbereich und benenne eine dünne Datenlage ehrlich."
         )
+        if overview:
+            ortsregel += PLACE_OVERVIEW_RULE
     if latest_intent(question):
         latest = latest_real_decision(candidates)
         anker = ""
@@ -5772,7 +5993,7 @@ def answer_question(question: str, candidates: list[dict], model: str = MODEL, t
                     zukunft_leer: bool = False, stand: dict | None = None,
                   screen: dict | None = None, akte: dict | None = None,
                   rules_block: str = "", election_block: str = "",
-                  extra_block: str = ""):
+                  extra_block: str = "", overview: bool = False):
     """Synthesise an answer from retrieved candidates. Returns ``(answer, cited_ids)``."""
     messages, extra = _answer_messages(question, candidates, typ, model, presse, verlauf,
                                        haushalt, debatten, anlagen, gross, steckbriefe, duenn, eng,
@@ -5786,7 +6007,7 @@ def answer_question(question: str, candidates: list[dict], model: str = MODEL, t
                                        staedte, zukunft_leer, stand, screen, akte,
                                        rules_block=rules_block,
                                        election_block=election_block,
-                                       extra_block=extra_block)
+                                       extra_block=extra_block, overview=overview)
     resp = llm.chat_complete(model=model, _feature="qa_answer", temperature=0.2,
                              max_tokens=_answer_tokens(typ, gross, eng), timeout=ANTWORT_FRIST_S,
                              messages=messages, **extra)
@@ -5806,7 +6027,7 @@ def answer_stream(question: str, candidates: list[dict], model: str = MODEL, typ
                   zukunft_leer: bool = False, stand: dict | None = None,
                   screen: dict | None = None, akte: dict | None = None,
                   rules_block: str = "", election_block: str = "",
-                  extra_block: str = ""):
+                  extra_block: str = "", overview: bool = False):
     """Stream the answer text deltas (same prompt/context as answer_question) so the
     UI can render the answer as it is written. Citation resolution is the caller's
     job once the full text is assembled (see resolve_citations)."""
@@ -5822,7 +6043,7 @@ def answer_stream(question: str, candidates: list[dict], model: str = MODEL, typ
                                        staedte, zukunft_leer, stand, screen, akte,
                                        rules_block=rules_block,
                                        election_block=election_block,
-                                       extra_block=extra_block)
+                                       extra_block=extra_block, overview=overview)
     yield from llm.chat_stream(model=model, _feature="qa_answer", temperature=0.2,
                                max_tokens=_answer_tokens(typ, gross, eng), timeout=ANTWORT_FRIST_S,
                                messages=messages, **extra)
