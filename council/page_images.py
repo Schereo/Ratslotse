@@ -24,6 +24,8 @@ from __future__ import annotations
 
 import os
 import tempfile
+import threading
+import time
 from pathlib import Path
 
 import requests
@@ -40,11 +42,20 @@ IMG_CACHE_MAX = 200 * 1024 * 1024
 
 _session = requests.Session()
 
+#: Höchstens so viele Abrufe und Renderings zugleich: Beides läuft im
+#: Threadpool des einzigen API-Prozesses, neben jeder anderen Anfrage.
+_SLOTS = threading.BoundedSemaphore(2)
+_SLOT_WAIT = 20
+#: Eine Absage je Unterlage, gemerkt bis zum Zeitpunkt: Eine zu große oder
+#: kaputte Unterlage soll nicht bei jedem Überfahren neu geladen werden.
+_REFUSED: dict[int, tuple[str, float]] = {}
+_REFUSE_FOR = {"too_large": 24 * 3600, "not_pdf": 24 * 3600, "fetch": 300}
+
 
 class NoPreview(Exception):
     """Why there is no picture: ``unavailable`` (no PyMuPDF), ``not_ris``,
     ``fetch`` (Ratsinfo did not deliver), ``too_large``, ``not_pdf``,
-    ``no_page``."""
+    ``no_page``, ``busy`` (too many renders at once)."""
 
     def __init__(self, reason: str):
         super().__init__(reason)
@@ -80,6 +91,38 @@ def _trim(folder: Path, max_bytes: int) -> None:
         total -= size
 
 
+def _refuse(document_id: int, reason: str) -> NoPreview:
+    if reason in _REFUSE_FOR:
+        _REFUSED[int(document_id)] = (reason, time.monotonic() + _REFUSE_FOR[reason])
+    return NoPreview(reason)
+
+
+def _download(url: str) -> bytes:
+    """The PDF, read in pieces and given up as soon as it is too large —
+    announced (``Content-Length``) or while reading. Never the whole thing
+    first and the check afterwards."""
+    try:
+        response = ris.fetch(_session, url, timeout=45, stream=True)
+    except (requests.RequestException, ris.RisError) as exc:
+        raise NoPreview("fetch") from exc
+    try:
+        announced = response.headers.get("Content-Length")
+        if announced and announced.isdigit() and int(announced) > PDF_MAX_BYTES:
+            raise NoPreview("too_large")
+        parts: list[bytes] = []
+        total = 0
+        for chunk in response.iter_content(chunk_size=256 * 1024):
+            total += len(chunk)
+            if total > PDF_MAX_BYTES:
+                raise NoPreview("too_large")
+            parts.append(chunk)
+        return b"".join(parts)
+    except requests.RequestException as exc:
+        raise NoPreview("fetch") from exc
+    finally:
+        response.close()
+
+
 def pdf_bytes(cache: Path, document_id: int, url: str) -> bytes:
     path = cache / "pdf" / f"{int(document_id)}.pdf"
     if path.is_file():
@@ -87,18 +130,31 @@ def pdf_bytes(cache: Path, document_id: int, url: str) -> bytes:
         return path.read_bytes()
     if not url or not ris.is_ris(url):
         raise NoPreview("not_ris")
+    refused = _REFUSED.get(int(document_id))
+    if refused and refused[1] > time.monotonic():
+        raise NoPreview(refused[0])
     try:
-        response = ris.fetch(_session, url, timeout=45)
-    except (requests.RequestException, ris.RisError) as exc:
-        raise NoPreview("fetch") from exc
-    data = response.content
-    if len(data) > PDF_MAX_BYTES:
-        raise NoPreview("too_large")
+        data = _download(url)
+    except NoPreview as exc:
+        raise _refuse(document_id, exc.reason) from exc
     if not data.startswith(b"%PDF"):
-        raise NoPreview("not_pdf")
+        raise _refuse(document_id, "not_pdf")
+    _REFUSED.pop(int(document_id), None)
     _write(path, data)
     _trim(path.parent, PDF_CACHE_MAX)
     return data
+
+
+class _Slot:
+    """Einer der Plätze für Abruf und Rendern — oder ``busy`` nach Wartezeit."""
+
+    def __enter__(self):
+        if not _SLOTS.acquire(timeout=_SLOT_WAIT):
+            raise NoPreview("busy")
+        return self
+
+    def __exit__(self, *exc):
+        _SLOTS.release()
 
 
 def _open(data: bytes):
@@ -113,7 +169,7 @@ def _open(data: bytes):
 
 
 def page_count(cache: Path, document_id: int, url: str) -> int:
-    with _open(pdf_bytes(cache, document_id, url)) as doc:
+    with _Slot(), _open(pdf_bytes(cache, document_id, url)) as doc:
         return doc.page_count
 
 
@@ -125,7 +181,7 @@ def page_image(cache: Path, document_id: int, url: str, page: int, width: int) -
     if out.is_file():
         out.touch()
         return out
-    with _open(pdf_bytes(cache, document_id, url)) as doc:
+    with _Slot(), _open(pdf_bytes(cache, document_id, url)) as doc:
         if not 1 <= page <= doc.page_count:
             raise NoPreview("no_page")
         import pymupdf  # noqa: PLC0415 — _open hat den Import schon geprüft

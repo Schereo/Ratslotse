@@ -6,10 +6,14 @@ Fehlercodes) prüfen die Tests unten ohne PyMuPDF."""
 from __future__ import annotations
 
 import os
+import sys
 from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
+
+# Das Backend-Paket `app` liegt unter web/backend (wie in test_qa_screen_context).
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "web" / "backend"))
 
 from council import page_images
 from council.store import CouncilStore
@@ -26,16 +30,47 @@ def _pdf(seiten: int) -> bytes:
 
 
 class _Antwort:
-    def __init__(self, content: bytes):
-        self.content = content
+    """Wie ``requests.Response`` mit ``stream=True``: Inhalt nur stückweise."""
+
+    def __init__(self, content: bytes, laenge: int | None = None):
+        self.content_ = content
+        self.headers = {"Content-Length": str(laenge if laenge is not None else len(content))}
+        self.gelesen = 0
+        self.closed = False
+
+    def iter_content(self, chunk_size=1):
+        for i in range(0, len(self.content_), 10):
+            self.gelesen += 1
+            yield self.content_[i:i + 10]
+
+    def close(self):
+        self.closed = True
 
 
-def _ratsinfo(monkeypatch, daten: bytes) -> list[str]:
-    abgerufen: list[str] = []
+@pytest.fixture(autouse=True)
+def _keine_alten_absagen():
+    page_images._REFUSED.clear()
+    yield
+    page_images._REFUSED.clear()
 
-    def fetch(_session, url, timeout=45):
+
+class _Abrufe(list):
+    """Die abgerufenen Adressen — und die Antworten dazu, zum Nachsehen."""
+
+    def __init__(self):
+        super().__init__()
+        self.antworten: list[_Antwort] = []
+
+
+def _ratsinfo(monkeypatch, daten: bytes, laenge: int | None = None) -> _Abrufe:
+    abgerufen = _Abrufe()
+    antworten = abgerufen.antworten
+
+    def fetch(_session, url, timeout=45, stream=False):
+        assert stream, "PDFs werden gestreamt geholt, nie am Stück"
         abgerufen.append(url)
-        return _Antwort(daten)
+        antworten.append(_Antwort(daten, laenge))
+        return antworten[-1]
 
     monkeypatch.setattr(page_images.ris, "fetch", fetch)
     return abgerufen
@@ -68,12 +103,49 @@ def test_nur_das_ratsinfo_und_nur_pdfs(tmp_path, monkeypatch):
     assert not (tmp_path / "pdf" / "1.pdf").exists(), "eine falsche Antwort landet nicht in der Ablage"
 
 
-def test_zu_grosse_unterlagen_bekommen_keine_vorschau(tmp_path, monkeypatch):
-    monkeypatch.setattr(page_images, "PDF_MAX_BYTES", 10)
-    _ratsinfo(monkeypatch, b"%PDF-1.7" + b"x" * 100)
+def test_angekuendigt_zu_gross_wird_gar_nicht_erst_gelesen(tmp_path, monkeypatch):
+    monkeypatch.setattr(page_images, "PDF_MAX_BYTES", 50)
+    abgerufen = _ratsinfo(monkeypatch, b"%PDF-1.7" + b"x" * 100)
     with pytest.raises(page_images.NoPreview) as e:
         page_images.pdf_bytes(tmp_path, 1, RIS.format(1))
     assert e.value.reason == "too_large"
+    antwort = abgerufen.antworten[0]
+    assert antwort.gelesen == 0 and antwort.closed
+
+
+def test_ohne_ankuendigung_bricht_das_lesen_an_der_grenze_ab(tmp_path, monkeypatch):
+    monkeypatch.setattr(page_images, "PDF_MAX_BYTES", 50)
+    abgerufen = _ratsinfo(monkeypatch, b"%PDF-1.7" + b"x" * 1000, laenge=0)
+    with pytest.raises(page_images.NoPreview) as e:
+        page_images.pdf_bytes(tmp_path, 1, RIS.format(1))
+    assert e.value.reason == "too_large"
+    antwort = abgerufen.antworten[0]
+    assert antwort.gelesen <= 6, "nicht das ganze PDF, nur bis über die Grenze"
+    assert antwort.closed
+
+
+def test_eine_absage_wird_gemerkt_statt_neu_geladen(tmp_path, monkeypatch):
+    monkeypatch.setattr(page_images, "PDF_MAX_BYTES", 50)
+    abgerufen = _ratsinfo(monkeypatch, b"%PDF-1.7" + b"x" * 100)
+    for _ in range(3):
+        with pytest.raises(page_images.NoPreview) as e:
+            page_images.pdf_bytes(tmp_path, 1, RIS.format(1))
+        assert e.value.reason == "too_large"
+    assert len(abgerufen) == 1
+
+
+def test_hoechstens_zwei_zugleich(tmp_path, monkeypatch):
+    import threading
+
+    monkeypatch.setattr(page_images, "_SLOTS", threading.BoundedSemaphore(1))
+    monkeypatch.setattr(page_images, "_SLOT_WAIT", 0.05)
+    page_images._SLOTS.acquire()
+    try:
+        with pytest.raises(page_images.NoPreview) as e:
+            page_images.page_count(tmp_path, 1, RIS.format(1))
+        assert e.value.reason == "busy"
+    finally:
+        page_images._SLOTS.release()
 
 
 def test_die_ablage_hat_eine_obergrenze(tmp_path):

@@ -4236,6 +4236,7 @@ def _keine_vorschau(exc: page_images.NoPreview) -> HTTPException:
         "not_ris": (status.HTTP_404_NOT_FOUND, "Für diese Unterlage gibt es keine Vorschau."),
         "too_large": (status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, "Die Unterlage ist für eine Vorschau zu groß."),
         "unavailable": (status.HTTP_503_SERVICE_UNAVAILABLE, "Vorschau gerade nicht verfügbar."),
+        "busy": (status.HTTP_503_SERVICE_UNAVAILABLE, "Vorschau gerade ausgelastet — gleich noch einmal."),
     }.get(exc.reason, (status.HTTP_502_BAD_GATEWAY, "Das Ratsinfo hat die Unterlage nicht geliefert."))
     return HTTPException(code, text)
 

@@ -673,7 +673,10 @@ selbst vom Ratsinfo laden (keine CORS-Kopfzeilen), deshalb rendert der Server:
 `…/documents/{id}/pages` (`council/page_images.py`). Nur mit Konto, nur
 Adressen aus der eigenen Datenbank und nur vom Ratsinfo; PDF und Seitenbilder
 liegen in `data/page-images/` mit Obergrenze (400 MB PDFs, 200 MB Bilder, das
-zuletzt Benutzte bleibt). PyMuPDF liegt auf dev und Prod in der venv, ist aber
+zuletzt Benutzte bleibt). Das PDF kommt gestreamt: Über 60 MB bricht der
+Abruf ab, schon an der angekündigten Länge oder beim Lesen, und die Absage
+bleibt je Unterlage gemerkt (zu groß oder kein PDF 24 h, Abruffehler 5 min).
+Höchstens zwei Abrufe oder Renderings laufen zugleich. PyMuPDF liegt auf dev und Prod in der venv, ist aber
 bewusst nicht in `requirements.txt` (AGPL); wo es fehlt, antwortet der
 Endpunkt 503 und die Vorschau sagt „Keine Vorschau“.
 
