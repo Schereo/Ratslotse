@@ -857,7 +857,7 @@ Die `.env` liegt ausschließlich auf dem Server und wird vom Deploy nicht
 | `OPENROUTER_API_KEY` | Zugang zu allen LLM-Aufrufen ([ADR 0001](/docs/adr/0001-openrouter/)) | ja | — |
 | `NWZ_OPENROUTER_ROUTING` | Provider-Routing (DSGVO) an/aus; `off` ist der Notausschalter ([ADR 0002](/docs/adr/0002-dsgvo-provider-routing/)) | nein | `on` |
 | `NWZ_OPENROUTER_IGNORE` | Kommaliste ausgeschlossener Provider-Slugs | nein | `deepseek,baidu,streamlake,siliconflow,alibaba` |
-| `NWZ_OPENROUTER_ZDR` | Zero-Data-Retention verlangen — für Aufrufe mit Nutzereingaben; Features mit nur öffentlichen Daten stehen in `kern/llm.py::OHNE_NUTZEREINGABE` und laufen ohne ZDR. `0`/`false`/`off`/`no` lockert es für alle | nein | `1` |
+| `NWZ_OPENROUTER_ZDR` | ZDR-Vorgabe für Aufrufe mit ZDR-Pflicht, einschließlich des regulären EU-Routings. `0`/`false`/`off`/`no` deaktivieren die Vorgabe für alle Aufrufe. Für ausschließlich öffentliche Daten (`kern/llm.py::OHNE_NUTZEREINGABE`) gilt keine ZDR-Pflicht. | nein | `1` |
 | `NWZ_DEEPSEEK_MIN_MAX_TOKENS` | Untergrenze für `max_tokens` bei DeepSeek-Reasoning-Modellen | nein | `24000` |
 | `NWZ_GPT56_MIN_MAX_TOKENS` | Untergrenze für `max_tokens` bei den GPT-5.6-Modellen; sonst endet eine Antwort still mit `finish_reason='length'` | nein | `16000` |
 | `NWZ_GEMINI_DENK_MIN_MAX_TOKENS` | Dieselbe Untergrenze für Gemini-Modelle, die vor der Antwort denken | nein | `4000` |
@@ -879,9 +879,9 @@ Alle Variablen sind optional. Ohne Angabe gilt der Standardwert aus dem Code.
 | `COUNCIL_IMPACT_MODEL` | Tragweite-Score | `openai/gpt-6-luna` (Flex-Tarif) |
 | `COUNCIL_FUNDSTUECK_MODEL` | Story zum „Fundstück des Tages" | `deepseek/deepseek-v4-pro` |
 | `COUNCIL_RECAP_MODEL` | Themenfeld-Rückblicke | `deepseek/deepseek-v4-pro` |
-| `COUNCIL_QA_MODEL` | „Frag den Rat": Antwort, vereinfachte Antwort, Deep-Research-Bericht, Partei-Meinungen — ohne ZDR (`llm.ZDR_VERZICHT`) | `openai/gpt-6-luna` (Denkaufwand: `low` für die Antwort, sonst Vorgabe des Anbieters; `llm.WEB_DENKAUFWAND`) |
+| `COUNCIL_QA_MODEL` | Antwort und vereinfachte Antwort von „Frag den Rat", Bericht der ausführlichen Recherche und Parteipositionen. Standardmäßig EU mit ZDR. Beim aktivierten Fallback außerhalb der EU entfällt die ZDR-Vorgabe (`llm.ZDR_VERZICHT`). | `openai/gpt-6-luna` (Denkaufwand: `low` für die Antwort, sonst Vorgabe des Anbieters; `llm.WEB_DENKAUFWAND`) |
 | `COUNCIL_QA_EXPAND_MODEL` | „Frag den Rat": Frage-Analyse vor der Suche (Azure EU, mit ZDR); auch die Städte-Suchbegriffe | `openai/gpt-5.6-luna` |
-| `COUNCIL_ASSISTANT_MODEL` | Lottis Erklärungen — ohne ZDR (`llm.ZDR_VERZICHT`) | `openai/gpt-6-luna` (Denkaufwand: Vorgabe des Anbieters) |
+| `COUNCIL_ASSISTANT_MODEL` | Lottis Erklärungen. Standardmäßig EU mit ZDR. Beim aktivierten Fallback außerhalb der EU entfällt die ZDR-Vorgabe (`llm.ZDR_VERZICHT`). | `openai/gpt-6-luna` (Denkaufwand: Vorgabe des Anbieters) |
 | `COUNCIL_ASSISTANT_PRUEFER_MODEL` | Lottis Selbstprüfung: Prüfer-Modell einer anderen Familie, in der EU (`council/self_check.py`, Schalter `lotti-selbstpruefung`) | `anthropic/claude-haiku-5.5` |
 | `COUNCIL_ASSISTANT_PRUEFER_ANTEIL` | Anteil der Erklärungen, die nachträglich geprüft werden (0–1) | `0.1` |
 | `COUNCIL_DISTRICT_MODEL` | „Mein Viertel": Vorhaben aus Beschlüssen bündeln und einordnen (`council/viertel.py`) | `openai/gpt-6-luna` |
