@@ -1162,3 +1162,9 @@ Telefon beim Antippen, sagt er, woher der Text kommt und was verbindlich ist.
 automatisch …“): Sie wiederholt sich auf jeder Seite und wird überlesen (Tims
 Entscheidung 12.11.2026). Die Hover-Karte bleibt kurz, ein bis zwei Sätze.
 
+**Viele gleichartige Sätze in einer Liste: ein Stern an der Überschrift.** Die
+Inhaltssätze der Unterlagen (je Dokument ein automatischer Satz) tragen ihn
+nicht in jeder Zeile — beim Haushaltsentwurf wären es 30 Funken in einer Liste.
+Der Stern steht einmal an der Listenüberschrift, seine Karte sagt, welche Sätze
+gemeint sind (11/2026).
+

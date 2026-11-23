@@ -19,8 +19,22 @@ export const ART_WORT: Record<string, string> = {
   protocol: "Protokoll",
 };
 
-/** Was man liest, um die Aufbereitung gegenzulesen — der Rest ist Belegmaterial. */
-const LESESTOFF = new Set(["template", "amendment", "motion", "report_request", "synopsis", "statute", "statement"]);
+/** Was man liest, um die Aufbereitung gegenzulesen — der Rest ist Belegmaterial.
+ *  Dieselbe Einteilung wie im Plan (§ 2.4) und im Dossier
+ *  (`council/template_dossier.py::LESESTOFF`): Ein Bericht ist Lesestoff — bis
+ *  11/2026 fehlte er hier, und der Quartalsbericht, aus dem das Dossier seine
+ *  Zahlen hat, stand eingeklappt unter „Weitere Unterlagen" (Tim, 23.11.2026). */
+const LESESTOFF = new Set(["template", "amendment", "motion", "report_request", "synopsis", "statute", "statement", "report"]);
+
+/** Ab so vielen Stücken Belegmaterial lohnt das Einklappen. Darunter kostet
+ *  der Klick mehr, als die eingesparte Zeile bringt. */
+export const EINKLAPPEN_AB = 3;
+
+/** Wird das Belegmaterial eingeklappt? Nur, wenn es viel ist UND davor
+ *  Lesestoff steht — sonst wäre die Liste zugeklappt leer. */
+export function belegEinklappen(lesestoff: number, beleg: number): boolean {
+  return lesestoff > 0 && beleg >= EINKLAPPEN_AB;
+}
 
 /** „2026-10-31 Reduzierung …", „2026 11 01. - Antrag …", „20241025 DIE GRÜNEN …" → ohne Datum. */
 export function ohneDatum(label: string): string {
@@ -29,6 +43,65 @@ export function ohneDatum(label: string): string {
     .replace(/^\s*\d{6}\s+/, "")
     .trim();
   return ohne || label;
+}
+
+/** Abkürzungen, die in Dateinamen des Haushalts stehen — als ganzes Wort. */
+const ABKUERZUNG: Record<string, string> = {
+  THH: "Teilhaushalt", WP: "Wirtschaftsplan", EHH: "Ergebnishaushalt", FHH: "Finanzhaushalt",
+};
+
+/** Kurze Namen für eine Liste: was ALLE (die meisten) Titel gemeinsam haben,
+ *  steht nicht in jeder Zeile. Der Haushaltsentwurf 2027 heißt 30-mal
+ *  „2027 0xx Vw … Haushalt 2027 Verwaltungsentwurf“ — in der Liste stand das
+ *  Unterscheidende („THH01“) mitten in Wiederholungen (Tim, 23.11.2026:
+ *  „kompakter darstellen“).
+ *
+ *  Anfang: Wörter, die mindestens drei und 60 % der Titel teilen; eine laufende
+ *  Nummer zählt als gleich. Ende: dasselbe ab 50 %. Bleibt kein Wort übrig,
+ *  steht der Titel ganz da. Unter drei Titeln ändert sich nichts. */
+export function kurzeTitel(labels: readonly string[]): string[] {
+  const titel = labels.map(ohneDatum);
+  const woerter = titel.map((t) => t.split(/\s+/).filter(Boolean));
+  if (woerter.length < 3) return titel.map(ausschreiben);
+  const zahl = (w: string) => /^\d+$/.test(w);
+  const gleich = (a: string, b: string) => a === b || (zahl(a) && zahl(b));
+  const haeufigster = (kandidaten: (string | undefined)[]): string | undefined => {
+    const zaehler = new Map<string, number>();
+    for (const k of kandidaten) if (k !== undefined) {
+      const schluessel = zahl(k) ? "#" : k;
+      zaehler.set(schluessel, (zaehler.get(schluessel) ?? 0) + 1);
+    }
+    let best: string | undefined, n = 0;
+    for (const [k, v] of zaehler) if (v > n) { best = k; n = v; }
+    return best === "#" ? "0" : best;
+  };
+  const passt = (w: string[], muster: string[], vonHinten: boolean) =>
+    w.length > muster.length && muster.every((m, i) => gleich(vonHinten ? w[w.length - muster.length + i] : w[i], m));
+  const finde = (vonHinten: boolean, anteil: number): string[] => {
+    const muster: string[] = [];
+    for (;;) {
+      const pos = (w: string[]) => (vonHinten ? w[w.length - 1 - muster.length] : w[muster.length]);
+      const kandidat = haeufigster(woerter.filter((w) => muster.length === 0 || passt(w, muster, vonHinten)).map(pos));
+      if (kandidat === undefined) return muster;
+      const neu = vonHinten ? [kandidat, ...muster] : [...muster, kandidat];
+      const treffer = woerter.filter((w) => passt(w, neu, vonHinten)).length;
+      if (treffer < Math.max(3, Math.ceil(woerter.length * anteil))) return muster;
+      muster.splice(0, muster.length, ...neu);
+    }
+  };
+  const vorn = finde(false, 0.6), hinten = finde(true, 0.5);
+  return woerter.map((w, i) => {
+    let rest = w;
+    if (vorn.length && passt(rest, vorn, false)) rest = rest.slice(vorn.length);
+    if (hinten.length && passt(rest, hinten, true)) rest = rest.slice(0, rest.length - hinten.length);
+    // Eine nackte Nummer („Anlage 1“ → „1“) ist kein Name.
+    return rest.some((x) => /\p{L}/u.test(x)) ? ausschreiben(rest.join(" ")) : ausschreiben(titel[i]);
+  });
+}
+
+/** „THH01“ → „Teilhaushalt 01“, „WP EGH“ → „Wirtschaftsplan EGH“. */
+function ausschreiben(titel: string): string {
+  return titel.replace(/\b(THH|WP|EHH|FHH)(\d*)\b/g, (_, k: string, nr: string) => `${ABKUERZUNG[k]}${nr ? ` ${nr}` : ""}`);
 }
 
 export interface ListenDoc { kind: string; doc_type?: string; label: string }
