@@ -196,6 +196,22 @@ sind. `extraktor_fuer` erkennt sie wie `finanzquellen.finanz_anlagen_where` —
 am Label oder am Titel der Vorlage. PyMuPDF ist optional (AGPL, steht nur in
 `constraints.txt`); fehlt es, liest pypdf weiter und das Log sagt es einmal.
 
+**Ligaturen.** Word legt beim PDF-Export aus Calibri eigene Glyphen für
+„ti“, „ft“, „tt“ und „tf“ an und ordnet ihnen Buchstaben aus Latin Extended-B
+zu: „städƟschen“, „WirtschaŌsplan“, „MiƩel“. Andere Schriften nehmen Ziffern
+oder Satzzeichen („durchschni0liche“, „Wirtscha)splan“, „vermi<elt“). Betroffen
+waren auf dev 20 von 6.779 Anlagen, darunter alle Quartalsberichte der
+Beteiligungen. `anlagentext.ligaturen_reparieren` löst sie in `pdf_seiten` auf:
+die vier Buchstaben immer, sobald ein Kleinbuchstabe danebensteht; Ziffern und
+Satzzeichen nur, wenn genau eine Ligatur ein Wortstück ergibt, das im selben
+Dokument richtig geschrieben steht, und nie in einer Adresse. Ein Trockenlauf
+über den dev-Bestand fand 48 solche Stellen, alle richtig. Glyphen ohne
+Zeichen („bestägt“) bleiben; die Belegprüfung fängt sie ab (s. Sitzungen,
+Dossier). Den gespeicherten Bestand repariert `scripts/ligaturen_reparieren.py`
+ohne Download und rückt die Seitenanfänge mit (Vorgabe: Trockenlauf,
+`--schreiben` schreibt). Protokolle fasst es nicht an: An ihren Zeichen hängen
+die Fundstellen der Wortbeiträge.
+
 **Den Bestand neu lesen** übernimmt `scripts/pdf_neu_lesen.py`, als
 Vorgabe im Trockenlauf: Es lädt, liest, vergleicht mit dem gespeicherten Text
 und berichtet, ohne zu schreiben. Erst `--ausfuehren` schreibt, je Dokument

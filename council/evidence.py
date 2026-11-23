@@ -35,8 +35,12 @@ QUOTE_MAX = 420
 QUOTE_MIN_TIGHT = 30
 SATZ_MAX = 220
 
-_TIGHT_DROP = re.compile("[\\s\\-­‐‑‒–—\"'„“”‚‘’»«›‹-]+")  # mit dem privaten Unicode-Bereich (PDF-Aufzählungszeichen)
-_LIGATURES = {"ﬂ": "fl", "ﬀ": "ff", "ﬁ": "fi", "ﬃ": "ffi", "ﬄ": "ffl"}
+_TIGHT_DROP = re.compile("[\\s\\-­‐‑‒–—\"'„“”‚‘’»«•▪◦›‹-]+")  # mit dem privaten Unicode-Bereich und Aufzählungspunkten (PDF-Aufzählungszeichen)
+#: Mit den falsch zugeordneten Calibri-Ligaturen („städƟschen", „WirtschaŌsplan",
+#: s. ``council/anlagentext.py``): Schreibt ein Modell das Wort beim Zitieren
+#: richtig, bleibt der Beleg — auch in Texten, die vor der Reparatur gelesen wurden.
+_LIGATURES = {"ﬂ": "fl", "ﬀ": "ff", "ﬁ": "fi", "ﬃ": "ffi", "ﬄ": "ffl",
+              "Ɵ": "ti", "Ō": "ft", "Ʃ": "tt", "ƞ": "tf"}
 #: Die Fußzeile jeder Seite eines Vorlagen-Ausdrucks — steht mitten im Satz, wo die Seite wechselt.
 _PRINT_FOOTER = re.compile(r"Ausdruck vom:\s*\d{2}\.\d{2}\.\d{4}\s+Seite:\s*\d+/\d+")
 _PRIVATE_USE = re.compile("[-]")
@@ -58,25 +62,50 @@ def tight(text: str) -> str:
     return _TIGHT_DROP.sub("", text)
 
 
-def locate(quote: str, source: dict, page: int | None) -> tuple[bool, int | None]:
+#: Ligaturen, deren Glyphe gar kein Zeichen trägt, fehlen im Text ganz: „bestägt",
+#: „Staon", „Funkonsdienst" (Quartalsbericht der Beteiligungen 30.09.2026, Seite 4).
+#: Das Modell schreibt beim Zitieren das Wort, das im PDF zu SEHEN ist — „bestätigt" —,
+#: und verlor so den Beleg. Der zweite Versuch vergleicht beide Seiten ohne die
+#: Buchstabenpaare, die als Ligatur gesetzt werden; Ziffern und alle übrigen Zeichen
+#: müssen weiter Zeichen für Zeichen stimmen.
+_LIGATUR_PAARE = re.compile("ffi|ffl|tt|ft|ti|tf|fi|fl|ff")
+
+
+def _ohne_ligaturen(text: str) -> str:
+    return _LIGATUR_PAARE.sub("", text)
+
+
+def _finde(needle: str, packed: list[str], order: list[int]) -> int | None:
+    for i in order:
+        if needle in packed[i]:
+            return i + 1
+    for i in order:
+        if i + 1 < len(packed) and needle in packed[i] + packed[i + 1]:
+            return i + 1
+    return None
+
+
+def locate(quote: str, source: dict, page: int | None,
+           quote_min: int = QUOTE_MIN_TIGHT) -> tuple[bool, int | None]:
     """Steht das Zitat wörtlich in der Quelle? Bei Seiten: auf welcher — die Seitenangabe des
     Modells wird berichtigt, wenn das Zitat auf einer anderen steht; ein Zitat über einen Seitenwechsel
     zählt zur ersten der beiden Seiten. ``source`` trägt ``text`` und optional ``pages``."""
     needle = tight(quote)
-    if len(needle) < QUOTE_MIN_TIGHT:
+    if len(needle) < quote_min:
         return False, None
     pages = source.get("pages")
     if pages is None:
-        return needle in tight(source["text"]), None
+        voll = tight(source["text"])
+        if needle in voll:
+            return True, None
+        ohne = _ohne_ligaturen(needle)
+        return len(ohne) >= quote_min and ohne in _ohne_ligaturen(voll), None
     packed = [tight(p) for p in pages]
     order = ([page - 1] if page and 0 < page <= len(packed) else []) + list(range(len(packed)))
-    for i in order:
-        if needle in packed[i]:
-            return True, i + 1
-    for i in order:
-        if i + 1 < len(packed) and needle in packed[i] + packed[i + 1]:
-            return True, i + 1
-    return False, None
+    seite = _finde(needle, packed, order)
+    if seite is None and len(ohne := _ohne_ligaturen(needle)) >= quote_min:
+        seite = _finde(ohne, [_ohne_ligaturen(p) for p in packed], order)
+    return (True, seite) if seite is not None else (False, None)
 
 
 def pages_from_offsets(text: str, offsets: list[int] | None) -> list[str] | None:
@@ -112,9 +141,11 @@ def satz_sauber(text: str) -> str | None:
 
 def check_statement(entry: dict, sources: dict[str, dict], *, limit: int = SATZ_MAX,
                     zusatz_zitate: list[str] | None = None,
-                    quote_max: int = QUOTE_MAX) -> tuple[dict | None, str | None]:
+                    quote_max: int = QUOTE_MAX,
+                    quote_min: int = QUOTE_MIN_TIGHT) -> tuple[dict | None, str | None]:
     """Eine Aussage ``{text, quote, source, page}`` gegen ihre Quellen — die
-    geprüfte Aussage oder der Grund, warum sie fällt.
+    geprüfte Aussage oder der Grund, warum sie fällt. ``quote_min``: kürzere
+    Zitate nur, wo ein Titel genügt (Inhaltssatz einer Unterlage).
 
     ``sources``: ``{"V1": {"text": …, "pages": [...]?, "document_id": …}, "A1": …}``."""
     if not isinstance(entry, dict):
@@ -129,7 +160,7 @@ def check_statement(entry: dict, sources: dict[str, dict], *, limit: int = SATZ_
     if not quote or len(quote) > quote_max:
         return None, "Zitat fehlt oder ist zu lang"
     seite = entry.get("page") if isinstance(entry.get("page"), int) else None
-    gefunden, seite = locate(quote, quelle, seite)
+    gefunden, seite = locate(quote, quelle, seite, quote_min)
     if not gefunden:
         return None, "Zitat steht nicht wörtlich in der Quelle"
     zitat_flach = quote.lower()
