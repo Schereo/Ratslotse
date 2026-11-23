@@ -115,7 +115,33 @@ def collect(db: str, today: str | None = None) -> dict:
             "SELECT count(*) FROM council_attachments WHERE raw_text IS NOT NULL AND raw_text != ''",
             "SELECT count(DISTINCT document_id) FROM council_anlage_embeddings"),
     }
+    out["tables"] = _tables(conn)
     conn.close()
+    return out
+
+
+#: Spalten, an denen man sieht, worauf eine Tabelle verweist: Die ersten fünf
+#: sind über alle Umgebungen gleich (sie stammen aus dem Ratsinformationssystem
+#: oder sind Texte), ``decision_id`` & Co. sind je Umgebung eigene Nummern.
+KEY_COLUMNS = ("ksinr", "kvonr", "template_number", "document_id", "slug",
+               "decision_id", "press_id", "contribution_id", "speech_id", "matter_id", "entity_id")
+
+
+def _tables(conn: sqlite3.Connection) -> dict:
+    """Je Tabelle die Zeilenzahl und die Verweis-Spalten (ohne FTS-Schattentabellen)."""
+    out: dict = {}
+    names = [r[0] for r in conn.execute(
+        "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'")]
+    shadow = ("_data", "_idx", "_content", "_docsize", "_config")
+    for name in names:
+        if any(name.endswith(x) for x in shadow) and "_fts" in name:
+            continue
+        try:
+            rows = conn.execute(f'SELECT count(*) FROM "{name}"').fetchone()[0]
+            cols = [r[1] for r in conn.execute(f'PRAGMA table_info("{name}")')]
+        except sqlite3.OperationalError:
+            continue
+        out[name] = {"rows": rows, "keys": [c for c in cols if c in KEY_COLUMNS]}
     return out
 
 
@@ -166,6 +192,22 @@ def compare(dev: dict, prod: dict) -> str:
     for d, k, a, b in sorted(gaps):
         year, committee = k.split("|", 1)
         lines.append(f"| {year} | {committee} | {a} | {b} | {d:+d} |")
+    dt, pt = dev.get("tables", {}), prod.get("tables", {})
+    if dt or pt:
+        lines += ["", "## Tabellen, in denen dev mehr hat", "",
+                  "Kandidaten für Daten, die es nur auf dev gibt (Anreicherungen, Nachläufe).", "",
+                  "| Tabelle | dev | Prod | Verweise |", "|---|---:|---:|---|"]
+        for name in sorted(set(dt) | set(pt)):
+            a = dt.get(name, {}).get("rows", 0)
+            b = pt.get(name, {}).get("rows", 0)
+            if a > b and (b == 0 or a >= b * 1.05) and a - b >= 5:
+                keys = ", ".join(dt.get(name, {}).get("keys", []))
+                lines.append(f"| {name} | {a} | {b} | {keys} |")
+        lines += ["", "## Tabellen, die nur eine Umgebung hat", "",
+                  "| Tabelle | nur auf | Zeilen |", "|---|---|---:|"]
+        for name in sorted(set(dt) ^ set(pt)):
+            wo, rows = ("dev", dt[name]["rows"]) if name in dt else ("Prod", pt[name]["rows"])
+            lines.append(f"| {name} | {wo} | {rows} |")
     return "\n".join(lines) + "\n"
 
 
