@@ -669,7 +669,8 @@ Notiztext.**
 daneben, mit ‹ › zum Blättern; über einem Chip erscheint sie beim Überfahren
 mit der Maus oder beim Fokus mit der Tastatur. Der Browser darf das PDF nicht
 selbst vom Ratsinfo laden (keine CORS-Kopfzeilen), deshalb rendert der Server:
-`GET /api/council/documents/{id}/page/{n}?w=640` und
+`GET /api/council/documents/{id}/page/{n}?w=320|640|1280` (1280 für die
+Vergrößerung) und
 `…/documents/{id}/pages` (`council/page_images.py`). Nur mit Konto, nur
 Adressen aus der eigenen Datenbank und nur vom Ratsinfo; PDF und Seitenbilder
 liegen in `data/page-images/` mit Obergrenze (400 MB PDFs, 200 MB Bilder, das

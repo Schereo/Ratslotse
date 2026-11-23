@@ -26960,7 +26960,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Eine Seite einer Unterlage als JPEG, für die Vorschau an einem Notiz-Verweis. `w` ist 320 oder 640. Eine getfile-Kennung nennt ein festes Dokument, die Antwort ist deshalb lange cachebar. */
+            /** @description Eine Seite einer Unterlage als JPEG, für die Vorschau an einem Notiz-Verweis. `w` ist 320, 640 oder 1280 (die Vergrößerung). Eine getfile-Kennung nennt ein festes Dokument, die Antwort ist deshalb lange cachebar. */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -31989,4 +31989,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: d2253c803c8318d46a9d49dfe1f44222040175495db0651a74ebcd206e079e45
+// vertrag-sha256: 25d46f818690cb31de9454b1180df9446417fd9cf477706615e5f717e6328f1e

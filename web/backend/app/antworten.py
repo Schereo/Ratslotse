@@ -6670,7 +6670,7 @@ SEITENBILD_JPEG: dict[int | str, dict[str, Any]] = {
     200: {
         "description": (
             "Eine Seite einer Unterlage als JPEG, für die Vorschau an einem "
-            "Notiz-Verweis. `w` ist 320 oder 640. Eine getfile-Kennung nennt "
+            "Notiz-Verweis. `w` ist 320, 640 oder 1280 (die Vergrößerung). Eine getfile-Kennung nennt "
             "ein festes Dokument, die Antwort ist deshalb lange cachebar."
         ),
         "content": {"image/jpeg": {"schema": {"type": "string", "format": "binary"}}},

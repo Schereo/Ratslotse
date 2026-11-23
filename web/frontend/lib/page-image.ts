@@ -7,8 +7,9 @@
 import { useEffect, useState } from "react";
 import { apiUrl } from "@/lib/api";
 
-/** The widths the server renders. 640 is sharp on a phone at 320 px. */
-export type PageWidth = 320 | 640;
+/** The widths the server renders. 640 is sharp on a phone at 320 px, 1280
+ *  is the enlarged view. */
+export type PageWidth = 320 | 640 | 1280;
 
 const MAX = 40;
 const cache = new Map<string, Promise<string>>();

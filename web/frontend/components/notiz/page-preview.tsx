@@ -4,14 +4,23 @@
    page, and over a reference chip in the note (`doc-ref.tsx`). */
 
 import { FileText } from "lucide-react";
-import { usePageImage } from "@/lib/page-image";
+import { usePageImage, type PageWidth } from "@/lib/page-image";
 import { cn } from "@/lib/utils";
 
-export function PagePreview({ documentId, page, label, className }: {
+/** ``natural``: das Bild in seiner eigenen Höhe (die Vergrößerung, auch für
+ *  Seiten im Querformat); sonst ein A4-Rahmen, der beim Laden nicht springt. */
+export function PagePreview({ documentId, page, label, className, width = 640, natural = false }: {
   documentId: number | null; page: number | null; label: string; className?: string;
+  width?: PageWidth; natural?: boolean;
 }) {
-  const { src, state } = usePageImage(documentId, page);
+  const { src, state } = usePageImage(documentId, page, width);
   const alt = page ? `Seite ${page} von „${label}“` : label;
+  if (natural && src) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img src={src} alt={alt} className={cn("block h-auto w-full rounded-md border border-border bg-white", state === "loading" && "opacity-60", className)} />
+    );
+  }
   return (
     // Seitenverhältnis A4, damit nichts springt, während das Bild lädt.
     <div className={cn("relative aspect-[1/1.414] w-full overflow-hidden rounded-md border border-border bg-card", className)}>

@@ -277,6 +277,21 @@ test.describe("Meine Notiz", () => {
     await expect(auswahl.getByLabel(/Seite \(leer/)).toHaveValue("2");
     await expect(auswahl.getByRole("img", { name: /^Seite 2 von „VCD-Antrag/ })).toBeVisible();
     expect(seitenbilder).toEqual(["314015/page/1?w=640", "314015/page/2?w=640"]);
+    // Vergrößern: groß ansehen, blättern, Esc schließt nur die Vergrößerung.
+    await auswahl.getByRole("button", { name: "Seite 2 größer anzeigen" }).click();
+    const gross = page.getByRole("dialog", { name: /^Seite 2 von 3/ });
+    await expect(gross.getByRole("img", { name: /^Seite 2 von „VCD-Antrag/ })).toBeVisible();
+    expect(seitenbilder).toContain("314015/page/2?w=1280");
+    await gross.getByRole("button", { name: "Vergrößern" }).click();
+    await expect(gross.getByRole("button", { name: "Ganze Seite zeigen" })).toHaveAttribute("aria-pressed", "true");
+    await gross.getByRole("button", { name: "Ganze Seite zeigen" }).click();
+    await page.keyboard.press("ArrowRight");
+    await expect(page.getByRole("dialog", { name: /^Seite 3 von 3/ })).toBeVisible();
+    await page.keyboard.press("ArrowLeft");
+    await page.keyboard.press("Escape");
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+    await expect(auswahl).toBeVisible();
+    await expect(auswahl.getByLabel(/Seite \(leer/)).toHaveValue("2");
     await auswahl.getByRole("button", { name: "Einfügen" }).click();
     const chip = feld.locator("[data-doc-ref]");
     await expect(chip).toContainText("VCD-Antrag");
@@ -287,7 +302,7 @@ test.describe("Meine Notiz", () => {
     await expect(page.getByRole("tooltip").getByRole("img", { name: /^Seite 2 von „VCD-Antrag/ })).toBeVisible();
     await page.mouse.move(0, 0);
     await expect(page.getByRole("tooltip")).toHaveCount(0);
-    expect(seitenbilder).toHaveLength(2);
+    expect(seitenbilder.filter((u) => u.endsWith("w=640"))).toHaveLength(3);
 
     // Im Chat fragen: Der Bezug steht über dem Feld, die Frage trägt Kennung und Seite.
     await chip.getByRole("button", { name: /^Im Chat fragen/ }).click();

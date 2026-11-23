@@ -10,9 +10,10 @@ import { useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Node, mergeAttributes } from "@tiptap/core";
 import { NodeViewWrapper, ReactNodeViewRenderer, type ReactNodeViewProps } from "@tiptap/react";
-import { ChevronLeft, ChevronRight, FileText, MessageCircleQuestion, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, FileText, MessageCircleQuestion, X, ZoomIn } from "lucide-react";
 import { useChatBridge } from "@/components/notiz/chat-bridge";
 import { PagePreview } from "@/components/notiz/page-preview";
+import { PageZoom } from "@/components/notiz/page-zoom";
 import { api } from "@/lib/api";
 import type { ApiAntwort } from "@/lib/vertrag";
 import { docRefHref, docRefName, type DocRefAttrs, type NoteDocument } from "@/lib/doc-ref";
@@ -170,11 +171,13 @@ export function DocRefPicker({ documents, onInsert, onClose }: {
     const next = Math.max(1, (page && pageOk ? n : 1) + d);
     if (total && next > total) return;
     setPage(String(next));
+    setShown(next);   // Geblättert wird ohne die Verzögerung fürs Tippen.
   };
   const insert = () => {
     if (!doc || !pageOk) return;
     onInsert({ documentId: doc.documentId, page: page ? n : null, label: doc.label, href: doc.href });
   };
+  const [zoom, setZoom] = useState(false);
   const KNOPF = "inline-flex h-11 w-11 items-center justify-center rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-40 desk:h-8 desk:w-8";
   return (
     <div role="group" aria-labelledby={`${id}-t`} className="border-b border-border bg-muted/40 px-3 py-2.5"
@@ -221,7 +224,18 @@ export function DocRefPicker({ documents, onInsert, onClose }: {
           </div>
         </div>
         <figure className="mx-auto w-full max-w-[200px]">
-          <PagePreview documentId={doc?.documentId ?? null} page={doc ? shown : null} label={doc?.label ?? ""} />
+          {doc ? (
+            <button type="button" onClick={() => setZoom(true)} aria-label={`Seite ${shown} größer anzeigen`}
+              title="Größer anzeigen"
+              className="group relative block w-full cursor-zoom-in rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+              <PagePreview documentId={doc.documentId} page={shown} label={doc.label} />
+              <span aria-hidden className="absolute bottom-1.5 right-1.5 inline-flex h-7 w-7 items-center justify-center rounded-md border border-border bg-card/90 text-foreground shadow-sm group-hover:bg-card">
+                <ZoomIn className="h-4 w-4" />
+              </span>
+            </button>
+          ) : (
+            <PagePreview documentId={null} page={null} label="" />
+          )}
           <figcaption className="mt-1 flex items-center justify-between gap-1 text-xs text-muted-foreground">
             <button type="button" onClick={() => blaettern(-1)} disabled={!doc || shown <= 1} aria-label="Vorige Seite" className={KNOPF}>
               <ChevronLeft className="h-4 w-4" aria-hidden />
@@ -233,6 +247,11 @@ export function DocRefPicker({ documents, onInsert, onClose }: {
           </figcaption>
         </figure>
       </div>
+      {doc && (
+        <PageZoom open={zoom} onOpenChange={setZoom} documentId={doc.documentId} label={doc.label} page={shown}
+          total={total} onPage={(p) => { setPage(String(p)); setShown(p); }}
+          onInsert={() => { setZoom(false); onInsert({ documentId: doc.documentId, page: shown, label: doc.label, href: doc.href }); }} />
+      )}
     </div>
   );
 }

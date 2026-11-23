@@ -33,8 +33,9 @@ import requests
 from council import ris
 
 #: Widths a client may ask for. Each width is a file per page; a free number
-#: would let anyone fill the disk.
-WIDTHS = (320, 640)
+#: would let anyone fill the disk. 1280 is the enlarged view (sharp at about
+#: 900 CSS pixels on a retina screen).
+WIDTHS = (320, 640, 1280)
 #: Larger documents get no preview (the budget books run to 80 MB).
 PDF_MAX_BYTES = 60 * 1024 * 1024
 PDF_CACHE_MAX = 400 * 1024 * 1024
