@@ -72,9 +72,93 @@ _STEUERZEICHEN = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")
 PYMUPDF = "pymupdf"
 PYPDF = "pypdf"
 
+# ---- Ligaturen -----------------------------------------------------------------
+#
+# Word legt beim PDF-Export aus Calibri eigene Glyphen für „ti", „ft", „tt"
+# und „tf" an — und schreibt in die Zuordnungstabelle der Schrift Buchstaben
+# aus Latin Extended-B: „städƟschen", „WirtschaŌsplan", „MiƩel", „enƞällt".
+# Jeder Leser gibt das so heraus, die Datei ist schuld. Gemessen auf dev
+# (23.11.2026): 20 von 6.779 Anlagen, darunter alle Quartalsberichte der
+# Beteiligungen seit 2021 — mit 192-mal „WirtschaŌsplan" und 143-mal
+# „städƟschen". Die Folgen: Die Volltextsuche findet „Wirtschaftsplan" dort
+# nicht, und ein Modell, das beim Zitieren das Wort richtig schreibt, verliert
+# den Beleg.
+#
+# Eine andere Schrift im selben Bericht ordnet dieselben Glyphen Ziffern und
+# Satzzeichen zu: „durchschni0liche", „Wirtscha)splan", „vermi<elt". Das zeigte die
+# Punkt-Seite des Quartalsberichts 30.09.2026 im Zitat (Tim, 23.11.2026). Hier
+# entscheidet nicht das Zeichen, sondern das Wort — „(teil)funktion",
+# „Benzo(a)pyren" und „und/oder" sind richtig. Ersetzt wird deshalb nur, wenn genau eine
+# Ligatur ein Wortstück ergibt, das im selben Dokument richtig geschrieben
+# steht.
+#
+# Nicht zu retten sind Glyphen, die gar kein Zeichen tragen („bestägt",
+# „Staon"): Dort fehlt jeder Hinweis, wo etwas fehlt. Damit ein richtig
+# abgeschriebenes Zitat trotzdem belegt bleibt, vergleicht
+# ``council/evidence.py::locate`` im zweiten Versuch ohne Ligatur-Paare.
+
+#: Falsch zugeordnete Ligaturen — eindeutig, sobald ein Kleinbuchstabe daneben steht.
+_FALSCHE_LIGATUREN = {"Ɵ": "ti", "Ō": "ft", "Ʃ": "tt", "ƞ": "tf"}
+#: Echte Ligaturzeichen (Unicode-Block „Alphabetic Presentation Forms").
+_ECHTE_LIGATUREN = str.maketrans({"ﬀ": "ff", "ﬁ": "fi", "ﬂ": "fl", "ﬃ": "ffi", "ﬄ": "ffl", "ﬅ": "st", "ﬆ": "st"})
+_KLEIN = "a-zäöüß"
+_FALSCH_RE = re.compile(f"(?<=[{_KLEIN}])[ƟŌƩƞ]|[ƟŌƩƞ](?=[{_KLEIN}])")
+#: Ein Wort mit Ziffer, Klammer, Schrägstrich oder Spitzklammer zwischen zwei
+#: Kleinbuchstaben — jede Schrift wählt ein anderes Zeichen: „durchschni0liche",
+#: „Wirtscha)splan", „Wirtscha/splan", „überschri9en", „vermi<elt" (Quartals-
+#: berichte 2024–2026). Aber nicht in einer Adresse: Im Bestand wurde sonst aus
+#: „….niedersachsen.de/niedersaechsischer…" ein „definiedersaechsischer…"
+#: (Trockenlauf über dev, 23.11.2026).
+_PLATZHALTER = "0123456789)/<>]|"
+_PLATZHALTER_RE = re.compile(f"(?<![\\w./:@-])[A-Za-zÄÖÜäöüß]*[{_KLEIN}][{re.escape(_PLATZHALTER)}][{_KLEIN}]++(?![/@]|\\.\\w)")
+_LIGATUR_KANDIDATEN = ("tt", "ft", "ti", "tf", "fi", "fl", "ff", "ffi", "ffl")
+#: So viele Buchstaben links und rechts der Lücke muss das Dokument richtig
+#: geschrieben tragen — genug, dass „chnittlic" nur zu „durchschnittlich" passt.
+_UMFELD_LINKS, _UMFELD_RECHTS = 4, 3
+
+
+def ligaturen_reparieren(seiten: list[str]) -> list[str]:
+    """Ligaturen auflösen, Seite für Seite — die Seitengrenzen bleiben, wo sie
+    sind; die Aufrufer rechnen die Offsets erst danach."""
+    seiten = [_FALSCH_RE.sub(lambda m: _FALSCHE_LIGATUREN[m.group(0)], s).translate(_ECHTE_LIGATUREN)
+              for s in seiten]
+    if not any(_PLATZHALTER_RE.search(s) for s in seiten):
+        return seiten
+    klein = "\n".join(seiten).lower()
+
+    def ersetzen(m: re.Match) -> str:
+        wort = m.group(0)
+        i = next(k for k, ch in enumerate(wort) if ch in _PLATZHALTER)
+        links = wort[max(0, i - _UMFELD_LINKS):i].lower()
+        rechts = wort[i + 1:i + 1 + _UMFELD_RECHTS].lower()
+        if len(links) < 3 or len(rechts) < 2:
+            return wort
+        passend = [e for e in _LIGATUR_KANDIDATEN if f"{links}{e}{rechts}" in klein]
+        if len(passend) != 1:   # keins oder mehrdeutig: lieber stehen lassen
+            return wort
+        return wort[:i] + passend[0] + wort[i + 1:]
+
+    return [_PLATZHALTER_RE.sub(ersetzen, s) for s in seiten]
+
+
+def gespeicherten_text_reparieren(text: str, offsets: list[int] | None) -> tuple[str, list[int] | None]:
+    """Ligaturen in einem schon gespeicherten Text auflösen — Seite für Seite,
+    mit den neuen Seitenanfängen (``council_documents.page_offsets``): Aus
+    „Ɵ" werden zwei Zeichen, jede folgende Seite rückt also nach hinten."""
+    if not offsets:
+        return ligaturen_reparieren([text])[0], offsets
+    grenzen = [0, *offsets, len(text)]
+    stuecke = ligaturen_reparieren([text[grenzen[i]:grenzen[i + 1]] for i in range(len(grenzen) - 1)])
+    neu: list[int] = []
+    pos = len(stuecke[0])   # was vor der ersten Seite steht (meist nichts)
+    for s in stuecke[1:]:
+        neu.append(pos)
+        pos += len(s)
+    return "".join(stuecke), neu
+
 
 def pdf_seiten(daten: bytes, extraktor: str = PYMUPDF) -> list[str]:
-    """Der Text eines PDF, Seite für Seite.
+    """Der Text eines PDF, Seite für Seite, Ligaturen aufgelöst.
 
     Seiten enden ohne Zeilenumbruch, wie bei pypdf — die Aufrufer verbinden
     mit ``"\n"`` und rechnen daraus Seiten-Offsets
@@ -88,9 +172,10 @@ def pdf_seiten(daten: bytes, extraktor: str = PYMUPDF) -> list[str]:
             _ohne_pymupdf()
         else:
             with pymupdf.open(stream=daten, filetype="pdf") as dok:
-                return [_STEUERZEICHEN.sub("", str(s.get_text())).rstrip("\n") for s in dok]
+                return ligaturen_reparieren(
+                    [_STEUERZEICHEN.sub("", str(s.get_text())).rstrip("\n") for s in dok])
     leser = pypdf.PdfReader(io.BytesIO(daten))
-    return [_STEUERZEICHEN.sub("", s.extract_text() or "") for s in leser.pages]
+    return ligaturen_reparieren([_STEUERZEICHEN.sub("", s.extract_text() or "") for s in leser.pages])
 
 
 @lru_cache(maxsize=1)

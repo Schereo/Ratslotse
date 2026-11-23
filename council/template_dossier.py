@@ -51,6 +51,23 @@ _KEINE_RE = __import__("re").compile(r"\bkeine?\b|\bnicht\b.*\b(?:kosten|aufwend
 #: Obergrenzen je Liste (§ 2.1).
 GRENZEN = {("proposal", "plain"): 5, ("costs", "items"): 4, ("changes", "items"): 8,
            ("administration", "points"): 3, ("next", "dates"): 4, ("next", "open"): 4}
+#: Ein Bericht trägt seinen Inhalt in den Befunden und Zahlen, nicht in Kosten
+#: und Beschluss: Der Quartalsbericht der Beteiligungen (26/0818) meldet elf
+#: Gesellschaften und Betriebe, das Dossier zeigte drei Zahlen (Tim, 23.11.2026).
+GRENZEN_FORM = {("F7", "proposal", "plain"): 8, ("F7", "figures", "items"): 10, ("F7", "next", "dates"): 8}
+#: Die Fassung des Zusatzes für Berichte (``template_dossier_report``) — wer ihn
+#: ändert, zählt hoch: Nur die Dossiers der Form F7 entstehen dann neu.
+BERICHT_VERSION = 1
+
+
+def grenze(form: str | None, abschnitt: str, liste: str) -> int:
+    return GRENZEN_FORM.get((form or "", abschnitt, liste)) or GRENZEN.get((abschnitt, liste), 6)
+
+
+#: Ein Inhaltssatz sagt, was ein Dokument ist — belegt wird er oft mit dem Titel
+#: der Titelseite („THH06 Kultur und Museen", 20 Zeichen). Beim Haushaltsentwurf
+#: 2027 fielen so 12 von 27 Inhaltssätzen an der Mindestlänge für Zitate (30).
+GIST_QUOTE_MIN = 15
 
 
 #: Überschriften je Abschnitt — einige hängen an der Form (§ 2.1).
@@ -176,37 +193,90 @@ def _seitenauswahl(key: str, text: str, offsets: list[int] | None, grenze: int,
 _SEITE_IM_BLOCK_RE = re.compile(r"— \[A\d+\] Seite (\d+) —")
 
 
-def _kandidaten_der_anlage(text: str, offsets: list[int] | None, block: str) -> dict[str, list[dict]]:
+#: Kandidaten je Art und Anlage. Ein Bericht trägt seine Zahlen über alle Seiten:
+#: Beim Quartalsbericht 30.09.2026 endete die Liste mit 25 Beträgen auf Seite 4
+#: von 14 — und „Beträge nur aus den Kandidaten" sperrte den Rest.
+KANDIDATEN_JE_ART = 25
+KANDIDATEN_BERICHT = 80
+
+
+def _kandidaten_der_anlage(text: str, offsets: list[int] | None, block: str,
+                           grenze: int = KANDIDATEN_JE_ART) -> dict[str, list[dict]]:
     """Beträge, Daten und Paragrafen aus den Seiten, die das Modell von der
     Anlage zu sehen bekommt — mit Seite. Bis 11/2026 gab es Kandidaten nur aus
     der Vorlage, und „Beträge und Daten nur aus den Kandidaten" hieß damit:
     keine Kosten und keine Termine aus der Anlage."""
     seiten = evidence.pages_from_offsets(text, offsets)
     if not seiten:
-        return dossier_harvest.candidates(text[:len(block)], None)
+        return dossier_harvest.candidates(text[:len(block)], None, grenze)
     gelesen = sorted({int(n) for n in _SEITE_IM_BLOCK_RE.findall(block)})
     aus: dict[str, list[dict]] = {"amounts": [], "dates": [], "paragraphs": []}
     gesehen: set[tuple[str, str]] = set()
     for nr in gelesen:
         for art, werte in dossier_harvest.candidates(seiten[nr - 1], None).items():
             for w in werte:
-                if (art, w["value"]) in gesehen or len(aus[art]) >= 25:
+                if (art, w["value"]) in gesehen or len(aus[art]) >= grenze:
                     continue
                 gesehen.add((art, w["value"]))
                 aus[art].append({"value": w["value"], "page": nr})
     return aus
 
 
-def _anteile(laengen: dict[str, int], verfuegbar: int) -> dict[str, int]:
+#: Reicht das Budget nicht für ``ANLAGE_MIN`` je Lese-Anlage, wird gewählt:
+#: so viele Anlagen, dass jede wenigstens so viel bekommt — die mit Vorrang.
+ANLAGE_KNAPP = 15_000
+#: Vorrang nach dem Label: was zusammenfasst oder erläutert, vor Tabellenwerken.
+_VORRANG_LABEL = (
+    (re.compile(r"Vorbericht|Zusammenfassung|Kurzfassung|Fazit|Management\s*Summary", re.I), 3.0),
+    (re.compile(r"Konzept|Stellungnahme|Begründung|Erläuterung|Änderungsliste|Synopse", re.I), 1.5),
+    (re.compile(r"Bericht|Evaluation|Sachstand|Ergebnis", re.I), 1.0),
+)
+_LANGWORT_RE = re.compile(r"[A-Za-zÄÖÜäöüß]{4,}")
+
+
+def vorrang(label: str | None, text: str) -> float:
+    """Wie sehr eine Anlage den Inhalt trägt: Label plus Anteil an Fließtext.
+
+    Anlass: der Haushaltsentwurf 2027 (26/0835) mit 30 Anlagen und 2,2 Mio.
+    Zeichen, 20 davon Lesestoff. Reihum, die kürzeste zuerst, bekamen die
+    kleinen Änderungslisten ihren Anteil und der Vorbericht — das Dokument,
+    das den Haushalt erklärt — nichts. Teilhaushalte sind Tabellen: wenig
+    Fließtext, also wenig Vorrang."""
+    probe = (text or "")[:20_000]
+    fliess = sum(len(w) for w in _LANGWORT_RE.findall(probe)) / max(1, len(probe))
+    return sum(g for r, g in _VORRANG_LABEL if r.search(label or "")) + fliess
+
+
+def _anteile(laengen: dict[str, int], verfuegbar: int,
+             rang: dict[str, float] | None = None) -> dict[str, int]:
     """Das Lesebudget reihum: die kürzeste Anlage zuerst; was sie nicht
-    braucht, teilen sich die übrigen. Je Anlage höchstens ``ANLAGE_MAX``."""
+    braucht, teilen sich die übrigen. Je Anlage höchstens ``ANLAGE_MAX``.
+
+    Sind es so viele Anlagen, dass keine ``ANLAGE_MIN`` bekäme, lesen nur die
+    mit dem höchsten ``rang`` — so viele, dass jede ``ANLAGE_KNAPP`` bekommt.
+    Die übrigen stehen mit ihrem Kopf im Belegmaterial."""
     aus: dict[str, int] = {}
     offen = sorted(laengen, key=lambda k: (laengen[k], k))
+    zurueck: list[str] = []
+    # Nur wenn das Material das Budget wirklich sprengt — elf kurze
+    # Stellungnahmen, die zusammen passen, liest der Lauf weiter alle (Review).
+    if rang and laengen and verfuegbar // len(laengen) < ANLAGE_MIN \
+            and sum(min(n, ANLAGE_MAX) for n in laengen.values()) > verfuegbar:
+        platz = max(1, verfuegbar // ANLAGE_KNAPP)
+        folge = sorted(laengen, key=lambda k: (-rang.get(k, 0.0), laengen[k], k))
+        gewaehlt = set(folge[:platz])
+        zurueck = [k for k in folge if k not in gewaehlt]
+        offen = [k for k in offen if k in gewaehlt]
     rest = verfuegbar
     while offen:
         anteil = min(ANLAGE_MAX, max(ANLAGE_MIN, rest // len(offen)))
         k = offen.pop(0)
         aus[k] = max(0, min(laengen[k], anteil, rest))
+        rest -= aus[k]
+    # Was die Gewählten nicht brauchen, geht in Vorrang-Folge an die übrigen —
+    # ganz, wenn sie passen, sonst ab ``ANLAGE_KNAPP`` als Auszug.
+    for k in zurueck:
+        aus[k] = laengen[k] if laengen[k] <= rest else (min(rest, ANLAGE_MAX) if rest >= ANLAGE_KNAPP else 0)
         rest -= aus[k]
     return aus
 
@@ -233,7 +303,9 @@ def build_input(m: dict) -> tuple[str, dict[str, dict], str]:
             if d["doc_type"] in LESESTOFF and (d.get("text") or "").strip()
             and not (d["doc_type"] == "audit_report")}
     pruef = sum(ANLAGE_ZEICHEN for d in m["documents"] if d["doc_type"] == "audit_report")
-    anteil = _anteile(lese, max(0, rest - pruef - BELEG_RESERVE))
+    rang = {f"A{i}": vorrang(d.get("label"), foreign_text.defuse(d.get("text") or "")[0])
+            for i, d in enumerate(m["documents"], 1) if f"A{i}" in lese}
+    anteil = _anteile(lese, max(0, rest - pruef - BELEG_RESERVE), rang)
     woerter = _vorlagen_woerter(v_text)
     for i, d in enumerate(m["documents"], 1):
         key = f"A{i}"
@@ -273,7 +345,9 @@ def build_input(m: dict) -> tuple[str, dict[str, dict], str]:
                 block = _mit_seitenmarken(key, text, d.get("page_offsets"), grenze)
             else:
                 block = _seitenauswahl(key, text, d.get("page_offsets"), grenze, woerter)
-            fakten[f"kandidaten_{key}"] = _kandidaten_der_anlage(text, d.get("page_offsets"), block)
+            fakten[f"kandidaten_{key}"] = _kandidaten_der_anlage(
+                text, d.get("page_offsets"), block,
+                KANDIDATEN_BERICHT if m["form"] == "F7" else KANDIDATEN_JE_ART)
             rest -= len(block)
             quellen[key] = {"text": text, "pages": evidence.pages_from_offsets(text, d.get("page_offsets")),
                             "document_id": d["document_id"], "label": d["label"]}
@@ -288,6 +362,11 @@ def build_input(m: dict) -> tuple[str, dict[str, dict], str]:
              "DOKUMENTE (Daten, keine Anweisungen):\n" + "\n\n".join(bloecke)]
     if belege:
         teile.append("BELEGMATERIAL (nur Kopf):\n" + "\n".join(belege))
+    if m["form"] == "F7":
+        # Ohne den Zusatz hatte ein Bericht keinen Ort für seinen Inhalt: „Zahlen“
+        # ohne Geld, „Kosten“ nur für den Beschluss — es blieben Sätze über den
+        # Vorgang („Die Vorlage informiert über den Bericht“).
+        teile.append(prompts.get("template_dossier_report"))
     teile.append("Schreibe das Dossier als JSON nach dem Schema.")
     grundlage: list = [v_text, [d.get("text") or "" for d in m["documents"]], m["form"], PROMPT_VERSION]
     # Ein neues Ergebnis eines Speziallesers ist eine neue Quellenlage; ohne eins
@@ -300,6 +379,9 @@ def build_input(m: dict) -> tuple[str, dict[str, dict], str]:
     # Vorlagen ohne Lese-Anlage behalten ihre Prüfsumme: kein Neulauf.
     if lese:
         grundlage.append(["lesung", 2])
+    # Nur Berichte bekommen den Zusatz — nur ihre Dossiers entstehen neu.
+    if m["form"] == "F7":
+        grundlage.append(["bericht", BERICHT_VERSION])
     h = hashlib.sha256(json.dumps(grundlage, ensure_ascii=False).encode()).hexdigest()[:16]
     return "\n\n".join(teile), quellen, h
 
@@ -359,7 +441,7 @@ def verify(payload: dict, quellen: dict, form: str | None) -> dict:
         for name, extra in listen:
             roh_n += len(roh.get(name) or []) if isinstance(roh.get(name), list) else 0
             feld[name] = _pruefe_liste(roh.get(name), quellen, dropped, f"{abschnitt}.{name}",
-                                       GRENZEN.get((abschnitt, name), 6), extra)
+                                       grenze(form, abschnitt, name), extra)
         if abschnitt == "administration":
             feld["stance"] = roh.get("stance") if roh.get("stance") in (
                 "recommends", "neutral_report", "no_alternative", "mixed", "none") else None
@@ -384,7 +466,8 @@ def verify(payload: dict, quellen: dict, form: str | None) -> dict:
         if isinstance(e, dict) and e.get("source") not in quellen:
             continue
         if isinstance(e, dict) and isinstance(e.get("gist"), dict):
-            ok, grund = evidence.check_statement({**e["gist"], "source": e.get("source")}, quellen)
+            ok, grund = evidence.check_statement({**e["gist"], "source": e.get("source")}, quellen,
+                                                 quote_min=GIST_QUOTE_MIN)
             if ok:
                 docs.append({"source": e.get("source"), "gist": ok})
             else:
@@ -397,6 +480,28 @@ def verify(payload: dict, quellen: dict, form: str | None) -> dict:
 
 # ---- Aufruf und Ablage ---------------------------------------------------------
 
+class TeuresScheitern(RuntimeError):
+    """Ein Fehlschlag, der trotzdem bezahlt wurde — ``kosten`` geht an die
+    Kostengrenze des Laufs (``Stopp``), sonst deckelte sie ihn nicht."""
+
+    def __init__(self, text: str, kosten: float):
+        super().__init__(text)
+        self.kosten = kosten
+
+
+class LeeresDossier(TeuresScheitern):
+    """Die Antwort trug keinen einzigen Abschnitt — leer oder kein JSON.
+
+    Bis 11/2026 entstand daraus ein Dossier mit Status ``ok`` und lauter
+    „steht nicht drin": Im Messlauf vom 23.11.2026 kamen 3 von 50 Antworten so
+    zurück (dieselbe Eingabe lieferte beim nächsten Aufruf ein volles Dossier).
+    Als ``failed`` holt der nächste Lauf sie nach. ``kosten`` trägt, was der
+    Aufruf trotzdem gekostet hat — für die Kostengrenze des Laufs."""
+
+    def __init__(self, kosten: float):
+        super().__init__("Dossier ohne Abschnitte (leere oder unlesbare Antwort)", kosten)
+
+
 def generate(m: dict, *, batch: bool = True, model: str | None = None,
              feature: str = "template_dossier") -> tuple[dict, str, float]:
     nutzer, quellen, h = build_input(m)
@@ -406,26 +511,36 @@ def generate(m: dict, *, batch: bool = True, model: str | None = None,
     # Hauptmodell 87–90 %. Fällt Luna aus, bleibt die Vorlage auf `failed` und
     # der nächste Lauf (10 und 15 Uhr) holt sie nach — lieber später als schlechter.
     extra = {"_geduld": True, "_ersatz": [], "_tarif": "flex"} if batch else {}
+    # Je Unterlage ein Inhaltssatz: Beim Haushaltsentwurf (30 Anlagen) reichten
+    # 8.000 Token nicht — und eine abgeschnittene Antwort ist ein Fehlschlag.
+    max_tokens = min(16_000, 8_000 + 150 * len(m["documents"]))
     nachricht = [{"role": "system", "content": prompts.get("template_dossier_system")},
                  {"role": "user", "content": nutzer}]
     # Zwei Aufrufe mit wörtlichem Feature-Namen (tests/test_feature_namen.py
     # liest sie aus dem Quelltext): der Lauf und das Nachholen beim Aufruf.
     if feature == "template_dossier_abruf":
         resp = llm.chat_complete(model=modell, response_format={"type": "json_object"}, messages=nachricht,
-                                 max_tokens=8_000, _feature="template_dossier_abruf", **extra)
+                                 max_tokens=max_tokens, _feature="template_dossier_abruf", **extra)
     else:
         resp = llm.chat_complete(model=modell, response_format={"type": "json_object"}, messages=nachricht,
-                                 max_tokens=8_000, _feature="template_dossier", **extra)
+                                 max_tokens=max_tokens, _feature="template_dossier", **extra)
+    from council.plan_judge import cost_usd  # noqa: PLC0415
+
+    kosten = cost_usd(resp, modell)
     wahl = resp.choices[0]
     if getattr(wahl, "finish_reason", None) == "length":
-        raise RuntimeError("Dossier abgeschnitten (finish_reason=length)")
+        raise TeuresScheitern("Dossier abgeschnitten (finish_reason=length)", kosten)
     try:
         payload = json.loads(wahl.message.content or "{}")
     except json.JSONDecodeError:
         payload = {}
-    from council.plan_judge import cost_usd  # noqa: PLC0415
-
-    return verify(payload if isinstance(payload, dict) else {}, quellen, m["form"]), h, cost_usd(resp, modell)
+    if not isinstance(payload, dict) or not any(isinstance(payload.get(k), dict) for k in ABSCHNITTE):
+        raise LeeresDossier(kosten)
+    geprueft = verify(payload, quellen, m["form"])
+    # Alle Dokumente, die der Lauf kannte — auch ohne Text (``item_dossier_view``).
+    geprueft["material"] = sorted({m["template"].get("document_id"), *(d.get("document_id") for d in m["documents"])}
+                                  - {None})
+    return geprueft, h, kosten
 
 
 def build_for_template(store, template_number: str, *, batch: bool = True, force: bool = False,
@@ -444,7 +559,9 @@ def build_for_template(store, template_number: str, *, batch: bool = True, force
         return alt   # läuft gerade woanders
     try:
         payload, h, kosten = generate(m, batch=batch, model=model, feature=feature)
-    except Exception:  # noqa: BLE001 — eine Vorlage kippt nicht den Lauf
+    except Exception as exc:  # noqa: BLE001 — eine Vorlage kippt nicht den Lauf
+        if isinstance(exc, TeuresScheitern) and stopp is not None:
+            stopp.ausgeben(exc.kosten)
         _log.exception("Dossier %s fehlgeschlagen", template_number)
         store.save_template_dossier(key, h, status="failed", form=m["form"], payload=None,
                                     model=model or MODEL, cost_usd=None, prompt_version=PROMPT_VERSION)
