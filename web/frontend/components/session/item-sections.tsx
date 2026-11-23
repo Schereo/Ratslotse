@@ -62,8 +62,11 @@ export function Vorgeschichte({ p, titel, bare }: { p: Punkt; titel: string | nu
 }
 
 type Unterlage = Punkt["documents"][number];
+type Inhaltssatz = NonNullable<Punkt["dossier"]>["gists"][number];
 
-function UnterlageZeile({ d }: { d: Unterlage }) {
+/** Eine Zeile der Gegenlese-Liste. Die ganze Karte ist der Link (gestreckte
+ *  Fläche), damit der KI-Stern am Inhaltssatz bedienbar bleibt. */
+function UnterlageZeile({ d, satz }: { d: Unterlage; satz?: Inhaltssatz }) {
   const art = ART_WORT[d.doc_type ?? (d.kind === "template" ? "template" : d.kind === "protocol" ? "protocol" : "other")];
   const partei = d.applicants?.[0] ? normalizeParty(d.applicants[0]) : null;
   const brand = partei ? partyBrand(partei) : null;
@@ -74,29 +77,35 @@ function UnterlageZeile({ d }: { d: Unterlage }) {
     d.date ? formatDate(d.date) : null,
   ].filter(Boolean);
   return (
-    <li>
-      <a href={d.url} target="_blank" rel="noreferrer"
-        className="flex h-full items-start gap-3 rounded-xl border border-dashed border-border p-3 hover:bg-accent">
-        {d.list_no != null && (
-          <span className="mt-0.5 inline-flex h-5 min-w-5 flex-none items-center justify-center rounded-md bg-muted px-1 font-mono text-[11px] font-medium text-muted-foreground">
-            {d.list_no}
+    <li className="relative flex h-full items-start gap-3 rounded-xl border border-dashed border-border p-3 hover:bg-accent">
+      {d.list_no != null && (
+        <span className="mt-0.5 inline-flex h-5 min-w-5 flex-none items-center justify-center rounded-md bg-muted px-1 font-mono text-[11px] font-medium text-muted-foreground">
+          {d.list_no}
+        </span>
+      )}
+      <span className="min-w-0 flex-1 [overflow-wrap:anywhere]">
+        <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+          <span className="rounded-md border border-border bg-card px-1.5 py-0.5 text-[11px] font-medium text-foreground">{art}</span>
+          {d.applicants && d.applicants.length > 0 && (
+            <span className="inline-flex items-center gap-1.5 text-meta font-semibold text-foreground">
+              {brand && <span aria-hidden className="h-2 w-2 rounded-full" style={{ backgroundColor: brand.bg }} />}
+              {d.applicants.join(", ")}
+            </span>
+          )}
+        </span>
+        <a href={d.url} target="_blank" rel="noreferrer"
+          className="mt-1 block text-quelle font-medium text-foreground after:absolute after:inset-0 after:rounded-xl focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-ring">
+          {ohneDatum(d.label)}
+        </a>
+        {satz && (
+          <span className="mt-1 block text-sm leading-snug text-muted-foreground">
+            {satz.text}
+            <KiStern className="ml-1" text="Inhaltssatz, automatisch aus dem Dokument erstellt. Verbindlich ist das Dokument im Ratsinfo." />
           </span>
         )}
-        <span className="min-w-0 flex-1 [overflow-wrap:anywhere]">
-          <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
-            <span className="rounded-md border border-border bg-card px-1.5 py-0.5 text-[11px] font-medium text-foreground">{art}</span>
-            {d.applicants && d.applicants.length > 0 && (
-              <span className="inline-flex items-center gap-1.5 text-meta font-semibold text-foreground">
-                {brand && <span aria-hidden className="h-2 w-2 rounded-full" style={{ backgroundColor: brand.bg }} />}
-                {d.applicants.join(", ")}
-              </span>
-            )}
-          </span>
-          <span className="mt-1 block text-quelle font-medium text-foreground">{ohneDatum(d.label)}</span>
-          {merkmale.length > 0 && <span className="text-meta text-muted-foreground">{merkmale.join(" · ")}</span>}
-        </span>
-        <ExternalLink className="mt-1 h-4 w-4 flex-none text-muted-foreground" aria-hidden />
-      </a>
+        {merkmale.length > 0 && <span className="mt-0.5 block text-meta text-muted-foreground">{merkmale.join(" · ")}</span>}
+      </span>
+      <ExternalLink className="mt-1 h-4 w-4 flex-none text-muted-foreground" aria-hidden />
     </li>
   );
 }
@@ -107,6 +116,10 @@ function UnterlageZeile({ d }: { d: Unterlage }) {
 export function Unterlagen({ p, titel, bare }: { p: Punkt; titel: string | null; bare?: boolean }) {
   const { lesestoff, beleg, protokolle } = teileListe(p.documents);
   const einklappen = belegEinklappen(lesestoff.length, beleg.length);
+  // Der Inhaltssatz je Unterlage aus dem Dossier (Plan § 6.1) — über die Nummer
+  // der Gegenlese-Liste, die Backend und Belege teilen.
+  const saetze = new Map((p.dossier?.gists ?? []).filter((g) => g.list_no != null).map((g) => [g.list_no, g]));
+  const zeile = (d: Unterlage) => <UnterlageZeile key={d.url} d={d} satz={d.list_no != null ? saetze.get(d.list_no) : undefined} />;
   // Wenig Belegmaterial steht einfach mit in der Liste — in der Reihenfolge
   // des Backends, damit die Nummern aufsteigen.
   const offen = einklappen ? lesestoff : p.documents.filter((d) => d.kind !== "protocol");
@@ -114,7 +127,7 @@ export function Unterlagen({ p, titel, bare }: { p: Punkt; titel: string | null;
     <section id="unterlagen" className={cn("scroll-mt-24", !bare && "rounded-2xl border border-border bg-card p-5 shadow-sm")}>
       {titel && <h2 className="mb-3 font-display text-base font-semibold text-foreground">{titel}</h2>}
       {offen.length > 0 && (
-        <ul className="grid gap-2">{offen.map((d) => <UnterlageZeile key={d.url} d={d} />)}</ul>
+        <ul className="grid gap-2">{offen.map(zeile)}</ul>
       )}
       {einklappen && (
         <details className="group mt-3">
@@ -122,11 +135,11 @@ export function Unterlagen({ p, titel, bare }: { p: Punkt; titel: string | null;
             <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-180" aria-hidden />
             Weitere Unterlagen <span className="text-muted-foreground">{beleg.length}</span>
           </summary>
-          <ul className="mt-2 grid gap-2">{beleg.map((d) => <UnterlageZeile key={d.url} d={d} />)}</ul>
+          <ul className="mt-2 grid gap-2">{beleg.map(zeile)}</ul>
         </details>
       )}
       {protokolle.length > 0 && (
-        <ul className="mt-3 grid gap-2">{protokolle.map((d) => <UnterlageZeile key={d.url} d={d} />)}</ul>
+        <ul className="mt-3 grid gap-2">{protokolle.map(zeile)}</ul>
       )}
     </section>
   );
