@@ -1230,6 +1230,8 @@ class SchemaMixin(StoreBasis):
         "council_budget_accounts": (None, "url", "ris"),
     "council_enterprise_accounts": (None, None, "ris"),
         "council_company_accounts": (None, None, "ris"),
+        # Die Quartalsberichte der Beteiligungen: neu, ohne Altbestand.
+        "council_holding_forecasts": (None, None, "ris"),
         # Kredite und Zinsen: neu, ohne Altbestand — derselbe Platzhalter.
         "council_loan_notices": (None, "document_url", "ris"),
         "council_loan_items": (None, "document_url", "ris"),
@@ -4116,6 +4118,46 @@ class SchemaMixin(StoreBasis):
             "probes TEXT NOT NULL, "
             "herkunft_id INTEGER, fetched_at TEXT NOT NULL, "
             "PRIMARY KEY (company, year, indicator))"
+        )
+        # Die Quartalsberichte der Beteiligungen (council/holding_quarterly.py):
+        # je Unternehmen, Jahr und Stichtag eine Zeile mit Plan und
+        # Hochrechnung — NEBENEINANDER, nie verrechnet, und nie ein Ist. Jede
+        # Hochrechnung eines Jahres bleibt als eigene Zeile stehen (Q2, Q3,
+        # Q4 und zwischenzeitliche Stände); wie sie sich zum Abschluss
+        # verhalten, wertet die Schicht nicht.
+        #
+        # Beträge in EURO, auch wo der Bericht in TEUR rechnet (`printed_unit`,
+        # `rounded_to`). `prior_reported` ist die Spalte „Vorjahr Ist“ des
+        # Berichts: ein PRÜFWERT, kein Ist (teils vorläufig, teils falsch
+        # übertragen). `plan_kind` sagt, welcher Plan es ist (ursprünglich
+        # oder geändert), `plan_text`/`plan_other` die Pläne des Seitentexts.
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_holding_forecasts ("
+            "company TEXT NOT NULL, "             # Schlüssel wie council_companies / business_plans
+            "fiscal_year INTEGER NOT NULL, "
+            "as_of TEXT NOT NULL, "               # Stichtag, ISO
+            "quarter INTEGER NOT NULL, "
+            "plan REAL NOT NULL, "
+            "plan_kind TEXT, "                    # original | adjusted | NULL
+            "plan_text REAL, "                    # Plan laut Seitentext, wenn er zur Tabelle gehört
+            "plan_other REAL, "                   # der zweite Plan des Seitentexts
+            "plan_other_kind TEXT, "
+            "forecast REAL NOT NULL, "
+            "deviation_printed REAL NOT NULL, "
+            "deviation_gap REAL NOT NULL DEFAULT 0, "  # gedruckt minus gerechnet
+            "conflict INTEGER NOT NULL DEFAULT 0, "
+            "basis TEXT NOT NULL, "               # result | subsidy_need
+            "printed_unit TEXT NOT NULL, "        # EUR | TEUR
+            "rounded_to INTEGER NOT NULL, "       # 1 | 1000
+            "sign_rule TEXT NOT NULL, "           # forecast_minus_plan | plan_minus_forecast
+            "prior_reported REAL, "
+            "statement TEXT, "                    # der Satz des Berichts zur Einhaltung des Plans
+            "template_number TEXT NOT NULL, "
+            "document_id INTEGER, "
+            "probes TEXT NOT NULL, "
+            "herkunft_id INTEGER, "
+            "fetched_at TEXT NOT NULL, "
+            "PRIMARY KEY (company, fiscal_year, as_of))"
         )
         # Kredite und Zinsen (council/loans.py): die Unterrichtungen des Rates
         # nach der Kreditrichtlinie — je Vorlage eine Zeile mit Berichts-

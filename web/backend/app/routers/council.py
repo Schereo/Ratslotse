@@ -23,7 +23,7 @@ from council.store import CouncilStore
 from council.topics import POLICY_FIELDS
 from council.goals import GOALS
 from council.example_questions import TOP_QUESTIONS
-from council import gesellschaft_abschluss
+from council import gesellschaft_abschluss, holding_quarterly
 from council import shareholding_handbook
 from council.parties import faction_label, order_key
 from council import expense_series as ausgabenreihe_mod
@@ -1063,12 +1063,20 @@ def _beteiligungen(store: CouncilStore) -> BudgetHoldings:
                       for e in eigner)
         return shareholding_handbook.scope(g.get("classification"), stadt, tochter)
 
+    # Plan und Hochrechnungen aus den Quartalsberichten (council/holding_quarterly.py);
+    # das Ist steht nur dann daneben, wenn ein Abschluss das Jahr nennt.
+    quartal = holding_quarterly.laufendes_jahr(store)
+    quartal_ids = {i for f in quartal
+                   for i in ([s["herkunft_id"] for s in f["stations"]]
+                             + [(f["actual"] or {}).get("herkunft_id")])
+                   if i is not None}
     ids = sorted({z["herkunft_id"]
                   for z in (*gesellschaften, *texte, *indicators, *personen,
                             *eigentuemer)
-                  if z["herkunft_id"] is not None})
+                  if z["herkunft_id"] is not None} | quartal_ids)
     return {
         "report_years": berichtsjahre,
+        "forecasts": quartal,
         "years": sorted({z["year"] for z in indicators}),
         "companies": [{**g, "roles_assignable":
                        g["company"] not in gerissen,

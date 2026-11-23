@@ -4057,6 +4057,186 @@
    }
   ]
  ],
+ "holding_forecasts": [
+  {
+   "companies": [
+    {
+     "company": "klinikum",
+     "name": "Klinikum Oldenburg AöR (KOL)",
+     "year": 2026,
+     "stations": [
+      {
+       "as_of": "2026-06-30",
+       "quarter": 2,
+       "plan": -21356491.0,
+       "plan_kind": "original",
+       "plan_text": -21356491.0,
+       "plan_other": null,
+       "plan_other_kind": null,
+       "forecast": -21324618.0,
+       "conflict": 0,
+       "deviation_gap": 0.0,
+       "basis": "result",
+       "statement": "Der Wirtschaftsplan wird eingehalten.",
+       "template_number": "26/0552",
+       "herkunft_id": 2054
+      },
+      {
+       "as_of": "2026-09-30",
+       "quarter": 3,
+       "plan": -21356491.0,
+       "plan_kind": "original",
+       "plan_text": -21356491.0,
+       "plan_other": null,
+       "plan_other_kind": null,
+       "forecast": -21350263.0,
+       "conflict": 0,
+       "deviation_gap": 0.0,
+       "basis": "result",
+       "statement": "Der Wirtschaftsplan wird eingehalten.",
+       "template_number": "26/0818",
+       "herkunft_id": 2055
+      }
+     ],
+     "beleg": {
+      "label": "Quartalsbericht 30.09.2026",
+      "citation": "Bericht zum 3. Quartal 2026, Vorlage 26/0818",
+      "page": null,
+      "as_of": "2026-09-30",
+      "url": "https://ratsinfo.oldenburg.de/bi/getfile.asp?id=316197&type=do"
+     }
+    }
+   ]
+  },
+  {
+   "companies": [
+    {
+     "company": "klinikum",
+     "name": "Klinikum Oldenburg AöR (KOL)",
+     "year": 2025,
+     "stations": [
+      {
+       "as_of": "2025-06-30",
+       "quarter": 2,
+       "plan": -25429193.0,
+       "plan_kind": "original",
+       "plan_text": -25429193.0,
+       "plan_other": null,
+       "plan_other_kind": null,
+       "forecast": -24344275.0,
+       "conflict": 0,
+       "deviation_gap": 0.0,
+       "basis": "result",
+       "statement": "Der Wirtschaftsplan wird eingehalten.",
+       "template_number": "25/0490",
+       "herkunft_id": 2051
+      },
+      {
+       "as_of": "2025-09-30",
+       "quarter": 3,
+       "plan": -25429193.0,
+       "plan_kind": "original",
+       "plan_text": -25429270.0,
+       "plan_other": null,
+       "plan_other_kind": null,
+       "forecast": -24238874.0,
+       "conflict": 1,
+       "deviation_gap": 0.0,
+       "basis": "result",
+       "statement": "Der Wirtschaftsplan wird eingehalten.",
+       "template_number": "25/0802",
+       "herkunft_id": 2052
+      },
+      {
+       "as_of": "2025-12-31",
+       "quarter": 4,
+       "plan": -25429193.0,
+       "plan_kind": "original",
+       "plan_text": -25429270.0,
+       "plan_other": null,
+       "plan_other_kind": null,
+       "forecast": -23865033.0,
+       "conflict": 1,
+       "deviation_gap": 0.0,
+       "basis": "result",
+       "statement": "Der Wirtschaftsplan wird eingehalten.",
+       "template_number": "26/0124",
+       "herkunft_id": 2053
+      }
+     ],
+     "beleg": {
+      "label": "Quartalsbericht 31.12.2025",
+      "citation": "Bericht zum 4. Quartal 2025, Vorlage 26/0124",
+      "page": null,
+      "as_of": "2025-12-31",
+      "url": "https://ratsinfo.oldenburg.de/bi/getfile.asp?id=304363&type=do"
+     }
+    },
+    {
+     "company": "vwg",
+     "name": "Verkehr und Wasser GmbH (VWG)",
+     "year": 2025,
+     "stations": [
+      {
+       "as_of": "2025-06-30",
+       "quarter": 2,
+       "plan": -14659040.0,
+       "plan_kind": "original",
+       "plan_text": -14659040.0,
+       "plan_other": null,
+       "plan_other_kind": null,
+       "forecast": -14659040.0,
+       "conflict": 0,
+       "deviation_gap": 0.0,
+       "basis": "subsidy_need",
+       "statement": "Der Wirtschaftsplan wird eingehalten.",
+       "template_number": "25/0490",
+       "herkunft_id": 2051
+      },
+      {
+       "as_of": "2025-09-30",
+       "quarter": 3,
+       "plan": -14659040.0,
+       "plan_kind": "original",
+       "plan_text": -14659040.0,
+       "plan_other": null,
+       "plan_other_kind": null,
+       "forecast": -14922040.0,
+       "conflict": 0,
+       "deviation_gap": 0.0,
+       "basis": "subsidy_need",
+       "statement": null,
+       "template_number": "25/0802",
+       "herkunft_id": 2052
+      },
+      {
+       "as_of": "2025-12-31",
+       "quarter": 4,
+       "plan": -14972040.0,
+       "plan_kind": "adjusted",
+       "plan_text": -14972040.0,
+       "plan_other": -14659040.0,
+       "plan_other_kind": "original",
+       "forecast": -14959040.0,
+       "conflict": 0,
+       "deviation_gap": 0.0,
+       "basis": "subsidy_need",
+       "statement": "Der Wirtschaftsplan wird eingehalten.",
+       "template_number": "26/0124",
+       "herkunft_id": 2053
+      }
+     ],
+     "beleg": {
+      "label": "Quartalsbericht 31.12.2025",
+      "citation": "Bericht zum 4. Quartal 2025, Vorlage 26/0124",
+      "page": null,
+      "as_of": "2025-12-31",
+      "url": "https://ratsinfo.oldenburg.de/bi/getfile.asp?id=304363&type=do"
+     }
+    }
+   ]
+  }
+ ],
  "indicators": [
   {
    "beleg": {

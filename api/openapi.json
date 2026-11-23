@@ -6538,6 +6538,13 @@
             "title": "Companies",
             "type": "array"
           },
+          "forecasts": {
+            "items": {
+              "$ref": "#/components/schemas/HoldingForecastYear"
+            },
+            "title": "Forecasts",
+            "type": "array"
+          },
           "group_comparison": {
             "title": "Group Comparison"
           },
@@ -6575,6 +6582,7 @@
           }
         },
         "required": [
+          "forecasts",
           "report_years",
           "owners",
           "companies",
@@ -16339,6 +16347,191 @@
           "highest_id"
         ],
         "title": "HighestDecisionId",
+        "type": "object"
+      },
+      "HoldingForecastActual": {
+        "description": "Das Ist laut Abschluss. ``source``: ``annual_accounts`` oder\n``holdings_report`` (Beteiligungsbericht).",
+        "properties": {
+          "herkunft_id": {
+            "title": "Herkunft Id",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "value": {
+            "title": "Value",
+            "type": "number"
+          }
+        },
+        "required": [
+          "value",
+          "source",
+          "herkunft_id"
+        ],
+        "title": "HoldingForecastActual",
+        "type": "object"
+      },
+      "HoldingForecastStation": {
+        "description": "Ein Quartalsbericht: Plan und Hochrechnung zu einem Stichtag.\n\nBeträge in Euro (auch wo der Bericht in TEUR rechnet, ``rounded``).\n``plan_kind`` sagt, welcher Plan es ist: ``original`` (nicht als geändert\nbezeichnet) oder ``adjusted``; ``None``, wo der Bericht es nicht nennt.\n``plan_other`` ist der zweite Planwert des Seitentexts (VWG). Nie\nverrechnet — die Seite stellt Plan und Hochrechnung nebeneinander.",
+        "properties": {
+          "as_of": {
+            "title": "As Of",
+            "type": "string"
+          },
+          "conflict_note": {
+            "title": "Conflict Note",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "forecast": {
+            "title": "Forecast",
+            "type": "number"
+          },
+          "herkunft_id": {
+            "title": "Herkunft Id",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "plan": {
+            "title": "Plan",
+            "type": "number"
+          },
+          "plan_kind": {
+            "title": "Plan Kind",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "plan_other": {
+            "title": "Plan Other",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "plan_other_kind": {
+            "title": "Plan Other Kind",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "quarter": {
+            "title": "Quarter",
+            "type": "integer"
+          },
+          "rounded": {
+            "title": "Rounded",
+            "type": "boolean"
+          },
+          "statement": {
+            "title": "Statement",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "template_number": {
+            "title": "Template Number",
+            "type": "string"
+          }
+        },
+        "required": [
+          "as_of",
+          "quarter",
+          "plan",
+          "plan_kind",
+          "forecast",
+          "plan_other",
+          "plan_other_kind",
+          "rounded",
+          "conflict_note",
+          "statement",
+          "template_number",
+          "herkunft_id"
+        ],
+        "title": "HoldingForecastStation",
+        "type": "object"
+      },
+      "HoldingForecastYear": {
+        "description": "Ein Unternehmen im jüngsten Jahr mit Quartalsbericht: drei getrennte\nStationen — Plan und Hochrechnungen (``stations``, je Stichtag eine), das\nIst (``actual``, nur aus dem Abschluss). ``basis`` ist ``result``\n(Jahresergebnis) oder ``subsidy_need`` (Gesamtzuschussbedarf der VWG,\ndort ohne ``actual`` und mit ``actual_note``).",
+        "properties": {
+          "actual": {
+            "description": "Das Ist laut Abschluss. ``source``: ``annual_accounts`` oder\n``holdings_report`` (Beteiligungsbericht).",
+            "properties": {
+              "herkunft_id": {
+                "title": "Herkunft Id",
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "source": {
+                "title": "Source",
+                "type": "string"
+              },
+              "value": {
+                "title": "Value",
+                "type": "number"
+              }
+            },
+            "required": [
+              "value",
+              "source",
+              "herkunft_id"
+            ],
+            "title": "HoldingForecastActual",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "actual_note": {
+            "title": "Actual Note",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "basis": {
+            "title": "Basis",
+            "type": "string"
+          },
+          "company": {
+            "title": "Company",
+            "type": "string"
+          },
+          "stations": {
+            "items": {
+              "$ref": "#/components/schemas/HoldingForecastStation"
+            },
+            "title": "Stations",
+            "type": "array"
+          },
+          "year": {
+            "title": "Year",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "company",
+          "year",
+          "basis",
+          "stations",
+          "actual",
+          "actual_note"
+        ],
+        "title": "HoldingForecastYear",
         "type": "object"
       },
       "HoldingsHandbook": {

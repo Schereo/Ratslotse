@@ -983,6 +983,7 @@ def test_haushalt_datenstand_nennt_alle_schichten(client):
                               "budget_bylaw", "budget_bylaw_published", "grants_received",
                               "wirtschaftsplan",
                               "enterprise_accounts", "company_accounts",
+                              "holding_quarterly",
                               "schulden", "loans", "liquidity",
                               "lsn_steuerkraft", "lsn_realsteuern",
                               "lsn_gewerbesteuer", "bundesvergleich", "regionalstatistik"}
@@ -1375,6 +1376,58 @@ def test_haushalt_beteiligungen_liefert_texte_kennzahlen_und_herkunft(client):
     assert not any(e["name"].startswith("Stammkapital") for e in b["owners"])
     h_eigner = b["provenance"][str(eigner[0]["herkunft_id"])]
     assert h_eigner["probe"] == "shareholding_share_check"
+
+
+def test_haushalt_beteiligungen_fuehrt_plan_und_hochrechnung_getrennt(client):
+    """Die Quartalsberichte stehen als drei getrennte Stationen in der Antwort:
+    Plan (mit seiner Art), jede Hochrechnung für sich, das Ist nur aus einem
+    Abschluss — und ohne Abschluss fehlt es, statt aus dem Bericht zu kommen."""
+    from pathlib import Path
+
+    from council import holding_quarterly as hq
+
+    _register(client)
+    text = (Path(__file__).resolve().parent / "fixtures"
+            / "quartalsbericht_26_0124.txt").read_text(encoding="utf-8")
+    bericht = hq.lies_bericht(
+        text, "Bericht zum 4. Quartal 2025 der städtischen Beteiligungsunternehmen "
+              "und Eigenbetriebe - Bericht", "26/0124", 9)
+    cs = CouncilStore(COUNCIL_DB)
+    try:
+        cs.save_holding_forecasts(bericht, hq.herkunft_fuer(
+            bericht, document_id=9, label="Quartalsbericht 31.12.2025",
+            url="https://example.org/q"))
+        cs._conn.execute(
+            "INSERT INTO council_company_accounts (company, year, indicator, value, unit, "
+            "report_year, probes, fetched_at) VALUES ('bbgo', 2025, 'jahresergebnis', "
+            "-10447445.02, 'eur', 2025, 'x', '2026-10-01')")
+        cs._conn.commit()
+    finally:
+        cs.close()
+
+    b = client.get("/api/council/budget/shareholdings").json()
+    je = {f["company"]: f for f in b["forecasts"]}
+    assert {"klinikum", "bbgo", "vwg", "awb"} <= set(je)
+    kol = je["klinikum"]
+    assert kol["year"] == 2025 and kol["basis"] == "result"
+    s = kol["stations"][0]
+    assert (s["plan"], s["forecast"], s["plan_kind"]) == (-25_429_193, -23_865_033, "original")
+    assert "-25.429.270 €" in s["conflict_note"]
+    assert s["statement"] == "Der Wirtschaftsplan wird eingehalten."
+    # Das Ist kommt nur aus einem Abschluss — für das Klinikum gibt es keinen.
+    assert kol["actual"] is None
+    bbgo = je["bbgo"]
+    assert bbgo["stations"][0]["plan_kind"] == "adjusted"
+    assert bbgo["actual"]["value"] == -10447445.02
+    assert bbgo["actual"]["source"] == "annual_accounts"
+    # Die Hochrechnung bleibt, was sie war — vom Ist unberührt.
+    assert bbgo["stations"][0]["forecast"] == -5_159_723
+    # Die VWG meldet den Zuschussbedarf; ein Abschluss-Ergebnis wäre eine andere Größe.
+    assert je["vwg"]["basis"] == "subsidy_need" and je["vwg"]["actual"] is None
+    assert je["vwg"]["actual_note"]
+    # Jede Station trägt ihre Herkunft samt Probe.
+    h = b["provenance"][str(s["herkunft_id"])]
+    assert h["probes"] and "Bericht zum 4. Quartal 2025" in h["citation"]
 
 
 def test_beteiligungen_namensvetter_bekommt_keinen_slug():

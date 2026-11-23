@@ -9930,6 +9930,8 @@ export interface components {
         BudgetHoldings: {
             /** Companies */
             companies: unknown[];
+            /** Forecasts */
+            forecasts: components["schemas"]["HoldingForecastYear"][];
             /** Group Comparison */
             group_comparison: unknown;
             handbook: components["schemas"]["HoldingsHandbook"];
@@ -13933,6 +13935,88 @@ export interface components {
         HighestDecisionId: {
             /** Highest Id */
             highest_id: number;
+        };
+        /**
+         * HoldingForecastActual
+         * @description Das Ist laut Abschluss. ``source``: ``annual_accounts`` oder
+         *     ``holdings_report`` (Beteiligungsbericht).
+         */
+        HoldingForecastActual: {
+            /** Herkunft Id */
+            herkunft_id: number | null;
+            /** Source */
+            source: string;
+            /** Value */
+            value: number;
+        };
+        /**
+         * HoldingForecastStation
+         * @description Ein Quartalsbericht: Plan und Hochrechnung zu einem Stichtag.
+         *
+         *     Beträge in Euro (auch wo der Bericht in TEUR rechnet, ``rounded``).
+         *     ``plan_kind`` sagt, welcher Plan es ist: ``original`` (nicht als geändert
+         *     bezeichnet) oder ``adjusted``; ``None``, wo der Bericht es nicht nennt.
+         *     ``plan_other`` ist der zweite Planwert des Seitentexts (VWG). Nie
+         *     verrechnet — die Seite stellt Plan und Hochrechnung nebeneinander.
+         */
+        HoldingForecastStation: {
+            /** As Of */
+            as_of: string;
+            /** Conflict Note */
+            conflict_note: string | null;
+            /** Forecast */
+            forecast: number;
+            /** Herkunft Id */
+            herkunft_id: number | null;
+            /** Plan */
+            plan: number;
+            /** Plan Kind */
+            plan_kind: string | null;
+            /** Plan Other */
+            plan_other: number | null;
+            /** Plan Other Kind */
+            plan_other_kind: string | null;
+            /** Quarter */
+            quarter: number;
+            /** Rounded */
+            rounded: boolean;
+            /** Statement */
+            statement: string | null;
+            /** Template Number */
+            template_number: string;
+        };
+        /**
+         * HoldingForecastYear
+         * @description Ein Unternehmen im jüngsten Jahr mit Quartalsbericht: drei getrennte
+         *     Stationen — Plan und Hochrechnungen (``stations``, je Stichtag eine), das
+         *     Ist (``actual``, nur aus dem Abschluss). ``basis`` ist ``result``
+         *     (Jahresergebnis) oder ``subsidy_need`` (Gesamtzuschussbedarf der VWG,
+         *     dort ohne ``actual`` und mit ``actual_note``).
+         */
+        HoldingForecastYear: {
+            /**
+             * HoldingForecastActual
+             * @description Das Ist laut Abschluss. ``source``: ``annual_accounts`` oder
+             *     ``holdings_report`` (Beteiligungsbericht).
+             */
+            actual: {
+                /** Herkunft Id */
+                herkunft_id: number | null;
+                /** Source */
+                source: string;
+                /** Value */
+                value: number;
+            } | null;
+            /** Actual Note */
+            actual_note: string | null;
+            /** Basis */
+            basis: string;
+            /** Company */
+            company: string;
+            /** Stations */
+            stations: components["schemas"]["HoldingForecastStation"][];
+            /** Year */
+            year: number;
         };
         /**
          * HoldingsHandbook
@@ -31878,4 +31962,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 13c98be90b758034529a56b4c508e1cb4d91aaa2b96798dfac0f80ac77102f21
+// vertrag-sha256: 5739a4e2094d87f3bda8c25da521c9249e2e85ac1daddf1a98d8baa753cd960f
