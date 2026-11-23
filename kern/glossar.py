@@ -394,6 +394,28 @@ BEGRIFFE: dict[str, str] = {
         "Gestaltungsregeln der Stadt für ein Baugebiet — etwa Dachform, Fassadenmaterial, Zäune oder Werbeanlagen. Sie werden meist zusammen mit dem Bebauungsplan beschlossen.",
     "örtliche Bauvorschriften":
         "Gestaltungsregeln der Stadt für ein Baugebiet — etwa Dachform, Fassadenmaterial, Zäune oder Werbeanlagen. Sie werden meist zusammen mit dem Bebauungsplan beschlossen.",
+    # Aus dem Handbuch Beteiligungen (11/2026): die Gremien und Vermerke rund um
+    # die städtischen Gesellschaften. Zahl dahinter: Beschlüsse / Vorlagen mit
+    # dem Wort im lokalen Abzug vom 23.11.2026; „Beteiligungsbericht" steht
+    # wörtlich auf /haushalt/konzern.
+    "Aufsichtsrat":  # 22 / 17
+        "Das Gremium, das die Geschäftsführung einer Gesellschaft berät und überwacht. Seine Mitglieder sind dem Wohl des Unternehmens verpflichtet; die Sitze der Stadt besetzt der Rat.",
+    "Verwaltungsrat":  # 8 / 23
+        "Das Aufsichtsgremium einer Anstalt des öffentlichen Rechts oder einer Sparkasse — die Entsprechung zum Aufsichtsrat einer Gesellschaft. In Oldenburg hat ihn zum Beispiel das Klinikum.",
+    "Beteiligungsmanagement":  # 1 / 21
+        "Die Stelle der Stadtverwaltung, die die städtischen Unternehmen begleitet: Sie prüft Wirtschaftspläne und Berichte, betreut die städtischen Mitglieder in den Gremien und erstellt den Beteiligungsbericht.",
+    "Beteiligungsbericht":
+        "Der jährliche Bericht der Stadt über ihre Unternehmen: was sie tun, wem sie gehören, wer sie beaufsichtigt, wie das Jahr lief und was sie den Haushalt kosten. Vorgeschrieben im Kommunalverfassungsgesetz.",
+    "Bestätigungsvermerk":  # 0 / 51
+        "Das Urteil der Abschlussprüfung unter einem Jahresabschluss: Die Prüfer bestätigen, dass er ordnungsgemäß aufgestellt ist — oder schränken das ein.",
+    "Feststellungsvermerk":  # 0 / 30
+        "Die Bemerkungen des städtischen Rechnungsprüfungsamts zum Prüfbericht über einen Jahresabschluss. Erst damit ist die Prüfung abgeschlossen.",
+    "Abschlussprüfer":  # 5 / 28
+        "Die Wirtschaftsprüferin oder der Wirtschaftsprüfer, die einen Jahresabschluss prüfen und ihr Urteil darüber im Bestätigungsvermerk festhalten.",
+    "Hochrechnung":  # 0 / 50
+        "Eine Schätzung, wie ein Ergebnis am Ende ausfallen wird, gerechnet aus dem Stand, der schon bekannt ist — etwa das Jahresergebnis eines Unternehmens aus den ersten Monaten.",
+    "Gesellschaftsvertrag":  # 17 / 79
+        "Die Satzung einer GmbH oder KG: Er legt fest, wozu die Gesellschaft da ist, wem sie gehört und welche Gremien was entscheiden.",
     "Betriebsausschuss":  # 29
         "Der Ausschuss des Rats, der einen städtischen Betrieb begleitet und kontrolliert — etwa die Abfallwirtschaft oder die Gebäudewirtschaft.",
     "Gesellschafterversammlung":  # 27

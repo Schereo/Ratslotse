@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 """Dossiers für die Vorlagen kommender Sitzungen (docs/plan-vorlagen-aufbereiten.md § 4.3).
 
-Als Job (``run_guarded``) täglich 10 und 15 Uhr: Vorlagen der Sitzungen der
-nächsten 21 Tage, fehlende oder veraltete Dossiers erzeugen (Flex, Geduld),
-Kostengrenze je Lauf ``DOSSIER_MAX_USD`` (Vorgabe 0,50 $).
+Als Job (``run_guarded``) täglich 10 und 15 Uhr: Vorlagen der Sitzungen von
+drei Tagen zurück bis 21 Tage voraus, fehlende oder veraltete Dossiers
+erzeugen (Flex, Geduld), Kostengrenze je Lauf ``DOSSIER_MAX_USD`` (Vorgabe
+0,50 $). Vorher holt er Vorlagen und Punkt-Texte nach, die erst nach dem
+Morgenlauf (``check_protocols``, 9 Uhr) auf die Tagesordnung kamen.
 
 Von Hand für den Bestand (Bericht, schreibt nur mit ``--schreiben``):
 
@@ -39,7 +41,7 @@ from dotenv import load_dotenv  # noqa: E402
 
 load_dotenv(ROOT / ".env")
 
-from council import programm_bezug, template_dossier, vorlage_begriffe  # noqa: E402
+from council import programm_bezug, punkt_texte, template_dossier, vorlage_begriffe  # noqa: E402
 from council.store import CouncilStore  # noqa: E402
 from kern import features  # noqa: E402
 from kern.alerts import run_guarded  # noqa: E402
@@ -202,11 +204,53 @@ def lauf_programme(vorlagen: list[str], *, max_usd: float, schreiben: bool = Tru
             "programme_kosten_usd": round(stopp.kosten, 4)}
 
 
+#: So viele Tage zurück schaut der Lauf. Eine Vorlage, die erst am Sitzungstag
+#: auf die Tagesordnung kommt, bekommt so noch ihr Dossier — vorher fiel sie am
+#: nächsten Morgen aus dem Fenster (Haushaltsentwurf 2027, 26/0835: am
+#: Sitzungstag 23.11.2026 nachgetragen, nie gelesen, nie aufbereitet).
+TAGE_ZURUECK = 3
+
+
+def nachholen() -> dict:
+    """Vorlagen und Punkt-Texte, die nach dem Morgenlauf dazukamen.
+
+    Der Nachzügler-Lauf (``antraege_nachzuegler.py``) setzt am Sitzungstag neue
+    Punkte auf die Tagesordnung; die Vorlage dazu holte nur ``check_protocols``
+    am nächsten Morgen. Ohne Vorlagentext gibt es kein Dossier — der Lauf
+    zählte sie still unter „ohne Text"."""
+    from scripts.backfill_vorlagen import process_missing  # noqa: PLC0415 — Netz, nur hier
+
+    # Jeder Schritt für sich: Eine gesperrte Datenbank (ein langer Schreiber
+    # wie der FTS-Neubau von check_protocols) kostet den Schritt, nicht den
+    # Dossier-Lauf danach — dieselbe Regel wie ``Sperre`` (Review 23.11.2026).
+    aus = {"vorlagen_nachgeholt": 0, "punkt_texte_nachgeholt": 0}
+    try:
+        aus["vorlagen_nachgeholt"] = process_missing(COUNCIL_DB, limit=20, workers=2)["fetched"]
+    except sqlite3.OperationalError as e:
+        print(f"Vorlagen nachholen übersprungen: {e}", flush=True)
+    try:
+        store = CouncilStore(COUNCIL_DB)
+        try:
+            # Bis heute und die frühesten zuerst: Der Sitzungstag ist dringend,
+            # künftige Sitzungen lädt der Nachzügler-Lauf.
+            aus["punkt_texte_nachgeholt"] = punkt_texte.nachladen(
+                store, tage_zurueck=TAGE_ZURUECK, limit=60, bis_heute=True)["geladen"]
+        finally:
+            store.close()
+    except sqlite3.OperationalError as e:
+        print(f"Punkt-Texte nachholen übersprungen: {e}", flush=True)
+    print(f"Nachgeholt: {aus['vorlagen_nachgeholt']} Vorlage(n), {aus['punkt_texte_nachgeholt']} Punkt-Text(e).",
+          flush=True)
+    return aus
+
+
 def main() -> dict:
+    nachgeholt = nachholen()
     store = CouncilStore(COUNCIL_DB)
     heute = date.today()
-    vorlagen = store.vorlagen_kommender_sitzungen(heute.isoformat(), (heute + timedelta(days=21)).isoformat())
-    kennzahlen = lauf(vorlagen, max_usd=float(os.environ.get("DOSSIER_MAX_USD") or 0.5))
+    vorlagen = store.vorlagen_kommender_sitzungen((heute - timedelta(days=TAGE_ZURUECK)).isoformat(),
+                                                 (heute + timedelta(days=21)).isoformat())
+    kennzahlen = {**nachgeholt, **lauf(vorlagen, max_usd=float(os.environ.get("DOSSIER_MAX_USD") or 0.5))}
     # Die Begriffe hängen am Schalter: Solange die Seite sie nicht zeigt, kostet ihr Erzeugen nur.
     if features.an("begriffe-aus-vorlage"):
         kennzahlen.update(lauf_begriffe(vorlagen, max_usd=float(os.environ.get("TERMS_MAX_USD") or 0.25)))

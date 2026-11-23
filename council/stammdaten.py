@@ -2,12 +2,12 @@
 
 Drei SessionNet-Seitentypen, alle ohne LLM ausgewertet:
 
-- ``vo0053.php?__kvonr=`` — **Beratungsfolge** einer Vorlage: wann sie in
+- ``vo0053?__kvonr=`` — **Beratungsfolge** einer Vorlage: wann sie in
   welchem Gremium unter welchem TOP behandelt wurde (mit Ergebnis), inklusive
   erst geplanter künftiger Stationen.
-- ``kp0041.php?__cwpnr=`` — **Mandatsträger** je Wahlperiode (zurück bis 2001):
+- ``kp0041?__cwpnr=`` — **Mandatsträger** je Wahlperiode (zurück bis 2001):
   Name, Fraktion, ggf. Austrittsdatum; verlinkt die Personen-Nummer (kpenr).
-- ``kp0050.php?__kpenr=&__cwpall=1`` — **Mitarbeit** einer Person über alle
+- ``kp0050?__kpenr=&__cwpall=1`` — **Mitarbeit** einer Person über alle
   Wahlperioden: Gremium, Art der Mitarbeit, von/bis.
 
 Wichtig: SessionNet überschreibt die Fraktionszugehörigkeit **rückwirkend**
@@ -53,7 +53,7 @@ def fetch_beratungsfolge(scraper: CouncilScraper, kvonr: int) -> list[dict]:
     ``DD.MM.YYYY Gremium [TOP x] öffentlich[- Ergebnis]``, der Karten-Body
     verlinkt die Sitzung (ksinr). Künftige/geplante Stationen haben (noch)
     kein Ergebnis."""
-    soup = scraper._get("vo0053.php", __kvonr=kvonr)
+    soup = scraper._get("vo0053", __kvonr=kvonr)
     out: list[dict] = []
     for panel in soup.find_all("div", id=re.compile(r"^smcpanel\d+$")):
         btn = panel.find("button")
@@ -83,7 +83,7 @@ def fetch_beratungsfolge(scraper: CouncilScraper, kvonr: int) -> list[dict]:
         top = tm.group(2) if tm else None
 
         ksinr = None
-        a = panel.find("a", href=re.compile(r"si0057\.php"))
+        a = panel.find("a", href=re.compile(r"si0057\.(?:php|asp)"))
         if a:
             m = re.search(r"__ksinr=(\d+)", a["href"])
             if m:
@@ -102,7 +102,7 @@ def fetch_beratungsfolge(scraper: CouncilScraper, kvonr: int) -> list[dict]:
 def fetch_wahlperioden(scraper: CouncilScraper) -> list[dict]:
     """Alle auf der Mandatsträger-Seite wählbaren Wahlperioden:
     ``[{wpnr, label, von, bis}]`` — plus die aktuelle (höchste) Nummer."""
-    soup = scraper._get("kp0041.php")
+    soup = scraper._get("kp0041")
     seen: dict[int, dict] = {}
     for a in soup.find_all("a", href=re.compile(r"__cwpnr=\d+")):
         m = re.search(r"__cwpnr=(\d+)", a["href"])
@@ -125,7 +125,7 @@ def fetch_mandatstraeger(scraper: CouncilScraper, wpnr: int | None = None) -> li
     Anwesenheitsdaten trotzdem im Produkt auf. Die Fraktion ist der AKTUELLE
     RIS-Stand (rückwirkend überschrieben, siehe Modul-Docstring)."""
     params: dict = {"__cwpnr": wpnr, "__cselect": 0} if wpnr is not None else {}
-    soup = scraper._get("kp0041.php", **params)
+    soup = scraper._get("kp0041", **params)
     out: list[dict] = []
     for tr in soup.find_all("tr"):
         a = tr.find("a", href=re.compile(r"__kpenr=\d+"))
@@ -155,7 +155,7 @@ def fetch_person_mitarbeit(scraper: CouncilScraper, kpenr: int) -> list[dict]:
     Die Tabellenzeilen tragen am Ende einen Volltext „von DD.MM.YYYY
     [bis DD.MM.YYYY]" — die zuverlässigste Quelle für den Zeitraum. Die
     Fraktions-Spalte wird bewusst ignoriert (rückwirkend überschrieben)."""
-    soup = scraper._get("kp0050.php", __kpenr=kpenr, __cwpall=1)
+    soup = scraper._get("kp0050", __kpenr=kpenr, __cwpall=1)
     out: list[dict] = []
     for tr in soup.find_all("tr"):
         tds = tr.find_all("td")

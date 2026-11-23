@@ -27,6 +27,7 @@ WURZEL = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(WURZEL))
 
 from scripts.pruefe_build_chunks import (  # noqa: E402
+    blind_spots,
     html_font_classes,
     missing_files,
     undefined_font_classes,
@@ -152,6 +153,69 @@ def test_das_skript_meldet_den_fall_mit_exit_1(tmp_path):
     assert ".__variable_d8ebd1" in lauf.stdout and "Times" in lauf.stdout
 
 
+# --- Turbopack (seit Next 16) ----------------------------------------------
+
+#: So schreibt Turbopack, Namen aus einem echten Build: Stylesheets neben den
+#: Skripten unter ``chunks/``, die Schriftklassen als ``<hash>_variable``.
+TURBO_HTML = ('<!DOCTYPE html><html lang="de" class="ec5Qua_variable T8-8DW_variable"><head>'
+              '<link rel="stylesheet" href="/_next/static/chunks/17ptpyplti6wu.css" data-precedence="next"/>'
+              '<script src="/_next/static/chunks/turbopack-2u1d16houkiyo.js" async=""></script>'
+              '</head><body class="min-h-screen"></body></html>')
+TURBO_CSS = ('.ec5Qua_variable{--font-inter:"Inter", "Inter Fallback"}'
+             '.T8-8DW_variable{--font-display:"Bricolage Grotesque", "Bricolage Grotesque Fallback"}')
+TURBO_DATEIEN = {"chunks/17ptpyplti6wu.css": TURBO_CSS, "chunks/turbopack-2u1d16houkiyo.js": "//"}
+
+
+def test_ein_stimmiger_turbopack_build_hat_keine_befunde(tmp_path):
+    nxt = _build(tmp_path, TURBO_HTML, TURBO_DATEIEN)
+    assert missing_files(nxt) == []
+    assert undefined_font_classes(nxt) == []
+    assert blind_spots(nxt) == []
+
+
+def test_turbopack_schriftklassen_werden_erkannt():
+    """Ohne das hielte der Wächter die Schriftprüfung nach dem Sprung auf
+    Next 16 für bestanden, weil er keine Klasse mehr fände, die er prüfen
+    könnte."""
+    assert html_font_classes(TURBO_HTML) == ["ec5Qua_variable", "T8-8DW_variable"]
+
+
+def test_ein_fehlendes_stylesheet_unter_chunks_zaehlt(tmp_path):
+    """Turbopack legt Stylesheets unter ``chunks/`` — das alte Muster sah dort
+    nur Skripte."""
+    nxt = _build(tmp_path, TURBO_HTML, ["chunks/turbopack-2u1d16houkiyo.js"])
+    assert [v for _, v in missing_files(nxt)] == ["/_next/static/chunks/17ptpyplti6wu.css"]
+
+
+def test_veraltete_turbopack_schriftklassen_werden_erkannt(tmp_path):
+    alt = TURBO_CSS.replace("ec5Qua", "Zz9Alt").replace("T8-8DW", "Qq1-Alt")
+    nxt = _build(tmp_path, TURBO_HTML, {**TURBO_DATEIEN, "chunks/17ptpyplti6wu.css": alt})
+    assert missing_files(nxt) == []
+    assert [k for _, k in undefined_font_classes(nxt)] == ["ec5Qua_variable", "T8-8DW_variable"]
+
+
+def test_ein_waechter_der_nichts_erkennt_ist_nicht_gruen(tmp_path):
+    """Benennt Next seine Dateien und Klassen noch einmal um, passen die Muster
+    auf nichts mehr — und jede Prüfung bestünde leer. Genau so wäre der Sprung
+    auf Turbopack durchgegangen."""
+    html = ('<!DOCTYPE html><html lang="de" class="schrift-a schrift-b"><head>'
+            '<link rel="stylesheet" href="/_next/assets/neu/abc.css"/></head><body></body></html>')
+    nxt = _build(tmp_path, html, {})
+    assert missing_files(nxt) == [] and undefined_font_classes(nxt) == []
+    assert len(blind_spots(nxt)) == 2
+    lauf = subprocess.run([sys.executable, str(WURZEL / "scripts" / "pruefe_build_chunks.py"), str(nxt)],
+                          capture_output=True, text=True)
+    assert lauf.returncode == 1
+    assert "WÄCHTER BLIND" in lauf.stdout
+
+
+def test_ein_stimmiger_build_meldet_exit_0(tmp_path):
+    nxt = _build(tmp_path, TURBO_HTML, TURBO_DATEIEN)
+    lauf = subprocess.run([sys.executable, str(WURZEL / "scripts" / "pruefe_build_chunks.py"), str(nxt)],
+                          capture_output=True, text=True)
+    assert lauf.returncode == 0, lauf.stdout
+
+
 # --- Bauen neben dem laufenden Server --------------------------------------
 
 #: Workflow → die Zeile, die das Frontend neu startet (wörtlich, s. sudoers).
@@ -202,6 +266,40 @@ def test_der_build_entsteht_neben_dem_laufenden_server(name):
     assert _zeile(b, "rm -rf .next-build", genau=True) < build - len(befehl) + 1
     # Der Cache des Builds wandert nicht ins ausgelieferte Verzeichnis.
     assert build < _zeile(b, "rm -rf .next-build/cache/webpack", genau=True)
+
+
+#: Räumt die erzeugten Typen des laufenden Builds weg (im Ordner web/frontend).
+ALTE_TYPEN = "rm -rf .next/types .next/dev/types"
+
+
+def _tsconfig_prueft_den_laufenden_build() -> bool:
+    tsconfig = json.loads((WURZEL / "web" / "frontend" / "tsconfig.json").read_text(encoding="utf-8"))
+    return ".next/types/**/*.ts" in tsconfig["include"]
+
+
+@pytest.mark.parametrize("name", DEPLOYS)
+def test_die_typen_des_laufenden_builds_sind_vor_dem_build_weg(name):
+    """Die tsconfig schließt ``.next/types`` ein. Der Build nach
+    ``.next-build`` prüft damit auch die Routen-Typen des Builds, der gerade
+    ausliefert — und scheitert an ihnen, sobald sie nicht zum neuen Stand
+    passen: eine gelöschte Route, ein anderes Next (22.11.2026 auf dev,
+    „Cannot find module 'next/types.js'")."""
+    b = _befehle(name)
+    build, befehl = _frontend_build(b)
+    weg = [i for i, z in enumerate(b) if z == ALTE_TYPEN]
+    assert weg and weg[0] < build - len(befehl) + 1, (
+        f"{name}: vor dem Frontend-Build fehlt die Zeile `{ALTE_TYPEN}` — ohne sie "
+        "bricht der Deploy ab, sobald eine Route wegfällt oder umzieht."
+    )
+
+
+def test_das_wegraeumen_der_alten_typen_hat_noch_einen_grund():
+    """Die Gegenrichtung: Prüft die tsconfig ``.next/types`` nicht mehr mit,
+    kann die Zeile aus beiden Workflows und dieser Test dazu weg."""
+    assert _tsconfig_prueft_den_laufenden_build(), (
+        f"web/frontend/tsconfig.json schließt .next/types nicht mehr ein: `{ALTE_TYPEN}` "
+        "in deploy.yml und deploy-dev.yml ist überflüssig geworden."
+    )
 
 
 @pytest.mark.parametrize("name", DEPLOYS)

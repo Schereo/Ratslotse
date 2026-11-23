@@ -20,10 +20,10 @@ import re
 import requests
 from bs4 import BeautifulSoup
 
-from council import anlagentext
+from council import anlagentext, ris
 from council.parties import parties_in_text
 
-BASE = "https://buergerinfo.oldenburg.de"
+BASE = ris.BASE  # die Adresse steht in council/ris.py
 
 _session = requests.Session()
 _session.headers["User-Agent"] = "Mozilla/5.0"
@@ -114,7 +114,7 @@ def parse_vorlage_page(html: str) -> dict | None:
     # the non-empty text is the label. Label "Vorlage" = the main document.
     docs: dict[int, dict] = {}
     for a in soup.find_all("a", href=True):
-        if "getfile.php" not in a["href"]:
+        if not ris.GETFILE_ID.search(str(a["href"])):
             continue
         href = a["href"] if a["href"].startswith("http") else f"{BASE}/{a['href'].lstrip('/')}"
         m = re.search(r"id=(\d+)", href)
@@ -156,8 +156,7 @@ def _pdf_text(url: str, extraktor: str = anlagentext.PYMUPDF) -> tuple[str, int]
     """Download a PDF and return (text, n_pages). ``extraktor`` says who reads
     it — PyMuPDF unless the document feeds a budget parser tuned to pypdf
     (``anlagentext.extraktor_fuer``, measurements in its module docstring)."""
-    r = _session.get(url, timeout=45)
-    r.raise_for_status()
+    r = ris.fetch(_session, url, timeout=45)
     seiten = anlagentext.pdf_seiten(r.content, extraktor)
     return "\n".join(seiten), len(seiten)
 
@@ -224,8 +223,7 @@ def fetch_vorlage(kvonr: int) -> dict | None:
     layer — scanned) or ``no_pdf`` (no public document). ``None`` for an invalid
     kvonr. Network errors on the MAIN document propagate — the caller decides
     between retry and mark-failed."""
-    r = _session.get(f"{BASE}/vo0050.php", params={"__kvonr": kvonr}, timeout=20)
-    r.raise_for_status()
+    r = ris.get(_session, "vo0050", __kvonr=kvonr)
     meta = parse_vorlage_page(r.text)
     if meta is None:
         return None
@@ -245,8 +243,7 @@ def fetch_anlagen(kvonr: int, skip_document_ids: frozenset = frozenset()) -> lis
     the daily re-scan of recent sessions — Änderungsanträge often appear on the
     page days after the Vorlage itself). Does NOT touch the main Vorlage PDF.
     ``None`` for an invalid kvonr; network errors on the page propagate."""
-    r = _session.get(f"{BASE}/vo0050.php", params={"__kvonr": kvonr}, timeout=20)
-    r.raise_for_status()
+    r = ris.get(_session, "vo0050", __kvonr=kvonr)
     meta = parse_vorlage_page(r.text)
     if meta is None:
         return None

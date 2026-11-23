@@ -17,8 +17,6 @@ from typing import Literal, TypedDict
 from council import ernte
 from council.vorlagen import ist_antrag
 
-RIS = "https://buergerinfo.oldenburg.de"
-
 # Ein Betrag in der Kostenangabe: „20.000 Euro", „1,2 Mio. €", „350.000 EUR".
 _BETRAG_RE = re.compile(r"\d[\d.]*(?:,\d+)?\s*(?:€|Euro|EUR|Mio\.?|Millionen|T€|Tsd\.?)", re.IGNORECASE)
 # „Keine", „Es entstehen keine Kosten", „Keine finanziellen Auswirkungen."

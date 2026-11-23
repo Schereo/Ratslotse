@@ -85,6 +85,7 @@ import { Beleg, DOCUMENTS_URL } from "@/components/haushalt/source";
 import { OUTCOME_META, voteLabel } from "@/components/decision-ui";
 import type { DecisionOutcome } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { RIS_BASE } from "@/lib/ris";
 import { ScrollZeile } from "@/components/ui/scroll-zeile";
 
 
@@ -592,7 +593,7 @@ function Nachlauf() {
           `border-t` am `<a>` selbst reichte sie nur so weit wie sein Text und
           sah aus wie ein abgeschnittener Strich. */}
       <div className="mt-2.5 border-t border-dashed border-border pt-2.5">
-        <a href="https://buergerinfo.oldenburg.de" target="_blank" rel="noopener noreferrer"
+        <a href={RIS_BASE} target="_blank" rel="noopener noreferrer"
           className="inline-flex items-center gap-1.5 text-[11.5px] font-semibold text-primary">
           Bürgerinfo der Stadt
           <ExternalLink className="h-3 w-3" />

@@ -31,6 +31,7 @@ jobs:
           fetch-depth: 0
 
       - uses: anthropics/claude-code-action@4fa93a88de49bbef68b10eb15aabedf28ca0e1ed # v1.0.271
+        id: review
         # Beratender Bot, kein Qualitäts-Gate: Scheitert der Review (z. B.
         # leeres API-Guthaben, 21.07.2026), soll der PR nicht rot werden —
         # es fehlt dann schlicht der Review-Kommentar. Echte Workflow-Defekte
@@ -52,19 +53,36 @@ jobs:
             Basis-Branch) darauf, ob sie Dokumentation veralten lassen.
 
             Relevante Doku:
-            - Markdown im Repo-Root: README.md, CLAUDE.md, scripts/README.md
-            - Die Starlight-Doku unter docs-site/src/content/docs/ — insbesondere
-              architektur.mdx, ki-pipeline.mdx, betrieb.md, beschluesse.md,
-              app-und-konten.md, bewertungen.md, eval.md und die ADRs unter adr/
+            - Markdown im Repo-Root: README.md, CLAUDE.md, REZEPTE.md, scripts/README.md
+            - Die Starlight-Doku unter docs-site/src/content/docs/ — ALLE Seiten
+              dort (lies das Verzeichnis, die Liste wächst) samt den ADRs unter adr/.
+              Welche Seite ein Feature erklärt, steht je Feature-Schalter in
+              kern/features.py (Feld `docs`).
 
-            Achte auf konkrete Drift, z. B.: geänderte/entfernte Skripte oder
-            Cron-Zeiten, geänderte Schritt-ANZAHLEN in weekly_enrich.py/check_protocols.py,
-            geänderte Env-Variablen samt Defaults, neue/entfernte Services, LLM-Modelle/Provider,
-            geänderte Deploy-Schritte. Eine NEUE folgenreiche Technik-Entscheidung
-            sollte ggf. einen neuen ADR bekommen.
+            Was schon maschinell geprüft wird und KEINEN Hinweis von dir braucht
+            (tests/test_docs_current.py): genannte Pfade, Symbole, Modelle,
+            API-Routen, Umgebungsvariablen samt Vorgabewerten, Cron-Jobs,
+            Schritte des Wochenlaufs, MCP-Werkzeuge, Links und die Seitenleiste.
+            Die Seiten unter referenz/ sind erzeugt (scripts/docs_reference.py);
+            schlage dort nie eine Änderung von Hand vor.
+
+            Achte auf das, was kein Test sieht: ob ein Absatz noch STIMMT.
+            Geändertes Verhalten, eine andere Reihenfolge der Schritte, neue
+            Grenzen und Schwellen, ein Mechanismus, der anders begründet wird
+            als im Text, eine Zahl aus einer Messung, die der PR überholt. Eine
+            NEUE folgenreiche Technik-Entscheidung sollte ggf. einen neuen ADR
+            bekommen.
 
             Ausgabe: Poste GENAU EINEN PR-Kommentar.
             - Wenn Anpassungen nötig sind: liste pro betroffener Doku-Stelle den
               Dateipfad und einen konkreten Vorschlag (gerne als Diff-Snippet).
             - Wenn nichts anzupassen ist: ein kurzer Satz, dass die Doku aktuell ist.
             Committe NICHTS — nur kommentieren. Antworte auf Deutsch.
+
+      # Der Review-Schritt darf scheitern, ohne den PR rot zu machen — aber
+      # nicht unbemerkt. Am 22.11.2026 fiel auf, dass er mindestens seit dem
+      # 12.11. an „Credit balance is too low" endete: Der Lauf war grün, und
+      # an keinem PR stand ein Kommentar.
+      - name: Review ausgefallen?
+        if: ${{ steps.review.outcome == 'failure' }}
+        run: echo "::warning title=Docs-Review lief nicht::Der KI-Review ist gescheitert (Guthaben, Schlüssel oder Dienst). Kein Kommentar am PR heißt hier NICHT „Doku ist aktuell“. Gründe stehen im Schritt davor."

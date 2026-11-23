@@ -84,25 +84,51 @@ private struct QuestionPeopleEnvelope: Decodable, Sendable {
 }
 
 private struct QuestionExamplesEnvelope: Decodable, Sendable {
-    /// Der Server nennt die Liste `sessions`. Hier stand bis zum 10.09.2026
-    /// `sitzungen` — seit der Einführung des Endpunkts (#950), also von Anfang
-    /// an. Der Aufruf steht unter `try?`: Das Decodieren scheiterte still, die
-    /// App zeigte immer nur ihre eingebauten Beispiele, und weil die gut sind,
-    /// fiel niemandem etwas auf. Dieselbe Klasse Fehler wie #913 beim
-    /// Tagesordnungs-Baustein — nur auf einem REST-Endpunkt, den der
-    /// Strom-Vertrag (`scripts/sse_vertrag.py`) nicht abdeckt.
-    let sessions: [QuestionExampleSession]
+    /// Die kuratierte Top 20 (`council/example_questions.py`), in der
+    /// Reihenfolge, in der die App sie durchrotiert. Optional, weil ein Server
+    /// vor dem 22.11.2026 das Feld nicht kennt — dann bleiben die gemerkten
+    /// oder eingebauten Fragen stehen, statt dass das Decodieren scheitert.
+    ///
+    /// Bis dahin las die App hier `sessions` und baute daraus „Was hat der
+    /// <Ausschuss> am <Datum> beschlossen?" — oft ein Gremium, das kaum jemand
+    /// kennt, mit einem Datum von vor zwei Monaten (Tims Befund 22.11.2026).
+    let questions: [String]?
 }
 
-private struct QuestionExampleSession: Decodable, Sendable {
-    let committee: String
-    let sessionDate: String
-    let topTitle: String?
+/// Welche Beispielfragen gerade dran sind: bei jedem Erscheinen die nächsten
+/// vier, bis alle einmal da waren. Weiterrücken statt würfeln — Zufall zeigt
+/// dieselbe Frage oft zweimal hintereinander und manche lange gar nicht.
+/// Dieselbe Regel wie im Web (`lib/qa-zuletzt.ts`). Gemerkt je Gerät, nicht
+/// je Konto: Die Liste ist für alle gleich.
+@MainActor
+struct QuestionExampleRotation {
+    private static let questionsKey = "ratslotse.qa.example-questions"
+    private static let offsetKey = "ratslotse.qa.example-offset"
+    static let shownCount = 4
 
-    enum CodingKeys: String, CodingKey {
-        case committee
-        case sessionDate = "session_date"
-        case topTitle = "top_titel"
+    let defaults: UserDefaults
+
+    init(defaults: UserDefaults = .standard) { self.defaults = defaults }
+
+    /// Die Liste vom letzten Abruf; leer heißt: noch nie geladen.
+    var storedQuestions: [String] { defaults.stringArray(forKey: Self.questionsKey) ?? [] }
+
+    func store(_ questions: [String]) {
+        defaults.set(questions, forKey: Self.questionsKey)
+    }
+
+    /// Der Ausschnitt für DIESES Erscheinen; rückt den Zähler weiter.
+    func next(from questions: [String]) -> [String] {
+        let offset = max(0, defaults.integer(forKey: Self.offsetKey))
+        defaults.set((offset + Self.shownCount) % 1_000_000, forKey: Self.offsetKey)
+        return Self.window(questions, offset: offset, count: Self.shownCount)
+    }
+
+    /// `count` Fragen ab `offset`, über das Ende hinweg am Anfang weiter.
+    static func window(_ questions: [String], offset: Int, count: Int) -> [String] {
+        guard !questions.isEmpty, count > 0 else { return [] }
+        let start = ((offset % questions.count) + questions.count) % questions.count
+        return (0..<min(count, questions.count)).map { questions[(start + $0) % questions.count] }
     }
 }
 
@@ -453,50 +479,32 @@ struct QuestionsView: View {
     }
 
     private func loadQuestionExamples() async {
+        // Vor dem ersten `await`: Der neue Ausschnitt steht, bevor die Ansicht
+        // gezeichnet ist, und tauscht nicht danach den Text.
+        let rotation = QuestionExampleRotation()
+        let stored = rotation.storedQuestions
+        questionExamples = rotation.next(from: stored.isEmpty ? Self.fallbackQuestionExamples : stored)
+
         guard let response: QuestionExamplesEnvelope = try? await model.api.get("/api/council/qa-beispiele"),
-              let latest = response.sessions.first
+              let questions = response.questions?.filter({ !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }),
+              !questions.isEmpty
         else { return }
-
-        var fresh = ["Was hat \(questionCommittee(latest.committee)) am \(questionDate(latest.sessionDate)) beschlossen?"]
-        if let title = latest.topTitle?.trimmingCharacters(in: .whitespacesAndNewlines), !title.isEmpty {
-            fresh.append("Was wurde zu „\(shortQuestionTopic(title))“ entschieden?")
+        rotation.store(questions)
+        // Nur beim allerersten Mal sofort einwechseln — danach steht die
+        // gemerkte Liste schon da, und die neue gilt ab dem nächsten Erscheinen.
+        if stored.isEmpty {
+            questionExamples = QuestionExampleRotation.window(
+                questions, offset: 0, count: QuestionExampleRotation.shownCount)
         }
-        let combined = fresh + Self.fallbackQuestionExamples.filter { !fresh.contains($0) }
-        questionExamples = Array(combined.prefix(4))
     }
 
-    private func questionCommittee(_ raw: String) -> String {
-        let name = raw.trimmingCharacters(in: .whitespacesAndNewlines)
-        if name.lowercased().contains("rat der stadt") || name.lowercased() == "rat" { return "der Rat" }
-        if name.hasPrefix("Ausschuss") { return "der \(name)" }
-        return "das Gremium \(name)"
-    }
-
-    private func questionDate(_ iso: String) -> String {
-        RatsDate.short(iso) ?? iso
-    }
-
-    /// Der Server liefert `top_titel` seit dem 10.09.2026 bereits als
-    /// Gegenstand — ohne Verfahrensstand, Antragsteller-Klammer und „(Oldb)".
-    /// Hier bleibt nur die Notbremse gegen eine übermäßig lange Zeile, und die
-    /// schneidet an der WORTGRENZE: Der harte Schnitt bei 69 Zeichen trennte
-    /// mitten im Wort.
-    private func shortQuestionTopic(_ title: String) -> String {
-        let cleaned = title
-            .replacingOccurrences(of: #"\s+"#, with: " ", options: .regularExpression)
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-        guard cleaned.count > 72 else { return cleaned }
-        let kurz = String(cleaned.prefix(69))
-        guard let luecke = kurz.lastIndex(of: " "), kurz.distance(from: kurz.startIndex, to: luecke) >= 20
-        else { return String(kurz).trimmingCharacters(in: .whitespacesAndNewlines) + "…" }
-        return String(kurz[..<luecke]).trimmingCharacters(in: .whitespacesAndNewlines) + " …"
-    }
-
+    /// Nur bis zum allerersten Abruf (und ohne Netz): die ersten vier der
+    /// Top 20 vom Server. Danach zählt die gemerkte Liste.
     private static let fallbackQuestionExamples = [
-        "Was hat der Rat zuletzt zum Radverkehr beschlossen?",
-        "Welche Bauvorhaben sind gerade umstritten?",
-        "Wofür gibt Oldenburg dieses Jahr besonders viel Geld aus?",
-        "Welche Entscheidungen betreffen Familien in Oldenburg?",
+        "Was kostet der Neubau des Stadions?",
+        "Was tut die Stadt für bezahlbaren Wohnraum?",
+        "Was wurde zur Wärmeplanung beschlossen?",
+        "Wie ist der Stand bei der Cäcilienbrücke?",
     ]
 
     private func submitOrStop() {

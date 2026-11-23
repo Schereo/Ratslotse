@@ -2,7 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   zitatNummern,
   ANL_EXACT_RE, BELEG_SPLIT_RE, CITE_EXACT_RE, CITE_RE,
-  anlageNummer, anlagenBuchstabe, anlagenBuchstaben, anlagenNr, citationIds, datenEindeutschen,
+  anlageNummer, anlagenBuchstabe, anlagenBuchstaben, anlagenNr, belegeSichtbar, citationIds,
+  datenEindeutschen,
 } from "./qa-belege";
 
 // Die Beleg-Marker sind eine SYNCHRONE Regel mit dem Backend (council/qa.py,
@@ -166,5 +167,21 @@ describe("zitatNummern", () => {
   it("übergeht erfundene ids", () => {
     expect(zitatNummern("Siehe [99] und [3]", [3]).get(99)).toBeUndefined();
     expect(zitatNummern("Siehe [99] und [3]", [3]).get(3)).toBe(1);
+  });
+});
+
+describe("belegeSichtbar", () => {
+  it("zeigt die Belege nicht, solange die Antwort noch ohne Text läuft", () => {
+    // Das `sources`-Ereignis ist da, das Modell denkt noch nach.
+    expect(belegeSichtbar("", true, true)).toBe(false);
+  });
+  it("zeigt sie mit dem ersten Wort", () => {
+    expect(belegeSichtbar("D", true, true)).toBe(true);
+    expect(belegeSichtbar("Der Rat hat …", false, true)).toBe(true);
+  });
+  it("zeigt sie nach einem Turn ohne Text, wenn es welche gibt", () => {
+    // Stopp oder Abriss vor dem ersten Wort: Dann sind die Quellen alles, was es gibt.
+    expect(belegeSichtbar("", false, true)).toBe(true);
+    expect(belegeSichtbar("", false, false)).toBe(false);
   });
 });

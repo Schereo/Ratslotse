@@ -2,11 +2,11 @@ import type { Metadata } from "next";
 import { vorschauMetadata } from "@/lib/share-metadata";
 import View from "./view";
 
-type Props = { searchParams: { slug?: string } };
+type Props = { searchParams: Promise<{ slug?: string }> };
 
 /** Design 29a, P1 — Name und Fraktion in die Link-Vorschau. */
 export async function generateMetadata({ searchParams }: Props): Promise<Metadata> {
-  const slug = searchParams?.slug;
+  const { slug } = await searchParams;
   return vorschauMetadata("person", slug, `/council/person?slug=${encodeURIComponent(slug ?? "")}`);
 }
 

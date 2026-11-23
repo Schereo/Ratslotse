@@ -1,26 +1,32 @@
 ---
 title: "Welche Zahlen wir (noch) nicht auswerten"
-description: Ergebnis der Quellen-Recherche vom 17.08.2026 — was im Bestand liegt, was extern verfügbar ist, und was bewusst draußen bleibt.
+description: Ergebnisse der Quellenrecherche vom 17.08.2026 zu vorhandenen, verfügbaren und ausgeschlossenen Haushaltsdaten.
 ---
 
-Vier parallele Recherchen, alle Werte an den Originalquellen geprüft. Dieses
-Dokument hält fest, **was wir nicht auswerten und warum** — damit die nächste
-Runde nicht dieselben Wege noch einmal geht.
+Vier parallele Recherchen haben die Werte anhand der Originalquellen
+geprüft. Die Ergebnisse dokumentieren, welche Quellen Ratslotse aus
+welchen Gründen nicht auswertet. Sie dienen als Ausgangspunkt für
+weitere Recherchen.
 
-Stand des Bestands beim Schreiben: 23 Finanz-Tabellen, 899 Anlagen mit
-Volltext. Was wir bereits haben, steht in [Haushalt](/docs/haushalt/).
+Zum Zeitpunkt der Recherche umfasste der Bestand 23 Finanztabellen und
+899 Anlagen mit Volltext. Den vorhandenen Bestand beschreibt [Haushalt](/docs/haushalt/).
 
 ## Die stärkste Bestätigung
 
-Zwei Recherchen fanden unabhängig voneinander **dieselbe Zahl**: Die Bilanz
-der Stadt weist zum 31.12.2024 Geldschulden von **43.690.971,71 €** aus, die
-Bundesstatistik für den Kernhaushalt **43.690.972 €**. Zwei Quellen, ein Cent
-Rundung. Wo zwei unabhängige Wege zur selben Zahl führen, trägt sie.
+Die Stadt weist in ihrer Bilanz zum 31.12.2024 unter Position 2.1
+Geldschulden von **43.690.971,71 €** aus.
+[Bilanz 2024 der Stadt Oldenburg](https://www.oldenburg.de/fileadmin/oldenburg/Benutzer/Dateien/20_Controlling_und_Finanzen/200_Finanzen/Jahresabschluss_2024/01_Veroeffentlichung_Jahresabschluss_2024_Internet_Bilanz_2024.pdf)
+
+Die Statistischen Ämter weisen die Schulden des Oldenburger Kernhaushalts
+in ganzen Euro aus. Tabelle 2, Blatt `NI`, nennt für den Regionalschlüssel
+`034030000000` **43.690.972 €**. Auf ganze Euro gerundet ergibt der
+Bilanzwert denselben Betrag. Die ungerundete Differenz beträgt **0,29 €**.
+[Tabellenband zum 31.12.2024](https://www.statistikportal.de/sites/default/files/2025-12/Integrierte_Schulden_der_Gemeinden_und_Gemeindeverbaende_2024_Tabellenband_0.xlsx)
 
 ## Rang 1 — Die drei Schuldenzahlen
 
-Warum man über Oldenburgs Schulden drei verschiedene Zahlen hört, und alle
-drei stimmen — je nach Abgrenzung:
+Drei unterschiedliche Angaben zu Oldenburgs Schulden ergeben sich aus
+drei Abgrenzungen.
 
 | Abgrenzung | 31.12.2024 | je Einwohner | Haben wir? |
 |---|---|---|---|
@@ -104,10 +110,10 @@ dieselben Fälle **mit Vorlagennummern**, also mit direktem Join-Schlüssel.
 Abgleich: 2022 Abweichung **0,00 €**, 2023 **100 €**, 2024 +2,19 %.
 Fallzahlen exakt in allen drei Jahren.
 
-**Fallen:** Verpflichtungsermächtigungen gehören nicht in die Summe (der
-Bericht zählt sie separat) · Sitzungsdatum ≠ Haushaltsjahr (Januar-Beschlüsse
-zählen zum Vorjahr; naiv summiert liegt man 20–27 % daneben) · die
-Sammelberichte tragen Schwellenwerte, keine Beträge.
+Die Summe enthält keine Verpflichtungsermächtigungen, da der Bericht sie
+separat ausweist. Januar-Beschlüsse zählen zum Vorjahr. Eine Zuordnung
+nach Sitzungsjahr führt zu Abweichungen von 20–27 %. Die Sammelberichte
+nennen Schwellenwerte und keine konkreten Beträge.
 
 **Nebenbefund:** In acht Jahren wurde **keine einzige** Nachbewilligung
 abgelehnt — 128 angenommen im Rat, 128 im Ausschuss, 0 abgelehnt.
@@ -118,10 +124,10 @@ abgelehnt — 128 angenommen im Rat, 128 im Ausschuss, 0 abgelehnt.
 in [Haushalt](/docs/haushalt/#die-lange-ausgabenreihe-datensatz-1102-seit-1972).
 Was die Recherche gefunden hatte und was die Umsetzung daraus gemacht hat:
 
-- Der **Versatz von 0,03–0,05 %** gegen `council_income_statement` war keine
-  Unschärfe, sondern eine Abgrenzung: Die Statistik zählt die
-  *Gesamtergebnisrechnung* (Kernhaushalt **und** nicht rechtsfähige
-  Stiftungen), unser Parser die *Ergebnisrechnung der Kernverwaltung*. Der
+- Die **Abweichung von 0,03–0,05 %** gegenüber `council_income_statement`
+  ergibt sich aus der Abgrenzung. Die Statistik verwendet die
+  *Gesamtergebnisrechnung* (Kernhaushalt und nicht rechtsfähige Stiftungen).
+  Der Parser liest die *Ergebnisrechnung der Kernverwaltung*. Der
   Rechenschaftsbericht rechnet die Differenz selbst vor. Gegen die
   Gesamtergebnisrechnung stimmt die Statistik auf den Tausender genau.
 - Der **2021er-Widerspruch** ist schärfer als gedacht: 613.571.622,10 € ist auf
@@ -163,8 +169,9 @@ auf — die Plan-Seite je Steuerart haben wir nirgends.
 - **Konzernbilanz + Kapitalflussrechnung** — 11 Jahrgänge 2014–2024. Wir
   parsen aus diesen Dokumenten heute nur die Gesamtergebnisrechnung.
 - **Hebesätze seit 1980** (Jahrbuch 1105), nur die neun Änderungsjahre.
-  Falle: „+21 % Grundsteuer B 2025" allein wäre irreführend — das Aufkommen
-  **sank** im selben Jahr um 4,6 %, weil die Reform die Messbeträge umstellte.
+  Der Hebesatz der Grundsteuer B stieg 2025 um 21 %. Das Aufkommen sank
+  im selben Jahr um 4,6 %, weil die Reform die Messbeträge umstellte.
+  Der Hebesatz allein erklärt die Entwicklung des Aufkommens daher nicht.
 - **Spenden an die Stadt** — 215 Beschlusszeilen, 213 mit Betrag, lückenlos
   monatlich seit 2018. 2025: 788.669 €. Die Spendernamen stehen nur in der
   Anlage.

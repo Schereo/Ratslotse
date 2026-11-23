@@ -107,11 +107,13 @@ ALT_AB_TAGEN = 14
 
 
 def _nutzertabellen() -> list[str]:
-    """Die nutzerbezogenen Tabellen — aus dem Code, nicht abgeschrieben."""
+    """Die nutzerbezogenen Tabellen — aus dem Code, nicht abgeschrieben. Dazu
+    die mit Freitext von Nutzern ohne Konto-Spalte (gestellte Fragen im
+    Zwischenspeicher), die das Konto-Löschen nicht kennt."""
     sys.path.insert(0, str(WURZEL))
-    from council.store import COUNCIL_USER_OWNED_TABLES
+    from council.store import COUNCIL_USER_OWNED_TABLES, COUNCIL_USER_TEXT_TABLES
 
-    return [tabelle for tabelle, _spalte in COUNCIL_USER_OWNED_TABLES]
+    return [tabelle for tabelle, _spalte in COUNCIL_USER_OWNED_TABLES] + list(COUNCIL_USER_TEXT_TABLES)
 
 
 # Läuft auf dem SERVER. Bewusst ohne jeden Import aus diesem Repo: Dort liegt

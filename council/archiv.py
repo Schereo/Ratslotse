@@ -71,8 +71,12 @@ def archivpfad(pfad: str | Path | None = None) -> Path:
     return Path(pfad or os.environ.get("ARCHIV_DIR") or ROOT / "data" / "archiv")
 
 
-#: Die drei Bereiche, die der Job führt. Sie sind die erste Pfadebene.
-BEREICHE = ("jahrbuch", "opendata", "lsn")
+#: Die Bereiche des Archivs — die erste Pfadebene. Die ersten drei führt
+#: ``scripts/archive_statistik.py``; ``beteiligungsbericht`` legt
+#: ``scripts/check_beteiligungsbericht.py`` an (seit 11/2026): Fällt dort ein
+#: Download aus, liest der Lauf die gesicherte Fassung statt den Jahrgang
+#: wegzulassen.
+BEREICHE = ("jahrbuch", "opendata", "lsn", "beteiligungsbericht")
 
 
 # --- Namen und Pfade --------------------------------------------------------

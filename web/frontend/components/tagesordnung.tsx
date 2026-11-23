@@ -34,8 +34,9 @@ import { ShareButton } from "@/components/share-button";
 import { decisionHref, sitzungHref } from "@/lib/routes";
 import { cn } from "@/lib/utils";
 import { ohneRisErgebnis } from "@/lib/ris-titel";
+import { risSitzung } from "@/lib/ris";
 
-export const sessionUrl = (ksinr: number) => `https://buergerinfo.oldenburg.de/si0057.php?__ksinr=${ksinr}`;
+export const sessionUrl = risSitzung;
 
 /* TOP-Nummern zusammenführen. Die Tagesordnung führt sie mit Sichtbarkeits-
    Präfix („Ö 6.1", „N 12"), das Protokoll ohne („6.1") — ein direkter Vergleich

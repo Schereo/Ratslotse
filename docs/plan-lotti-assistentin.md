@@ -905,7 +905,7 @@ beim Nachsehen entstanden:
    nicht an das Glossar gehängt: Dort landete er mitten zwischen den
    Stilregeln und las sich wie eine.
 
-Die vitest-Prüfung der Einstellung entfällt ebenfalls: `vitest.config.ts`
+Die vitest-Prüfung der Einstellung entfällt ebenfalls: `vitest.config.mts`
 lässt bewusst nur `lib/`-LOGIK ohne DOM zu, und ein `localStorage`-Modul
 braucht einen. Geprüft wird sie stattdessen im Browsertest — samt dem Weg
 zurück über ⌘K, der ohnehin nur dort zu sehen ist.
@@ -1360,5 +1360,5 @@ Zum Vergleich dieselbe Abfrage für `qa_answer` auf Prod über die letzten
 **Anker zählen (PR 3, gegen den Abzug, angemeldet als `ratsfrau@example.org`):**
 
 ```bash
-RATSLOTSE_MESS_DB=data/council.sqlite npx playwright test tests/e2e/21-lotti-assistentin.spec.ts -g "Anker"
+RATSLOTSE_MESS_DB=data/council.sqlite npx playwright test tests/e2e/21-lotti-assistentin-2.spec.ts -g "Anker"
 ```

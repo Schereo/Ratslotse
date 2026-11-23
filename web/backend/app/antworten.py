@@ -4390,9 +4390,33 @@ class BudgetGroup(TypedDict):
     entity: list[Any]
 
 
+class HoldingsHandbookRule(TypedDict):
+    """Eine Regel des Handbuchs Beteiligungen als Kurzfassung für die Seite."""
+    key: str
+    title: str
+    summary: str
+    #: Seiten der Broschüre, z. B. „S. 14–16".
+    pages: str
+
+
+class HoldingsHandbook(TypedDict):
+    """Das Handbuch Beteiligungen der Stadt (``council/shareholding_handbook.py``):
+    Fundstelle samt Ratsbeschluss und die Regeln, die die Seite zeigt."""
+    title: str
+    version: str
+    adopted_date: str
+    adopted_template: str
+    adopted_decision_id: int
+    url: str
+    rules: list[HoldingsHandbookRule]
+
+
 class BudgetHoldings(TypedDict):
     report_years: Any
     owners: Any
+    #: Je Gesellschaft zusätzlich ``board_term`` (aus welcher Ratsperiode die
+    #: Besetzung im Bericht stammt, mit ``note``, wenn sie abgelaufen ist) und
+    #: ``handbook_scope`` (gilt das Handbuch Beteiligungen, und wie — S. 10).
     companies: list[Any]
     provenance: Provenance
     years: list[Any]
@@ -4400,6 +4424,7 @@ class BudgetHoldings(TypedDict):
     group_comparison: Any
     people: list[Any]
     texts: Any
+    handbook: HoldingsHandbook
 
 
 class FinanceBudgetRow(TypedDict):
@@ -4902,7 +4927,14 @@ class QaExamples(TypedDict):
     #: eingebauten Beispiele. `scripts/ios_vertrag.py` rechnet die Bindung aus
     #: der Aufrufstelle aus — aber nur, wenn der Vertrag etwas über den Inhalt
     #: behauptet. Gegen ``Any`` kann es nichts prüfen.
+    #:
+    #: Seit 22.11.2026 liest nur noch die ausgelieferte App diese Liste; Web
+    #: und neue App-Builds nehmen ``questions``. Weg kann sie, sobald
+    #: ``APP_MIN_BUILD`` über dem Build steht, der ``questions`` liest.
     sessions: list[QaExampleSession]
+    #: Die kuratierte Top 20 aus ``council/example_questions.py``, in der
+    #: Reihenfolge, in der die Clients sie durchrotieren.
+    questions: list[str]
 
 
 class TemplateFollow(TypedDict):
@@ -8189,3 +8221,149 @@ class PredictionAdminStand(TypedDict):
     results: list[PredictionResultRow]
     players: list[PredictionAdminPlayer]
     log: list[str]
+
+
+# --------------------------------------------------------------------------
+# Werkzeuge: der Mehrheitsrechner (/api/tools/majorities)
+# --------------------------------------------------------------------------
+
+
+class MajorityBodyOption(TypedDict):
+    """Ein Gremium in der Auswahl — Rat, Verwaltungsausschuss, Ausschüsse."""
+    key: str
+    name: str
+    #: Ohne „Ausschuss für “ — für enge Auswahllisten.
+    short: str
+    kind: Literal["council", "administrative", "committee"]
+    #: Stimmberechtigte insgesamt.
+    votes: int
+
+
+class MajorityBody(TypedDict):
+    key: str
+    name: str
+    short: str
+    kind: Literal["council", "administrative", "committee"]
+    votes: int
+    #: Mehr als die Hälfte aller Stimmen (im Rat 27 von 53).
+    majority: int
+    #: Sachliche Hinweise zu diesem Gremium (wer außer den Fraktionen mitstimmt,
+    #: was das Ratsinfo nicht führt) — fertig formuliert.
+    notes: list[str]
+    #: Könnten alle Fraktionen zusammen die Mehrheit stellen? ``False`` im
+    #: Jugendhilfeausschuss: Dort haben Mitglieder ohne Ratsmandat 9 von 15 Stimmen.
+    reachable: bool
+    #: Die Mitgliederseite im Ratsinformationssystem.
+    source_url: str
+
+
+class MajorityFunction(TypedDict):
+    """Stimmberechtigte ohne Ratsmandat, zusammengefasst nach Funktion."""
+    label: str
+    seats: int
+
+
+class MajorityBlock(TypedDict):
+    """Die Stimmen einer Fraktion oder Gruppe in diesem Gremium."""
+    key: str
+    short: str
+    label: str
+    #: faction = Fraktion (ab zwei Mitgliedern im Rat), group = Gruppe mehrerer
+    #: Parteien, single = Einzelmitglied, mayor = Oberbürgermeister,
+    #: external = Stimmberechtigte ohne Ratsmandat.
+    kind: Literal["faction", "group", "single", "mayor", "external"]
+    color: str
+    color_dark: str
+    seats: int
+    #: Lässt sich mit „dabei“ / „ohne“ setzen und erscheint in Kombinationen.
+    #: Nicht bei ``external``: Wer ohne Ratsmandat mitstimmt, verabredet sich
+    #: nicht als Block — die Stimmen zählen nur zur Schwelle.
+    selectable: bool
+    #: Namen der Stimmberechtigten (leer bei ``external``).
+    members: list[str]
+    #: Mitgliedsparteien einer Gruppe.
+    parties: list[str]
+    #: Nur bei ``external``: wer genau (Elternvertretung, Beschäftigte, …).
+    functions: list[MajorityFunction]
+
+
+class MajorityAdvisory(TypedDict):
+    """Ein Mitglied mit beratender Stimme (Grundmandat u. Ä.) — zählt nicht mit."""
+    name: str
+    role: str
+    key: str | None
+    short: str | None
+    color: str
+    color_dark: str
+
+
+class MajoritySelection(TypedDict):
+    include: list[str]
+    exclude: list[str]
+    #: Stimmen der mit „dabei“ gesetzten Blöcke.
+    seats: int
+    #: Wie viele Stimmen ihnen noch zur Mehrheit fehlen (0, wenn sie reicht).
+    missing: int
+    has_majority: bool
+    #: Alle Stimmen außer den ausgeschlossenen — reicht das nicht, ist ohne
+    #: diese Blöcke keine Mehrheit möglich.
+    max_seats: int
+    possible: bool
+
+
+class MajorityCoalition(TypedDict):
+    """Eine Kombination mit Mehrheit, aus der kein frei gewählter Partner
+    wegfallen kann."""
+    blocks: list[str]
+    seats: int
+    #: Stimmen über der Schwelle.
+    surplus: int
+    #: Die Blöcke, die zur Auswahl („dabei“) hinzukommen.
+    added: list[str]
+
+
+class MajorityPartner(TypedDict):
+    """Ein Block, der für die Mehrheit in Frage kommt: Er kommt in mindestens
+    einer möglichen Mehrheit zur Auswahl hinzu."""
+    key: str
+    seats: int
+    #: Stimmen der Auswahl zusammen mit diesem Block.
+    total: int
+    #: Reicht dieser eine Block, damit die Auswahl die Mehrheit hat?
+    completes: bool
+    #: In wie vielen der möglichen Mehrheiten er vorkommt.
+    coalitions: int
+
+
+class MajorityOverview(TypedDict):
+    """Die Auswahl in einem Gremium — eine Zeile der Übersicht über alle."""
+    key: str
+    short: str
+    kind: Literal["council", "administrative", "committee"]
+    votes: int
+    majority: int
+    #: Stimmen der mit „dabei“ gesetzten Blöcke in diesem Gremium.
+    seats: int
+    has_majority: bool
+    missing: int
+    #: Ist ohne die ausgeschlossenen Blöcke überhaupt eine Mehrheit möglich?
+    possible: bool
+    #: Könnten alle Fraktionen zusammen die Mehrheit stellen (s. ``MajorityBody``)?
+    reachable: bool
+
+
+class MajorityCalculator(TypedDict):
+    bodies: list[MajorityBodyOption]
+    #: ``None``, solange die Besetzung noch nie abgerufen wurde.
+    body: MajorityBody | None
+    blocks: list[MajorityBlock]
+    advisory: list[MajorityAdvisory]
+    selection: MajoritySelection
+    coalitions: list[MajorityCoalition]
+    #: Wer für die Mehrheit in Frage kommt — nur, wenn etwas auf „dabei“ steht
+    #: und noch Stimmen fehlen. Wer allein reicht, zuerst.
+    partners: list[MajorityPartner]
+    #: Dieselbe Auswahl in jedem Gremium, in der Reihenfolge von ``bodies``.
+    overview: list[MajorityOverview]
+    #: Zeitpunkt des Abrufs aus dem Ratsinfo (UTC, ISO).
+    as_of: str | None

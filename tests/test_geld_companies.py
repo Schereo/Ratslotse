@@ -189,6 +189,7 @@ def test_null_ergebnis_bekommt_seinen_erklaersatz(tmp_path):
     assert "Die Null ist Vertragslage" in text
     assert "13.344.252,11 Euro" in text
     assert "Aufsichtsrat: 3 Mitglieder, Vorsitz Erika Mustermann (Ratsmitglied)" in text
+    assert "Weitere Namen stehen nur im Bericht" in text
     assert "davon 2 Ratsmitglieder" in text
     store.close()
 

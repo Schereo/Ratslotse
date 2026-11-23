@@ -18,10 +18,13 @@ from pydantic import (AliasChoices, BaseModel, Field, field_validator)
 
 from council.cities.model import display_title
 from council.cities.store import CitiesStore
+from council import ris
 from council.store import CouncilStore
 from council.topics import POLICY_FIELDS
 from council.goals import GOALS
+from council.example_questions import TOP_QUESTIONS
 from council import gesellschaft_abschluss
+from council import shareholding_handbook
 from council.parties import faction_label, order_key
 from council import expense_series as ausgabenreihe_mod
 from council import indicators as kennzahlen_mod
@@ -172,15 +175,15 @@ require_budget = require_permission("budget")
 
 _log = logging.getLogger(__name__)
 
-BASE_URL = "https://buergerinfo.oldenburg.de"
+BASE_URL = ris.BASE  # die Adresse steht in council/ris.py
 
 
 def _ratsinfo_url(ksinr: int) -> str:
-    return f"{BASE_URL}/si0057.php?__ksinr={ksinr}"
+    return ris.session_url(ksinr)
 
 
 def _vorlage_url(kvonr: int) -> str:
-    return f"{BASE_URL}/vo0050.php?__kvonr={kvonr}"
+    return ris.template_url(kvonr)
 
 
 @router.get("/committees")
@@ -1045,6 +1048,20 @@ def _beteiligungen(store: CouncilStore) -> BudgetHoldings:
     # auch nichts falsch zuzuordnen.
     gerissen = {p["company"] for p in personen if not p["roles_assignable"]}
     verzeichnis = _lexikon_zuordnung(store, personen)
+    mit_personen = {p["company"] for p in personen}
+
+    # Das Handbuch Beteiligungen (council/shareholding_handbook.py): Gilt es
+    # für die Gesellschaft, und aus welcher Ratsperiode stammt die Besetzung?
+    # Beides gerechnet hier, nicht in der Seite (Logik ins Backend).
+    namen = {g["name"].strip().lower() for g in gesellschaften}
+
+    def _scope(g: dict) -> dict | None:
+        eigner = [e for e in eigentuemer if e["company"] == g["company"]]
+        stadt = next((e["share_pct"] for e in eigner
+                      if re.match(r"Stadt Oldenburg\b", (e["name"] or "").strip())), None)
+        tochter = any(re.sub(r"\s*\(.*?\)\s*$", "", (e["name"] or "")).strip().lower() in namen
+                      for e in eigner)
+        return shareholding_handbook.scope(g.get("classification"), stadt, tochter)
 
     ids = sorted({z["herkunft_id"]
                   for z in (*gesellschaften, *texte, *indicators, *personen,
@@ -1054,7 +1071,10 @@ def _beteiligungen(store: CouncilStore) -> BudgetHoldings:
         "report_years": berichtsjahre,
         "years": sorted({z["year"] for z in indicators}),
         "companies": [{**g, "roles_assignable":
-                       g["company"] not in gerissen}
+                       g["company"] not in gerissen,
+                       "board_term": (shareholding_handbook.board_term_note(g["report_year"])
+                                      if g["company"] in mit_personen else None),
+                       "handbook_scope": _scope(g)}
                       for g in gesellschaften],
         "texts": texte,
         "people": [{**p, "roles_assignable":
@@ -1064,6 +1084,7 @@ def _beteiligungen(store: CouncilStore) -> BudgetHoldings:
         "indicators": indicators,
         "group_comparison": vergleich,
         "provenance": {str(h["id"]): h for h in store.get_herkunft(ids)},
+        "handbook": shareholding_handbook.page_summary(),
     }
 
 
@@ -3332,9 +3353,12 @@ def gespraech_detail(conversation_id: int, user: dict = Depends(require_active),
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Gespräch nicht gefunden.")
     for t in g["turns"]:
         try:
-            t["sources"] = json.loads(t["sources"]) if t["sources"] else None
+            # Gespeichert vor dem Umzug des Ratsinfos (11/2026): Die Links in
+            # alten Gesprächen zeigten sonst auf die Startseite der Stadt.
+            t["sources"] = ris.current_in(json.loads(t["sources"])) if t["sources"] else None
         except ValueError:
             t["sources"] = None
+        t["answer"] = ris.current(t.get("answer"))
     return g
 
 
@@ -3612,7 +3636,7 @@ def _stadt_link(v: str | None) -> str | None:
     kommen mit dem Snapshot vom Client. Bis 10/2026 wurden sie ungeprüft
     gespeichert: Unter ratslotse.de ließ sich so ein Link auf eine beliebige
     Seite oder eine ``javascript:``-URL verbreiten. Echte Werte kommen nur von
-    ``www.oldenburg.de`` (Presse) und ``buergerinfo.oldenburg.de`` (Anlagen).
+    ``www.oldenburg.de`` (Presse) und ``ratsinfo.oldenburg.de`` (Anlagen).
 
     Python und Browser lesen eine URL nicht gleich: ``urlsplit`` hält ``\\``
     für ein gewöhnliches Zeichen, ein Browser für ``/``. Aus
@@ -3846,7 +3870,7 @@ def qa_share_lesen(token: str, ratslotse: Store = Depends(get_store)) -> QaShare
     share = ratslotse.qa_share_get(token)
     if not share:
         raise HTTPException(status_code=404, detail="Nicht gefunden.")
-    return share
+    return ris.current_in(share)  # geteilt vor dem Umzug des Ratsinfos
 
 
 class QaShareReportBody(BaseModel):
@@ -4159,10 +4183,15 @@ def deep_research_gesehen(job_id: str, user: dict = Depends(require_active),
 
 @router.get("/qa-beispiele")
 def qa_beispiele(store: CouncilStore = Depends(get_council_store)) -> QaExamples:
-    """Frische Beispiel-Anlässe für den Empty State der KI-Frage (5a/I-07):
-    die jüngsten Sitzungen mit Beschlüssen — die Clients formulieren daraus
+    """Beispielfragen für den Empty State der KI-Frage.
+
+    ``questions`` ist die kuratierte Top 20 (``council/example_questions.py``);
+    die Clients zeigen zwei oder drei davon und rücken bei jedem Besuch weiter.
+
+    ``sessions`` gehört nur noch der ausgelieferten App: Sie formuliert daraus
     „Was hat der <Ausschuss> am <Datum> beschlossen?" und „Was wurde zu
-    ‚<top_titel>' entschieden?".
+    ‚<top_titel>' entschieden?" (5a/I-07). Das Web tut das seit 22.11.2026
+    nicht mehr, die Fragen waren zu oft schlecht (s. ``example_questions``).
 
     Zwei Dinge stellt der Server sicher, damit dabei etwas Brauchbares
     herauskommt — beide gehören hierher und nicht in zwei Clients:
@@ -4182,7 +4211,7 @@ def qa_beispiele(store: CouncilStore = Depends(get_council_store)) -> QaExamples
          "top_titel": qa.erster_gegenstand(z.get("top_titel_kandidaten") or z.get("top_titel")) or None}
         for z in store.juengste_sitzungen_mit_beschluessen(
             limit=2, mindest_tops=qa.RUECKFRAGE_MINDEST_TOPS)]
-    return {"sessions": zeilen}
+    return {"sessions": zeilen, "questions": list(TOP_QUESTIONS)}
 
 
 @router.get("/plan-bild/{document_id}", response_class=JpegResponse,
@@ -5847,6 +5876,17 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             latest_place = bool(
                 ort and typ not in ("money", "person", "party", "session")
                 and (qa.latest_intent(q_suche) or qa.latest_intent(q)))
+            # Überblick über einen Ort („Was plant die Stadt für die
+            # Innenstadt?“): Die Frage nennt außer dem Ort kein Thema, und der
+            # Reranker zog dann die Titel nach vorn, die den Ortsnamen tragen —
+            # das Sofortprogramm von 2021 statt der Sanierungsgebiete von 2025/26
+            # (Prod, 23.11.2026). Ausgewählt wird stattdessen nach Vorgang,
+            # Wichtigkeit und Frische (qa.select_place_overview).
+            overview = bool(
+                ort and not latest_place and not person and not sitzungen
+                and typ not in ("money", "person", "party", "session")
+                and (qa.place_overview_question(q_suche, ort["name"])
+                     or qa.place_overview_question(q, ort["name"])))
             shadow_plan = qa.research_plan_with_mandatory(
                 analyse.get("rechercheplan") or {}, typ=typ, question=q_suche,
                 person=bool(person), place=bool(ort), sessions=bool(sitzungen),
@@ -5877,6 +5917,8 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                         i for i, _s, _snip in store.search_decisions_fts(ort["name"], limit=40)
                         if i not in schon]
             allowed_place_ids = set(place_ids or []) if ort else None
+            # Bei einem kleinen Ort kommt ohnehin alles in die Auswahl.
+            overview = overview and len(place_ids or []) >= qa.OVERVIEW_MIN_DECISIONS
             if latest_place:
                 # Bei einer reinen Ortsfrage nach dem „zuletzt“ ist das Datum
                 # die Antwort. Der Reranker schob in der Produktionsprobe einen
@@ -5885,6 +5927,11 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                 # exakt belegt — hier braucht es keine Semantik.
                 candidates = store.get_decisions_by_ids((place_ids or [])[:QA_TOP_K])
                 mode = "chronologisch"
+            elif overview and ort:
+                ueberblick_ids = qa.place_overview_ids(store, place_ids or [], ort["name"])
+                candidates = store.get_decisions_by_ids(ueberblick_ids[:QA_TOP_K])
+                mode = "ueberblick"
+                zeiten["ueberblick"] = len(ueberblick_ids)
             else:
                 candidates, mode = _qa_retrieve(store, q_suche, expanded, timings=zeiten,
                                                 varianten=analyse.get("variants"),
@@ -6239,8 +6286,10 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             # kein Vorgang, und die Akte baute sich aus den Treffern davor —
             # bei „Wie lange darf man reden?" aus irgendeinem
             # „Geschäftsordnungsantrag auf Vertagung".
+            # Und nicht beim Ortsüberblick: Die Akte vertieft EINEN Vorgang, der
+            # Überblick braucht die Breite über viele.
             if (features.an("akten-suche") and not einfach and typ != "session" and not person
-                    and not rules_sel and candidates):
+                    and not rules_sel and not overview and candidates):
                 try:
                     akte = akte_suche.material(store, q_suche, candidates)
                     have = {c["id"] for c in candidates}
@@ -6355,8 +6404,10 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             # Hintergrund zu den genannten Objekten („Was ist die GSG?").
             steckbriefe = qa.steckbriefe_mit_ort(
                 qa.steckbriefe_fuer(store, q_suche), ort)
-            # Wie tragfähig ist der Fund? Deterministisch aus den Scores.
-            lage = qa.beleglage(candidates)
+            # Wie tragfähig ist der Fund? Deterministisch aus den Scores —
+            # außer im chronologischen Modus und im Ortsüberblick: Dort gibt es
+            # keine Rerank-Scores, der Ortsbezug ist trotzdem belegt.
+            lage = qa.beleglage(candidates, deterministic=latest_place or overview)
             # Und wie ALT ist er? Der Antwort-Prompt kennt das heutige Datum
             # nicht; ohne Bezugspunkt liest ein Modell „Satzungsbeschluss
             # Oktober 2018" als Gegenwart (gemessen 21.09.2026, echte
@@ -6366,11 +6417,6 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                 # Ein konkreter Gutachten-/Anlagenfund ist ein direkter Beleg,
                 # auch wenn keine verknüpfte Beschlussstation vorhanden ist.
                 lage = "solide"
-            if latest_place:
-                # Keine Rerank-Scores im chronologischen Modus; der Ortsbezug
-                # ist dennoch deterministisch. Nur ein Mini-Bestand bleibt
-                # bewusst als dünn markiert.
-                lage = "solide" if len(candidates) >= 3 else "duenn"
             if person and ort and debatten_rows:
                 # Sitzung + TOP + Sprecher + kuratierter Ortsbezug sind harte
                 # Beziehungen, keine Ähnlichkeitsschätzung.
@@ -6788,7 +6834,8 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                                           screen=bildschirm, akte=akte_prompt,
                                           rules_block=rules_block,
                                           election_block=election_block,
-                                          extra_block=extra_block))
+                                          extra_block=extra_block,
+                                          overview=overview))
             try:
                 for delta in strom:
                     if not buf and delta:
@@ -6829,7 +6876,8 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                                                  akte=akte_prompt,
                                                  rules_block=rules_block,
                                           election_block=election_block,
-                                          extra_block=extra_block))
+                                          extra_block=extra_block,
+                                          overview=overview))
                     buf = ans
                     yield _sse({"type": "replace", "text": qa.split_followups(ans)[0]})
                     sent = len(ans)

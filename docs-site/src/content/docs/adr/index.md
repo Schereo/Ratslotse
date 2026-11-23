@@ -1,14 +1,13 @@
 ---
 title: Architekturentscheidungen (ADRs)
-description: Die wichtigen Technik-Weichen des Projekts und warum sie so gestellt wurden.
+description: Technische Entscheidungen des Projekts mit Kontext und Begründung.
 sidebar:
   order: 0
 ---
 
-Ein **Architecture Decision Record** (ADR) hält eine einzelne, folgenreiche
-technische Entscheidung fest: den Kontext, die getroffene Wahl und die
-Konsequenzen. Ziel ist, dass spätere Mitlesende (oder das eigene Ich in sechs
-Monaten) das *Warum* nachvollziehen können — nicht nur das *Was*.
+Ein **Architecture Decision Record** (ADR) dokumentiert eine technische
+Entscheidung mit ihrem Kontext und ihren Konsequenzen. So bleibt die
+Begründung auch für spätere Mitwirkende nachvollziehbar.
 
 Jeder Eintrag folgt dem Schema **Status · Kontext · Entscheidung · Konsequenzen**.
 
@@ -22,7 +21,8 @@ Jeder Eintrag folgt dem Schema **Status · Kontext · Entscheidung · Konsequenz
 | [0007](/docs/adr/0007-long-polling/) | Long-Polling statt Webhook für den Bot | Abgelöst |
 | [0008](/docs/adr/0008-deploy-nur-bei-merge/) | Deploy nur bei gemergtem PR | Akzeptiert |
 | [0009](/docs/adr/0009-zentraler-ortskatalog/) | Zentraler Ortskatalog statt vermeintlich amtlicher Stadtteile | Akzeptiert |
+| [0010](/docs/adr/0010-doku-aus-dem-code/) | Doku aus dem Code erzeugen und gegen ihn prüfen | Akzeptiert |
 
-> Neue Entscheidung? Neue Datei `NNNN-kurz-titel.md` mit demselben Schema und
-> einer Zeile in dieser Tabelle. ADRs werden nicht gelöscht — überholte werden
-> auf „Ersetzt durch …" gesetzt.
+> Lege für eine neue Entscheidung eine Datei `NNNN-kurz-titel.md` nach
+> diesem Schema an und ergänze die Tabelle. Überholte ADRs bleiben mit
+> dem Status „Ersetzt durch …" erhalten.

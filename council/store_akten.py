@@ -189,6 +189,31 @@ class AktenMixin(StoreBasis):
             f"SELECT id FROM council_decisions WHERE kind = 'decision' AND id IN "
             f"({','.join('?' * len(decision_ids))})", decision_ids)]
 
+    def place_overview_rows(self, decision_ids: list[int]) -> list[dict]:
+        """Was der Ortsüberblick (``qa.select_place_overview``) je Beschluss
+        braucht: Datum, Titel, Vorlage, Wichtig-Wert und Grundakte. Nur
+        Hauptbeschlüsse; ohne Grundakte ist ``matter_id`` leer."""
+        if not decision_ids:
+            return []
+        return [dict(r) for r in self._conn.execute(
+            "SELECT d.id, cs.session_date, d.title, d.template_number, d.importance, "
+            "(SELECT mi.matter_id FROM council_matter_items mi "
+            " WHERE mi.item_type = 'decision' AND mi.item_id = d.id LIMIT 1) AS matter_id "
+            "FROM council_decisions d JOIN council_sessions cs ON cs.ksinr = d.ksinr "
+            f"WHERE d.kind = 'decision' AND d.id IN ({','.join('?' * len(decision_ids))})",
+            decision_ids)]
+
+    def matter_entity_rows(self, matter_ids: list[int]) -> list[dict]:
+        """Je Grundakte ihre Entitäten (``matter_id``, ``slug``, ``name``,
+        ``kind``, ``n``) — für den Ortsüberblick, der Vorgänge über ein
+        gemeinsames Projekt zusammenlegt."""
+        if not matter_ids:
+            return []
+        return [dict(r) for r in self._conn.execute(
+            "SELECT m.matter_id, e.slug, e.name, e.kind, e.n FROM council_entity_matters m "
+            "JOIN council_entities e ON e.slug = m.slug "
+            f"WHERE m.matter_id IN ({','.join('?' * len(matter_ids))})", matter_ids)]
+
     def subvotes_of(self, decisions: list[dict]) -> dict[int, list[dict]]:
         """Die Teilabstimmungen (Änderungs- und GO-Anträge) je Hauptbeschluss:
         ``{decision_id: [{title, outcome, vote, no_votes, abstentions}, …]}``,

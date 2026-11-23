@@ -1,6 +1,6 @@
 ---
 title: 0005 — SQLite + FTS5 als einzige Datenbank
-description: Warum SQLite mit FTS5 statt PostgreSQL o. ä.
+description: Gründe für SQLite als Datenbank und FTS5 als Volltextindex.
 sidebar:
   order: 5
 ---
@@ -10,17 +10,18 @@ sidebar:
 ## Kontext
 
 Die App speichert Ratssitzungen, Protokolle, Beschlüsse, Vorlagen-Volltexte,
-Nutzerkonten, Themen und vorberechnete Ableitungen. Gebraucht werden:
-Volltextsuche mit deutscher Umlaut-Behandlung, einfache Deploys und geringer
-Betriebsaufwand. Die Last ist moderat (Single-Node-Betrieb, Schreibzugriffe
-v. a. durch geplante Jobs, kein Hochlast-Multi-Writer-Szenario).
+Nutzerkonten, Themen und daraus berechnete Daten. Die Datenbank muss eine
+Volltextsuche mit Unterstützung für deutsche Umlaute bieten und sich mit
+geringem Betriebsaufwand deployen lassen. Die Last ist moderat. Die App
+läuft auf einem Server, und Schreibzugriffe kommen vor allem von geplanten
+Jobs.
 
 ## Entscheidung
 
-**SQLite** als einzige Datenbank — zwei Dateien: eine für Konten & Themen, eine
-für die Ratsdaten (`council.sqlite`) — mit **FTS5**-Volltextindex (Tokenizer
-`unicode61 remove_diacritics 2` für deutsche Umlaute). Kein separater
-DB-Server.
+Ratslotse verwendet **SQLite** mit zwei Datenbankdateien. Eine speichert
+Konten und Themen, die andere Ratsdaten (`council.sqlite`). Der
+**FTS5**-Volltextindex verwendet den Tokenizer `unicode61 remove_diacritics 2`
+für deutsche Umlaute. Ein separater Datenbankserver ist nicht erforderlich.
 
 ## Konsequenzen
 
@@ -31,8 +32,8 @@ DB-Server.
   ohne Zusatzkomponente; `remove_diacritics 2` macht Umlaut-Suche robust.
 - **Plus:** Geplante Jobs und Web-Service teilen sich dieselben Dateien direkt —
   kein API-Hop nur für Daten.
-- **Minus:** Begrenzte Schreib-Nebenläufigkeit (ein Writer zur Zeit). Bei
-  zukünftigem Multi-Node-/Hochlast-Betrieb wäre ein Wechsel auf PostgreSQL nötig
-  — derzeit kein Engpass.
+- **Minus:** Nur ein Schreibzugriff zur selben Zeit ist möglich.
+  Derzeit ist das kein Engpass. Für den Betrieb auf mehreren Knoten
+  oder unter hoher Last wäre ein Wechsel auf PostgreSQL nötig.
 - **Minus:** Die DB-Dateien werden per rsync vom Deploy **ausgespart** (`data/`),
   liegen also nur auf dem Server; lokal entstehen sie leer beim ersten Lauf.

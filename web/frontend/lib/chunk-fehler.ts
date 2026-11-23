@@ -14,8 +14,12 @@ export function istChunkFehler(e: unknown): boolean {
   if (!e || typeof e !== "object") return false;
   const name = (e as { name?: unknown }).name;
   const text = String((e as { message?: unknown }).message ?? "");
+  // Turbopack (seit Next 16) setzt denselben Namen wie Webpack, schreibt aber
+  // „Failed to load chunk /_next/static/chunks/….js from module …". Der Text
+  // steht mit hier, falls der Name unterwegs verloren geht.
   return name === "ChunkLoadError"
     || /Loading (CSS )?chunk [\w-]+ failed/i.test(text)
+    || /Failed to load chunk /i.test(text)
     || /Failed to fetch dynamically imported module/i.test(text)
     || /error loading dynamically imported module/i.test(text);
 }

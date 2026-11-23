@@ -165,6 +165,10 @@ VORLAGE_POOL = 12
 # nach oben zu holen. Der schnellere Hebel ohne Qualitätsverlust ist der
 # Zeichen-Deckel PAIR_MAX_CHARS. Dieser Schalter bleibt nur für Notfälle.
 RERANK_MAX = int(os.environ.get("COUNCIL_RERANK_MAX", "0"))
+#: Mit Ortsfilter holt die Volltextsuche so viele stadtweite Treffer, um daraus
+#: die besten ``pool`` im Ort zu nehmen. Der größte Ortsfilter im Bestand hat
+#: rund 220 Beschlüsse; acht Pools reichen, damit der Filter nicht leerläuft.
+BM25_IM_ORT = 440
 VORLAGE_STATIONS = 4
 
 
@@ -194,7 +198,13 @@ def hybrid_search(store, query: str, expanded: str, top_k: int = 25, pool: int =
     klassisch = os.environ.get("COUNCIL_RETRIEVAL_KLASSISCH") == "1"
     t0 = time.perf_counter()
     qv = embed([expanded])[0]  # may raise ImportError → caller falls back
-    vec = _search_vec(store, qv, top_k=pool, min_score=0.2)
+    # Mit Ortsfilter die besten Treffer IM Ort, nicht die besten der Stadt,
+    # die zufällig auch im Ort liegen. Vorher kamen von 148 Innenstadt-
+    # Beschlüssen 43 vor den Reranker, und die Rahmenplanung Nördliche
+    # Innenstadt (er hätte sie auf Rang 8 gesetzt) war nicht darunter (Prod,
+    # 23.11.2026).
+    erlaubt = set(allowed_ids) if allowed_ids is not None else None
+    vec = _search_vec(store, qv, top_k=pool, min_score=0.2, allowed=erlaubt)
     vor_ids: list[int] = []
     vor_chunk: dict[int, str] = {}  # decision_id → Fundstellen-Chunk der Vorlage
     if not klassisch:
@@ -209,7 +219,11 @@ def hybrid_search(store, query: str, expanded: str, top_k: int = 25, pool: int =
         except Exception:  # noqa: BLE001 — Chunk-Index (noch) nicht aufgebaut → ohne weiter
             pass
     t1 = time.perf_counter()
-    bm = store.search_decisions_fts(f"{query} {expanded}", limit=pool)
+    if erlaubt is None:
+        bm = store.search_decisions_fts(f"{query} {expanded}", limit=pool)
+    else:
+        bm = [h for h in store.search_decisions_fts(f"{query} {expanded}", limit=BM25_IM_ORT)
+              if h[0] in erlaubt][:pool]
     t2 = time.perf_counter()
     bm_snippet = {i: s for i, _, s in bm if s}
     cand_ids = list(dict.fromkeys([i for i, _ in vec] + vor_ids + [i for i, _, _ in bm]))
@@ -223,7 +237,8 @@ def hybrid_search(store, query: str, expanded: str, top_k: int = 25, pool: int =
         for var in varianten[:2]:
             try:
                 vv = embed([var])[0]
-                for did, _s in _search_vec(store, vv, top_k=pool // 2, min_score=0.25):
+                for did, _s in _search_vec(store, vv, top_k=pool // 2, min_score=0.25,
+                                           allowed=erlaubt):
                     if did not in bereits:
                         bereits.add(did)
                         neue.append(did)
@@ -467,14 +482,25 @@ def search(store, query: str, top_k: int = 20, min_score: float = 0.0) -> list[t
     return _search_vec(store, qv, top_k=top_k, min_score=min_score)
 
 
-def _search_vec(store, qv, top_k: int = 20, min_score: float = 0.0) -> list[tuple]:
+def _search_vec(store, qv, top_k: int = 20, min_score: float = 0.0,
+                allowed: set[int] | None = None) -> list[tuple]:
     """search() mit bereits berechnetem Query-Vektor — hybrid_search embeddet die
-    Anfrage nur einmal und sucht damit in Beschluss- UND Vorlagen-Vektoren."""
+    Anfrage nur einmal und sucht damit in Beschluss- UND Vorlagen-Vektoren.
+
+    ``allowed``: nur unter diesen Beschlüssen suchen (Ortsfilter)."""
     import numpy as np
 
     ids, mat = _matrix(store)
     if not ids:
         return []
+    if allowed is not None:
+        idx_in = [n for n, i in enumerate(ids) if i in allowed]
+        if not idx_in:
+            return []
+        teil = mat[idx_in] @ qv
+        k = min(top_k, len(idx_in))
+        best = np.argsort(-teil)[:k]
+        return [(ids[idx_in[j]], float(teil[j])) for j in best if teil[j] >= min_score]
     scores = mat @ qv
     k = min(top_k, len(ids))
     idx = np.argpartition(-scores, k - 1)[:k]

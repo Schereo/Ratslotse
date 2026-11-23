@@ -18,6 +18,7 @@ sys.path.insert(0, str(ROOT))
 load_dotenv(ROOT / ".env")
 
 from council import finanzquellen, herkunft as h, liquidity  # noqa: E402
+from council import ris  # noqa: E402
 from council.store import CouncilStore  # noqa: E402
 from council import anlagentext  # noqa: E402
 from council.vorlagen import _pdf_text  # noqa: E402
@@ -30,7 +31,7 @@ def _lauf_herkunft(result: dict) -> h.Herkunft:
     rows = result["rows"]
     spanne = f"{rows[0]['month']} bis {rows[-1]['month']}" if rows else "—"
     return h.Herkunft(
-        kind="ris", url="https://buergerinfo.oldenburg.de/vo040.asp", label=LABEL,
+        kind="ris", url=ris.SEARCH_URL, label=LABEL,
         citation=liquidity.FUNDSTELLE, as_of=f"Monate {spanne}",
         probe=[liquidity.WERTZAHL, liquidity.UEBERLAPPUNG],
         probe_result=liquidity.probennachweis(result))
@@ -90,7 +91,7 @@ def main() -> int:
         for r in rows:
             r["herkunft"] = h.Herkunft(
                 kind="ris", document_id=r.get("document_id"),
-                url=r.get("url") or "https://buergerinfo.oldenburg.de/vo040.asp",
+                url=r.get("url") or ris.SEARCH_URL,
                 label=f"{LABEL} — Vorlage {r['template_number']}",
                 citation=liquidity.FUNDSTELLE, as_of=f"Stichtag {r['as_of']}",
                 probe=r["probes"],

@@ -153,3 +153,96 @@ def test_der_staedte_speicher_behaelt_nur_zwei_staende(tmp_path, monkeypatch):
     assert len(list((data / "backups").glob("cities_*.sqlite"))) == 2
     # Die übrigen Datenbanken behalten ihre volle Rotation.
     assert b.backup_db(data / "council.sqlite") > 2
+
+
+def _umgebung(tmp_path, monkeypatch):
+    from scripts import backup_db as b
+
+    data = tmp_path / "data"
+    data.mkdir(parents=True)
+    monkeypatch.setattr(b, "ROOT", tmp_path)
+    monkeypatch.setattr(b, "DATA", data)
+    monkeypatch.setattr(b, "BACKUP_DIR", data / "backups")
+    monkeypatch.setattr(b, "CRONTAB_BEFEHL", ["false"])
+    monkeypatch.delenv("BACKUP_RSYNC_TARGET", raising=False)
+    return b, data
+
+
+def test_handkopien_laufen_nicht_als_datenbank_durch(tmp_path, monkeypatch):
+    """Eine Handkopie mit Punkt im Stamm lief bis 23.11.2026 als eigene
+    Datenbank durch die Rotation — elf Stände zu 800 MB."""
+    b, data = _umgebung(tmp_path, monkeypatch)
+    _db(data / "council.sqlite")
+    _db(data / "council.vor-pymupdf-2026-10-18.sqlite")
+
+    stats = b.main()
+    assert stats["Datenbanken gesichert"] == 1
+    assert stats["Handkopien übersprungen"] == 1
+    assert [p.name.split("_")[0] for p in (data / "backups").glob("*.sqlite")] == ["council"]
+
+
+def test_einzeldateien_ordner_und_crontab_kommen_mit(tmp_path, monkeypatch):
+    b, data = _umgebung(tmp_path, monkeypatch)
+    _db(data / "council.sqlite")
+    (data / "wahlabend-verlauf-ratswahl-2026.json").write_text('{"stand": 1}')
+    (data / "strassen-snapshot.json").write_text("[]")
+    (data / "tippspiel-geloescht.json").write_text("{}")      # nicht auf der Liste
+    (data / "transkripte").mkdir()
+    (data / "transkripte" / "rat-2026-11-02.txt").write_text("Wortbeitrag")
+    script = tmp_path / "crontab"
+    script.write_text("#!/bin/sh\necho '15 3 * * * backup_db.py'\n")
+    script.chmod(0o755)
+    monkeypatch.setattr(b, "CRONTAB_BEFEHL", [str(script)])
+
+    stats = b.main()
+    einzeln = data / "backups" / "einzeldateien"
+    assert stats["Einzeldateien"] == 2
+    assert sorted(p.name for p in einzeln.iterdir()) == [
+        "strassen-snapshot.json", "wahlabend-verlauf-ratswahl-2026.json"]
+    assert stats["Sitzungs-Transkripte"] == 1
+    assert (data / "backups" / "transkripte" / "rat-2026-11-02.txt").read_text() == "Wortbeitrag"
+    assert stats["crontab gesichert"] == "ja"
+    kopie = data / "backups" / "crontab.backup"
+    assert "backup_db.py" in kopie.read_text()
+    assert oct(kopie.stat().st_mode)[-3:] == "600"
+
+    # Was unter data/ verschwindet, verschwindet auch aus der Sicherung.
+    (data / "strassen-snapshot.json").unlink()
+    b.main()
+    assert [p.name for p in einzeln.iterdir()] == ["wahlabend-verlauf-ratswahl-2026.json"]
+
+
+def test_ohne_crontab_kein_fehler(tmp_path, monkeypatch):
+    b, data = _umgebung(tmp_path, monkeypatch)
+    _db(data / "council.sqlite")
+    assert b.main()["crontab gesichert"] == "nein"
+    assert not (data / "backups" / "crontab.backup").exists()
+
+
+def test_kopien_tragen_keinen_wal_und_die_rotation_raeumt_begleiter(tmp_path, monkeypatch):
+    """Die Kopie erbte den WAL-Modus; jedes spätere Öffnen ließ -wal/-shm
+    liegen, die die Rotation nie mitnahm (23.11.2026: 218 Stück)."""
+    b, data = _umgebung(tmp_path, monkeypatch)
+    conn = sqlite3.connect(data / "council.sqlite")
+    conn.execute("PRAGMA journal_mode = WAL")
+    conn.execute("CREATE TABLE t (x INTEGER)")
+    conn.commit()
+    conn.close()
+    backups = data / "backups"
+    backups.mkdir()
+    # Ein uralter Stand samt Begleitern und ein verwaister Begleiter.
+    _db(backups / "council_2020-01-01.sqlite")
+    (backups / "council_2020-01-01.sqlite-wal").write_bytes(b"")
+    (backups / "council_2020-01-01.sqlite-shm").write_bytes(b"")
+    (backups / "council_2019-05-05.sqlite-shm").write_bytes(b"")
+    # Genug jüngere Wochen, dass 2020 auch als Wochenstand herausfällt.
+    for monat, tag in [(m, t) for m in (9, 10, 11) for t in range(1, 22, 3)]:
+        _db(backups / f"council_2026-{monat:02d}-{tag:02d}.sqlite")
+
+    b.main()
+    kopie = max(backups.glob("council_*.sqlite"))
+    conn = sqlite3.connect(f"file:{kopie}?mode=ro", uri=True)
+    assert conn.execute("PRAGMA journal_mode").fetchone()[0] == "delete"
+    conn.close()
+    assert not (backups / "council_2020-01-01.sqlite").exists()
+    assert not list(backups.glob("*.sqlite-*"))

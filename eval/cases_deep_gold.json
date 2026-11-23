@@ -4413,8 +4413,8 @@
    {
     "id": "F1",
     "gewicht": 3,
-    "fakt": "Ergebnisse stehen in Ratslotse unter „Sitzungen“ auf der Seite der jeweiligen Sitzung (Beschlüsse samt Abstimmung, sobald das Protokoll ausgewertet ist) und im Original im Ratsinformationssystem der Stadt (buergerinfo.oldenburg.de).",
-    "beleg": "web/frontend: /council?tab=sessions, /council/sitzung; Ratsinformationssystem buergerinfo.oldenburg.de"
+    "fakt": "Ergebnisse stehen in Ratslotse unter „Sitzungen“ auf der Seite der jeweiligen Sitzung (Beschlüsse samt Abstimmung, sobald das Protokoll ausgewertet ist) und im Original im Ratsinformationssystem der Stadt (ratsinfo.oldenburg.de).",
+    "beleg": "web/frontend: /council?tab=sessions, /council/sitzung; Ratsinformationssystem ratsinfo.oldenburg.de"
    },
    {
     "id": "F2",

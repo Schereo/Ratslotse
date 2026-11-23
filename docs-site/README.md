@@ -6,7 +6,8 @@ Architektur, Datenverarbeitung, KI-Pipeline, Betrieb und technische Entscheidung
 
 ## Lokal arbeiten
 
-Vom Repository-Root aus, mit Node.js ab Version 22:
+Vom Repository-Root aus, mit Node.js ab Version 22.23.4 (das verlangt Astro 7.4;
+die CI nimmt mit `node-version: 22` die jeweils neueste 22.x):
 
 ```bash
 npm --prefix docs-site ci
@@ -22,7 +23,13 @@ Die Vorschau liegt unter `http://localhost:4321/docs/`. Mit
 - Inhalte liegen als Markdown oder MDX in `src/content/docs/`.
 - Der Frontmatter-Titel wird als Seitenüberschrift gerendert. Im Text beginnt
   die Gliederung deshalb mit `##`.
-- Navigation und Gruppen stehen in `astro.config.mjs`.
+- Navigation und Gruppen stehen in `astro.config.mjs`. Eine Seite, die dort
+  fehlt, wird gebaut und ist trotzdem unsichtbar.
+- Links innerhalb der Doku beginnen mit `/docs/`.
+- **Die Seiten unter `src/content/docs/referenz/` sind erzeugt** (Cron-Jobs,
+  Feature-Schalter, Rollen, Eval-Läufe, Workflows). Nie von Hand ändern:
+  `python scripts/docs_reference.py` im Repository-Root schreibt sie aus den
+  Registern im Code.
 - Architekturentscheidungen liegen unter `src/content/docs/adr/`. Neue Einträge
   enthalten Status, Kontext, Entscheidung und Konsequenzen sowie einen Verweis
   in `adr/index.md`.
@@ -31,6 +38,23 @@ Die Root-README stellt das Projekt vor. `CONTRIBUTING.md` erklärt den Einstieg
 für Mitwirkende, `CLAUDE.md` enthält die Projektregeln. Historische Planungen
 liegen getrennt unter `docs/archiv/`; sie werden nicht als aktuelle Anleitung
 veröffentlicht.
+
+## Was die Doku aktuell hält
+
+`tests/test_docs_current.py` prüft bei jedem Pull Request, was sich ohne Urteil
+prüfen lässt: Jeder Pfad, jedes Modell, jede API-Route und jede
+Umgebungsvariable (samt Vorgabewert), die die Doku nennt, gibt es im Code.
+Jede Variable, die der Code liest, steht in der Doku. Jeder Feature-Schalter
+zeigt auf den Abschnitt, der ihn erklärt (`kern/features.py`, Feld `docs`).
+Links, Anker und Seitenleiste stimmen. Vor dem Push:
+
+```bash
+python scripts/pruefe.py --nur doku           # erzeugte Seiten gegen die Register
+.venv/bin/python -m pytest tests/test_docs_current.py -q
+```
+
+Ob ein Absatz inhaltlich noch stimmt, sieht kein Test. Wer Verhalten ändert,
+ändert den Absatz dazu im selben Pull Request.
 
 ## Prüfung und Veröffentlichung
 

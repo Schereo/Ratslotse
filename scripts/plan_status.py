@@ -61,10 +61,10 @@ from pathlib import Path
 WURZEL = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(WURZEL))
 
-from council import plan_state, plans  # noqa: E402
+from council import plan_state, plans, ris  # noqa: E402
 from council.store import CouncilStore  # noqa: E402
 from scripts.plan_massnahmen import (  # noqa: E402
-    CACHE, RIS_DATEI, SMV_DOCUMENT, SMV_LEGEND, USER_AGENT, _seiten, holen, smv_rows, violence_rows,
+    CACHE, SMV_DOCUMENT, SMV_LEGEND, USER_AGENT, _seiten, holen, smv_rows, violence_rows,
 )
 
 PORTAL = "https://klimaportal.oldenburg.de"
@@ -436,7 +436,7 @@ def aktionsplan_gewalt_2020(store: CouncilStore) -> dict:
         "snapshots": [{
             "as_of": "2026-08",
             "source": {"kind": "attachment", "label": "Evaluation und Fortschreibung, Kapitel 2 und Anhang 4.1",
-                       "template": "26/0681/1", "url": RIS_DATEI.format(id=314635), "fetched": None},
+                       "template": "26/0681/1", "url": ris.file_url(314635), "fetched": None},
             "total": int(total.group(1)),
             "complete": stated == int(total.group(1)),
             "counts": counts,
@@ -506,7 +506,7 @@ def ernaehrungsstrategie(store: CouncilStore) -> dict:
         "snapshots": [{
             "as_of": "2026-05",
             "source": {"kind": "template", "label": "Bericht „Ernährungsstrategie: Umsetzungsstand“",
-                       "template": "26/0431", "url": RIS_DATEI.format(id=_NUTRITION_DOCUMENT), "fetched": None},
+                       "template": "26/0431", "url": ris.file_url(_NUTRITION_DOCUMENT), "fetched": None},
             "total": len(rows),
             "complete": True,
             "counts": [{"status_raw": raw, "status_norm": norm, "count": tally[stage]}
@@ -560,7 +560,7 @@ def smv2025(store: CouncilStore) -> dict:
             "as_of": "2023-10",
             "source": {"kind": "attachment",
                        "label": "Anhang 1 zur Fortschreibung des Lärmaktionsplans",
-                       "template": "24/0293/1", "url": RIS_DATEI.format(id=SMV_DOCUMENT), "fetched": None},
+                       "template": "24/0293/1", "url": ris.file_url(SMV_DOCUMENT), "fetched": None},
             "total": len(rows),
             "complete": True,
             "counts": [{"status_raw": raw, "status_norm": norm, "count": tally[code]}

@@ -3,6 +3,7 @@ import { Inter, Bricolage_Grotesque } from "next/font/google";
 import "./globals.css";
 import { Providers } from "./providers";
 import { EARLY_AUTH_SCRIPT } from "@/lib/early-auth";
+import { EARLY_LANDING_SCRIPT } from "@/lib/landing-wanted";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 // Display-Schrift für Überschriften und Wortmarke — gibt der UI ihren Charakter.
@@ -58,6 +59,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             eine volle Netzlaufzeit vor allem anderen. Dass dabei genau EINE
             Anfrage rausgeht, prüft der Browsertest 01-auth. */}
         <script dangerouslySetInnerHTML={{ __html: EARLY_AUTH_SCRIPT }} />
+        {/* Die Fluchttür `/?start=1` merkt sich der Browser schon hier, nicht
+            erst nach dem Hydrieren (lib/landing-wanted.ts). */}
+        <script dangerouslySetInnerHTML={{ __html: EARLY_LANDING_SCRIPT }} />
       </head>
       <body>
         <Providers>{children}</Providers>
