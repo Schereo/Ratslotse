@@ -6385,8 +6385,10 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             # Hintergrund zu den genannten Objekten („Was ist die GSG?").
             steckbriefe = qa.steckbriefe_mit_ort(
                 qa.steckbriefe_fuer(store, q_suche), ort)
-            # Wie tragfähig ist der Fund? Deterministisch aus den Scores.
-            lage = qa.beleglage(candidates)
+            # Wie tragfähig ist der Fund? Deterministisch aus den Scores —
+            # außer im chronologischen Modus und im Ortsüberblick: Dort gibt es
+            # keine Rerank-Scores, der Ortsbezug ist trotzdem belegt.
+            lage = qa.beleglage(candidates, deterministic=latest_place or overview)
             # Und wie ALT ist er? Der Antwort-Prompt kennt das heutige Datum
             # nicht; ohne Bezugspunkt liest ein Modell „Satzungsbeschluss
             # Oktober 2018" als Gegenwart (gemessen 21.09.2026, echte
@@ -6396,11 +6398,6 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                 # Ein konkreter Gutachten-/Anlagenfund ist ein direkter Beleg,
                 # auch wenn keine verknüpfte Beschlussstation vorhanden ist.
                 lage = "solide"
-            if latest_place:
-                # Keine Rerank-Scores im chronologischen Modus; der Ortsbezug
-                # ist dennoch deterministisch. Nur ein Mini-Bestand bleibt
-                # bewusst als dünn markiert.
-                lage = "solide" if len(candidates) >= 3 else "duenn"
             if person and ort and debatten_rows:
                 # Sitzung + TOP + Sprecher + kuratierter Ortsbezug sind harte
                 # Beziehungen, keine Ähnlichkeitsschätzung.
