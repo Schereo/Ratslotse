@@ -503,7 +503,7 @@ struct QuestionsView: View {
     private static let fallbackQuestionExamples = [
         "Was kostet der Neubau des Stadions?",
         "Was tut die Stadt für bezahlbaren Wohnraum?",
-        "Was hat der Rat in seiner letzten Sitzung beschlossen?",
+        "Was wurde zur Wärmeplanung beschlossen?",
         "Wie ist der Stand bei der Cäcilienbrücke?",
     ]
 

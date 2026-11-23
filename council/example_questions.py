@@ -13,19 +13,33 @@ Allgemeine Angelegenheiten am 28.09.2026 beschlossen?" und „Was wurde zu
 richtig und trotzdem schlecht (Tims Befund 22.11.2026): ein Gremium, das
 kaum jemand kennt, ein Datum, das zwei Monate alt war, ein Gegenstand aus
 der Verwaltung. Sie standen immer ganz oben, und mit Gesprächsverlauf zeigt
-die Seite nur zwei Fragen, also gab es dort nie etwas anderes zu sehen. Das
-Aktuelle vertritt jetzt eine Frage, die nicht altert: „Was hat der Rat in
-seiner letzten Sitzung beschlossen?" (Sitzungs-Fragetyp, ``qa.finde_sitzungen``).
+die Seite nur zwei Fragen, also gab es dort nie etwas anderes zu sehen.
+
+**Jede Frage hier hat auf Prod eine gute Antwort bekommen.** Am 23.11.2026
+liefen alle Kandidaten über ``ops-frage-probe.yml`` gegen ratslotse.de
+(34 Fragen). Herausgefallen sind, mit dem Grund:
+
+* „Was hat der Rat in seiner letzten Sitzung beschlossen?" — „kein
+  ausgewertetes Protokoll, daher kann ich nicht sagen …". Protokolle kommen
+  Wochen nach der Sitzung; die Frage scheitert also meistens. „Was steht in
+  der nächsten Ratssitzung an?" ebenso, solange keine Tagesordnung steht.
+* „… zuletzt …" (Radverkehr, Osternburg): Die Frage nach dem Jüngsten bekommt
+  genau einen Beschluss in einem Satz. Ohne „zuletzt" eine ganze Antwort.
+* Stadtteil-Fragen (Osternburg, in drei Fassungen): vor allem Schulbeschlüsse
+  von 2018. Ein Stadtteil ist kein Thema, die Antwort sammelt Einzelnes.
+* „Wie viele Bäume werden gefällt und nachgepflanzt?" antwortete nur zum
+  Sandweg; „Was plant die Stadt für die Innenstadt?" mit Beschlüssen von
+  2021 und ohne das Sanierungsgebiet. Die engere Frage trifft beides.
+* Obdachlosigkeit (zwei Fassungen): solide, beginnt aber mit „Die
+  Ratsunterlagen geben nur begrenzte Auskunft" — ein schwacher erster Satz
+  für ein Aushängeschild.
 
 **Was eine Frage hier braucht:**
 
-* **Material.** Die Themen stammen aus der Liste, die am 10.08.2026 durch das
-  echte Retrieval gegen Prod lief (mindestens vier Volltreffer mit Relevanz
-  ≥ 0,7, zweistellig viele brauchbare Treffer, Material bis mindestens 2025).
-  Neu sind Klinikum, Innenstadt und Grundsteuer: am 22.11.2026 per
-  Volltextsuche auf dev gegengeprüft (21, 69 und 9 Beschlüsse seit 2024/25,
-  jeweils bis 2026). Zu dünn und deshalb nicht dabei: Bahnumfahrung (fünf
-  Beschlüsse, der jüngste von 2021), Schwimmbäder (drei).
+* **Eine gute Antwort auf Prod**, nicht nur Treffer: über
+  ``ops-frage-probe.yml`` gestellt und gelesen (s. oben). Vorher per
+  Volltextsuche ausgesiebt: Bahnumfahrung (fünf Beschlüsse, der jüngste von
+  2021) und Schwimmbäder (drei) sind zu dünn.
 * **Etwas, das man wissen will.** Ein Projekt, eine Summe, ein Stadtteil, eine
   Streitfrage. Nicht „Welche Beschlüsse gibt es zum Thema …", sondern die
   Frage, die man im Gespräch stellen würde.
@@ -44,30 +58,31 @@ Thema treffen (beide Stadion-Fragen liegen deshalb weit auseinander). Die
 ersten drei sieht jede*r beim allerersten Besuch.
 
 ``tests/test_qa_beispiele.py`` hält Länge, Anzahl, Eindeutigkeit, Datum,
-Futur und die Themenstreuung fest. Wer eine Frage tauscht, prüft vorher ihr
-Material.
+Futur und die Themenstreuung fest. Die Antwort prüft kein Test. Wer eine
+Frage tauscht, stellt sie vorher auf Prod (``ops-frage-probe.yml``, mehrere
+Fragen mit ‖ getrennt) und liest, was zurückkommt.
 """
 from __future__ import annotations
 
 TOP_QUESTIONS: tuple[str, ...] = (
     "Was kostet der Neubau des Stadions?",
     "Was tut die Stadt für bezahlbaren Wohnraum?",
-    "Was hat der Rat in seiner letzten Sitzung beschlossen?",
+    "Was wurde zur Wärmeplanung beschlossen?",
     "Wie ist der Stand bei der Cäcilienbrücke?",
     "Welche Schulen werden saniert oder neu gebaut?",
-    "Wie viele Bäume werden gefällt und nachgepflanzt?",
+    "Was wurde zur Baumschutzsatzung beschlossen?",
     "Was entsteht auf dem Fliegerhorst?",
-    "Was tut die Stadt gegen Obdachlosigkeit?",
+    "Was hat der Rat zu Parkgebühren entschieden?",
     "Was hat der Rat zur Grundsteuer entschieden?",
-    "Was plant die Stadt für die Innenstadt?",
+    "Was wurde zum Sanierungsgebiet Innenstadt beschlossen?",
     "Wie will die Stadt mehr Kita-Plätze schaffen?",
     "Wie stehen die Fraktionen zum neuen Stadion?",
     "Was passiert mit dem Pferdemarkt?",
     "Was wurde zu Windenergie und Photovoltaik beschlossen?",
     "Wie unterstützt die Stadt das Klinikum?",
-    "Was hat der Rat zuletzt für den Radverkehr beschlossen?",
+    "Was wurde zum Radverkehr beschlossen?",
     "Welche neuen Baugebiete hat der Rat beschlossen?",
     "Wie geht es mit der Weser-Ems-Halle weiter?",
     "Was wurde zu Tempo 30 beschlossen?",
-    "Was wurde zuletzt in Osternburg beschlossen?",
+    "Was wurde zum Kramermarkt beschlossen?",
 )
