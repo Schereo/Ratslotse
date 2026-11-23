@@ -18,6 +18,8 @@
 
    would change its shape the first time it is opened. Here it does not.
 
+       # Titel            heading            (`## Titel` the smaller one;
+                                             `###` and deeper read as `##`)
        - Punkt            bullet list        (also `*` and `+`)
        1. Punkt           ordered list       (also `1)`; the first number is the start)
        - [ ] Aufgabe      task list          (`[x]` ticked)
@@ -140,7 +142,7 @@ export function serializeInline(nodes: NoteNode[] | undefined): string {
 
 interface Line {
   level: number;
-  kind: ListType | null;
+  kind: ListType | "heading" | null;
   content: string;
   checked?: boolean;
   num?: number;
@@ -149,12 +151,16 @@ interface Line {
 const TASK = /^[-*+] \[([ xX])\](?: (.*))?$/;
 const BULLET = /^[-*+] (.*)$/;
 const ORDERED = /^(\d{1,9})[.)] (.*)$/;
+const HEADING = /^(#{1,6}) (.*)$/;
 
 function readLine(raw: string): Line {
   const indent = /^[ \t]*/.exec(raw)![0];
   const level = [...indent].reduce((n, c) => n + (c === "\t" ? 2 : 1), 0) >> 1;
   const rest = raw.slice(indent.length);
-  let m = TASK.exec(rest);
+  // Eine Überschrift steht ganz links; eingerückt wäre sie Teil eines Punkts.
+  let m = indent ? null : HEADING.exec(rest);
+  if (m) return { level: Math.min(m[1].length, 2), kind: "heading", content: m[2] };
+  m = TASK.exec(rest);
   if (m) return { level, kind: "taskList", content: m[2] ?? "", checked: m[1] !== " " };
   m = BULLET.exec(rest);
   if (m) return { level, kind: "bulletList", content: m[1] };
@@ -177,6 +183,12 @@ export function parseNote(text: string): NoteNode {
 
   for (const raw of text.replace(/\r\n?/g, "\n").split("\n")) {
     const line = readLine(raw);
+    if (line.kind === "heading") {
+      stack.length = 0;
+      const content = parseInline(line.content);
+      doc.content!.push({ type: "heading", attrs: { level: line.level }, ...(content.length ? { content } : {}) });
+      continue;
+    }
     if (line.kind) {
       while (stack.length && stack[stack.length - 1].level > line.level) stack.pop();
       let top = stack[stack.length - 1];
@@ -211,7 +223,7 @@ export function parseNote(text: string): NoteNode {
 /** A line that would read back as a list item, but is not one, gets a
  *  backslash in front of its marker. */
 function escapeParagraphStart(s: string): string {
-  if (/^[-*+] /.test(s)) return "\\" + s;
+  if (/^([-*+]|#{1,6}) /.test(s)) return "\\" + s;
   const m = /^(\d{1,9})([.)]) /.exec(s);
   if (m) return m[1] + "\\" + s.slice(m[1].length);
   return s;
@@ -229,8 +241,9 @@ function serializeList(list: NoteNode, level: number, lines: string[]) {
     if (list.type !== "taskList" && /^\[[ xX]\]( |$)/.test(head)) head = "\\" + head;
     lines.push(indent + marker + head);
     for (const child of first?.type === "paragraph" ? rest : item.content ?? []) {
-      if (child.type === "paragraph") lines.push(indent + "  " + serializeInline(child.content));
-      else serializeList(child, level + 1, lines);
+      // Was keine Liste ist (auch eine Überschrift im Punkt), wird Folgezeile.
+      if (child.type.endsWith("List")) serializeList(child, level + 1, lines);
+      else lines.push(indent + "  " + serializeInline(child.content));
     }
   }
 }
@@ -240,7 +253,10 @@ export function serializeNote(doc: NoteNode): string {
   const lines: string[] = [];
   let afterList = false;
   for (const block of doc.content ?? []) {
-    if (block.type === "paragraph") {
+    if (block.type === "heading") {
+      lines.push(`${"#".repeat(block.attrs?.level === 2 ? 2 : 1)} ${serializeInline(block.content)}`);
+      afterList = false;
+    } else if (block.type === "paragraph") {
       let s = escapeParagraphStart(serializeInline(block.content));
       // Indented right after a list, it would read back as part of it.
       if (afterList) s = s.trimStart();

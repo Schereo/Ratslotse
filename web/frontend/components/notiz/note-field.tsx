@@ -14,7 +14,7 @@ const NoteEditor = dynamic(() => import("@/components/notiz/note-editor"), {
   // Hält die Höhe, bis der Editor da ist — sonst springt die Karte.
   loading: () => (
     <div aria-hidden className="rounded-xl border border-input bg-background">
-      <div className="h-[53px] border-b border-border breit:h-[45px]" />
+      <div className="h-[53px] border-b border-border desk:h-[45px]" />
       <div className="h-32 animate-pulse bg-muted/40" />
     </div>
   ),

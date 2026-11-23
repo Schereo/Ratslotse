@@ -177,6 +177,16 @@ test.describe("Meine Notiz", () => {
     const punkte = feld.locator("ul:not([data-type]) > li");
 
     await feld.click();
+    // Überschrift aus der Leiste — im Dokument ein h3, die Karte ist schon ein h2.
+    await leiste.getByRole("button", { name: "Überschrift", exact: true }).click();
+    await feld.pressSequentially("Haushalt 2027");
+    await expect(feld.getByRole("heading", { level: 3, name: "Haushalt 2027" })).toBeVisible();
+    await expect(leiste.getByRole("button", { name: "Überschrift", exact: true })).toHaveAttribute("aria-pressed", "true");
+    await feld.press("Enter");
+    // „## “ wie in Markdown: die kleinere.
+    await feld.pressSequentially("## Fragen");
+    await expect(feld.getByRole("heading", { level: 4, name: "Fragen" })).toBeVisible();
+    await feld.press("Enter");
     // Wie in Markdown getippt: „1. “ am Zeilenanfang wird eine nummerierte Liste.
     await feld.pressSequentially("1. Ortstermin");
     await expect(feld.locator("ol > li")).toHaveText("Ortstermin");
@@ -219,6 +229,8 @@ test.describe("Meine Notiz", () => {
     await expect(feld.locator("strong")).toHaveText("Wichtig");
     await expect(feld.getByRole("checkbox", { name: "Aufgabe: Wichtig" })).toBeChecked();
     await expect(feld.locator("ol > li")).toHaveText("Ortstermin");
+    await expect(feld.getByRole("heading", { level: 3, name: "Haushalt 2027" })).toBeVisible();
+    await expect(feld.getByRole("heading", { level: 4, name: "Fragen" })).toBeVisible();
   });
 
   test("ohne Schalter keine Karte", async ({ page }) => {

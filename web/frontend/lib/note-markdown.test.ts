@@ -53,6 +53,38 @@ describe("parseNote", () => {
   });
 });
 
+describe("Überschriften", () => {
+  const h = (level: number, ...content: NoteNode[]): NoteNode => ({ type: "heading", attrs: { level }, content });
+
+  it("# und ## sind die beiden Größen, tiefere lesen sich als ##", () => {
+    expect(parseNote("# Haushalt 2027\n## Fragen\n### noch kleiner")).toEqual(doc(
+      h(1, t("Haushalt 2027")), h(2, t("Fragen")), h(2, t("noch kleiner"))));
+  });
+
+  it("beendet eine Liste und trägt Hervorhebung", () => {
+    const text = "- a\n## Zur **Sitzung**\n- b";
+    expect(parseNote(text)).toEqual(doc(
+      { type: "bulletList", content: [li(p(t("a")))] },
+      h(2, t("Zur "), t("Sitzung", "bold")),
+      { type: "bulletList", content: [li(p(t("b")))] },
+    ));
+    rund(text);
+  });
+
+  it("ohne Leerzeichen, eingerückt oder als Absatz-Text keine Überschrift", () => {
+    expect(parseNote("#hashtag").content![0].type).toBe("paragraph");
+    expect(parseNote("- a\n  # b").content![0].content![0].content!.map((n) => n.type)).toEqual(["paragraph", "paragraph"]);
+    const d = doc(p(t("# keine Überschrift")));
+    expect(serializeNote(d)).toBe("\\# keine Überschrift");
+    expect(parseNote(serializeNote(d))).toEqual(d);
+  });
+
+  it("leere Überschrift bleibt eine", () => {
+    expect(serializeNote(doc({ type: "heading", attrs: { level: 1 } }))).toBe("# ");
+    expect(parseNote("# ")).toEqual(doc({ type: "heading", attrs: { level: 1 } }));
+  });
+});
+
 describe("Inline", () => {
   it("fett, kursiv und beides verschachtelt", () => {
     expect(parseInline("die **Verwaltung** *fragen*")).toEqual([t("die "), t("Verwaltung", "bold"), t(" "), t("fragen", "italic")]);
@@ -102,7 +134,7 @@ describe("serializeNote", () => {
 
   it("hin und zurück ohne Verlust", () => {
     for (const s of [
-      "Fragen an die **Verwaltung**\n1. Wie viel zahlt die Stadt?\n2. Was passiert mit dem *Schülerticket*?\n\nVor der Sitzung\n- [x] Vorlage lesen\n- [ ] Mit der Fraktion abstimmen",
+      "# Haushalt 2027\nFragen an die **Verwaltung**\n1. Wie viel zahlt die Stadt?\n2. Was passiert mit dem *Schülerticket*?\n\nVor der Sitzung\n- [x] Vorlage lesen\n- [ ] Mit der Fraktion abstimmen",
       "nur Text",
       "- a\n  - b\n- c",
       "5. fünf\n6. sechs",

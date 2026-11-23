@@ -193,6 +193,10 @@
   .notiz-editor ul[data-type="taskList"] > li > div { flex: 1; min-width: 0; }
   .notiz-editor ul[data-type="taskList"] > li[data-checked="true"] > div { text-decoration: line-through; color: hsl(var(--muted-foreground)); }
   .notiz-editor li > p, .notiz-editor li > div > p { margin: 0; }
+  /* Überschriften: h3/h4 im Dokument, weil die Karte schon ein h2 ist. */
+  .notiz-editor h3 { font-family: var(--font-display, inherit); font-size: 1rem; font-weight: 600; line-height: 1.4; margin: 0.75em 0 0.15em; }
+  .notiz-editor h4 { font-size: 0.875rem; font-weight: 600; line-height: 1.5; margin: 0.6em 0 0.1em; }
+  .notiz-editor > h3:first-child, .notiz-editor > h4:first-child { margin-top: 0; }
   .notiz-editor p.is-editor-empty:first-child::before {
     content: attr(data-placeholder);
     float: left;

@@ -17,6 +17,10 @@ function block(n: NoteNode, i: number): ReactNode {
   const kids = (n.content ?? []).map(block);
   switch (n.type) {
     case "paragraph": return <p key={i} className="min-h-[1lh]">{inline(n.content)}</p>;
+    // h3/h4 wie im Editor: Die Karte drumherum ist schon ein h2.
+    case "heading": return n.attrs?.level === 2
+      ? <h4 key={i} className="mt-2 font-semibold first:mt-0">{inline(n.content)}</h4>
+      : <h3 key={i} className="mt-3 font-display text-base font-semibold first:mt-0">{inline(n.content)}</h3>;
     case "bulletList": return <ul key={i} className="list-disc pl-5">{kids}</ul>;
     case "orderedList": return <ol key={i} start={(n.attrs?.start as number) ?? 1} className="list-decimal pl-5">{kids}</ol>;
     case "taskList": return <ul key={i} className="list-none pl-0">{kids}</ul>;
