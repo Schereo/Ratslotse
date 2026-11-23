@@ -719,6 +719,7 @@ Notizfeld: „Nur ich“, die gemeinsamen Notizen zu diesem Ziel, „+ Gemeinsam
 | Verpackung je Mitglied | mit dem eigenen Datenschlüssel (derselbe wie für die eigenen Notizen) | `shared_note_members` |
 | Inhalt | ein Yjs-Dokument: verschlüsselter Stand plus verschlüsselte, nummerierte Änderungen | `shared_notes.snapshot`, `shared_note_updates` |
 | Einladung | Notizschlüssel verpackt mit einem Geheimnis, das nur im Link-Anker steht | `shared_note_invites` (das Geheimnis nie) |
+| Nachweis | aus dem Geheimnis abgeleitet (HKDF, eigene Kennung), öffnet nichts | beim Server nur sein SHA-256 (`verifier_hash`) |
 
 **Einladen per Link.** Der Link heißt `/notiz-einladung?i=<Kennung>#<Geheimnis>`.
 Kein Browser schickt den Anker an einen Server; die Seite rettet ihn vor der
@@ -726,8 +727,14 @@ Anmeldung in den `sessionStorage` und nimmt ihn aus der Adresszeile. Wer
 beitritt, packt den Notizschlüssel mit dem Geheimnis aus und verpackt ihn mit
 dem eigenen Datenschlüssel neu. Es gibt kein Adressbuch und keine Suche nach
 Konten, und der Server kann sich nicht selbst einladen, weil er das Geheimnis
-nie sieht. Ein Link gilt sieben Tage, jedes Mitglied kann einladen und
-Einladungen zurückziehen.
+nie sieht. Die Kennung allein reicht zum Beitreten nicht, denn sie steht im
+sichtbaren Teil des Links und damit womöglich in Protokollen: Beitreten
+verlangt den Nachweis, den nur das Geheimnis ergibt. Ein Link gilt sieben
+Tage und darf mehrere einladen. Jedes Mitglied kann einladen; seine eigenen
+Einladungen sieht und zieht es zurück, die Leitung alle. **Endet eine
+Mitgliedschaft** — entfernt, gegangen, Konto gelöscht —, fallen alle offenen
+Einladungen der Notiz weg: Wer geht, kennt den alten Schlüssel und womöglich
+die Links der anderen und wäre damit sonst gleich wieder drin.
 
 **Live.** `web/frontend/lib/shared-note-live.ts` hält das Yjs-Dokument über
 einen WebSocket (`{id}/live` neben den übrigen Pfaden der gemeinsamen Notizen; WebSockets stehen in keinem OpenAPI-Vertrag) mit den anderen im Takt: Tippen
@@ -736,7 +743,9 @@ Browser nach und schickt Unbestätigtes neu, ab 200 Änderungen fasst ein
 Mitglied sie zu einem Stand zusammen. Auch Anwesenheit (Name, Cursor) geht
 verschlüsselt. Angemeldet wird die Verbindung mit einer Einmal-Kennung aus
 `POST /{id}/ticket`, nicht mit dem Cookie (sonst könnte jede fremde Seite eine
-Verbindung im Namen der Person öffnen). Der Server nummeriert, speichert und
+Verbindung im Namen der Person öffnen). Die Mitgliedschaft prüft der Server
+beim Verbinden, bei jedem Nachholen und alle 30 Sekunden; ein Rauswurf trennt
+sofort und verwirft auch noch nicht eingelöste Tickets. Der Server nummeriert, speichert und
 verteilt nur; die Räume liegen im Speicher des einen API-Prozesses. Auf Prod
 geht der WebSocket über Caddy und den Rewrite von Next; `next start` reicht
 Upgrade-Anfragen eines Rewrites wie `next dev` durch.
@@ -753,8 +762,8 @@ Was ausdrücklich noch fehlt:
    Änderungen mehr, weil der Server sie ihm nicht liefert. Den alten
    Notizschlüssel kennt er aber; gegen einen Server, der ihm trotzdem
    Änderungen gäbe, hilft erst ein neuer Schlüssel für alle übrigen.
-2. **Wer den Link hat, kann beitreten**, bis er abläuft oder zurückgezogen ist.
-   Die Leitung sieht, wer dabei ist.
+2. **Wer den ganzen Link hat, kann beitreten**, bis er abläuft, zurückgezogen
+   ist oder eine Mitgliedschaft endet. Die Leitung sieht, wer dabei ist.
 3. **Der Server sieht**, wer mit wem eine gemeinsame Notiz zu welchem Punkt
    hat, wann geschrieben wird und wie groß die Änderungen sind.
 4. **Die App** kennt gemeinsame Notizen noch nicht.

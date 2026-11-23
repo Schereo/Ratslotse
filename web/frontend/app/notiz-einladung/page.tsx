@@ -23,7 +23,7 @@ import { useAuth } from "@/lib/auth";
 import { useAppConfig, featureAktiv } from "@/lib/features";
 import { mitRuecksprung } from "@/lib/public-routes";
 import { decisionHref, punktHref } from "@/lib/routes";
-import { openInvite, wrapForMe } from "@/lib/shared-note-crypto";
+import { inviteVerifier, openInvite, wrapForMe } from "@/lib/shared-note-crypto";
 import type { ApiAntwort } from "@/lib/vertrag";
 
 type Info = ApiAntwort<"/note-invites/{invite_id}">;
@@ -84,13 +84,14 @@ function EinladungInner() {
     setFehler(null);
     try {
       const nk = await openInvite(geheimnis, { iv: info.iv, ct: info.ciphertext });
-      if (!nk) {
+      const verifier = await inviteVerifier(geheimnis);
+      if (!nk || !verifier) {
         setFehler("Der Link ist unvollständig oder gehört zu einer anderen Einladung. Lass ihn dir noch einmal schicken.");
         return;
       }
       const w = await wrapForMe(o.dk, nk);
       await api.post(`/note-invites/${encodeURIComponent(info.invite_id)}/accept`,
-        { key_iv: w.iv, key_ct: w.ct, key_version: o.keyVersion });
+        { key_iv: w.iv, key_ct: w.ct, key_version: o.keyVersion, verifier });
       try {
         sessionStorage.removeItem(`ratslotse:einladung:${id}`);
         sessionStorage.setItem(OFFEN_KEY, info.note_id);

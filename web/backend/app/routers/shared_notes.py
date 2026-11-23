@@ -14,7 +14,10 @@ kein Browser an einen Server. Wer den Link öffnet, packt den Schlüssel aus
 und verpackt ihn neu mit dem eigenen Datenschlüssel. Kein Adressbuch, keine
 Suche nach Konten, und der Server kann sich nicht als Mitglied ausgeben,
 weil er das Geheimnis nie sieht. Wer den Link hat, kann bis zum Ablauf
-beitreten — die Leitung sieht, wer dabei ist, und kann entfernen.
+beitreten — die Leitung sieht, wer dabei ist, und kann entfernen. Die
+Kennung allein reicht nicht: Beitreten verlangt einen Nachweis, den nur das
+Geheimnis ergibt (HKDF mit eigener Kennung, beim Server nur sein SHA-256).
+Endet eine Mitgliedschaft, fallen ALLE offenen Einladungen der Notiz weg.
 
 **Was der Server sieht:** wer in welcher gemeinsamen Notiz zu welchem Punkt
 ist, wann geschrieben wird, wie groß die Änderungen sind.
@@ -35,6 +38,8 @@ from __future__ import annotations
 import asyncio
 import base64
 import binascii
+import hashlib
+import hmac
 import json
 import secrets
 import time
@@ -74,6 +79,9 @@ INVITE_DAYS_MAX = 30
 TICKET_TTL = 60
 #: Nachrichten je Verbindung und Fenster — der Client fasst Tippen zusammen.
 LIVE_RATE = (200, 10.0)
+#: So oft prüft jede Live-Verbindung, ob ihr Konto noch Mitglied ist — auch
+#: wenn es auf einem Weg verschwand, der niemanden trennt (Konto gelöscht).
+MEMBERSHIP_CHECK_SECONDS = 30.0
 
 
 def _an() -> None:
@@ -105,6 +113,8 @@ class SharedNoteIn(BaseModel):
 class InviteIn(BaseModel):
     iv: str = Field(max_length=32)
     ciphertext: str = Field(max_length=128)
+    #: SHA-256 des Nachweises aus dem Link-Geheimnis (Base64, 32 Byte).
+    verifier_hash: str = Field(max_length=64)
     days: int = Field(default=7, ge=1, le=INVITE_DAYS_MAX)
 
 
@@ -112,6 +122,9 @@ class AcceptIn(BaseModel):
     key_iv: str = Field(max_length=32)
     key_ct: str = Field(max_length=128)
     key_version: int = Field(ge=1)
+    #: Der Nachweis selbst (Base64, 32 Byte) — nur wer das Geheimnis aus dem
+    #: Anker hat, kann ihn bilden. Er öffnet keinen Schlüssel (eigene HKDF-Kennung).
+    verifier: str = Field(max_length=64)
 
 
 def _note_out(n: dict) -> SharedNote:
@@ -209,8 +222,10 @@ def create_invite(note_id: str, body: InviteIn, request: Request, user: dict = D
     _mitglied(store, note_id, user["id"])
     _b64(body.iv, "iv", laenge=12)
     _b64(body.ciphertext, "ciphertext", hoechstens=WRAPPED_KEY_MAX)
+    _b64(body.verifier_hash, "verifier_hash", laenge=32)
     bis = (datetime.utcnow() + timedelta(days=body.days)).isoformat(timespec="seconds")
-    invite_id = store.create_shared_note_invite(note_id, user["id"], body.iv, body.ciphertext, bis)
+    invite_id = store.create_shared_note_invite(note_id, user["id"], body.iv, body.ciphertext, bis,
+                                                body.verifier_hash)
     return {"id": invite_id, "expires_at": bis,
             "created_at": datetime.utcnow().isoformat(timespec="seconds")}
 
@@ -218,10 +233,12 @@ def create_invite(note_id: str, body: InviteIn, request: Request, user: dict = D
 @router.get("/{note_id}/invites")
 def list_invites(note_id: str, user: dict = Depends(require_active),
                  store: Store = Depends(get_store)) -> SharedNoteInvites:
+    """Die Leitung sieht alle offenen Einladungen, ein Mitglied nur seine eigenen."""
     _an()
-    _mitglied(store, note_id, user["id"])
+    ich = _mitglied(store, note_id, user["id"])
+    nur = None if ich["role"] == "owner" else user["id"]
     return {"invites": [{"id": i["id"], "expires_at": i["expires_at"], "created_at": i["created_at"]}
-                        for i in store.shared_note_invites(note_id)]}
+                        for i in store.shared_note_invites(note_id, nur)]}
 
 
 @router.delete("/{note_id}/invites/{invite_id}", status_code=status.HTTP_204_NO_CONTENT, response_class=Response,
@@ -229,8 +246,9 @@ def list_invites(note_id: str, user: dict = Depends(require_active),
 def delete_invite(note_id: str, invite_id: str, user: dict = Depends(require_active),
                   store: Store = Depends(get_store)) -> Response:
     _an()
-    _mitglied(store, note_id, user["id"])
-    if not store.delete_shared_note_invite(note_id, invite_id):
+    ich = _mitglied(store, note_id, user["id"])
+    nur = None if ich["role"] == "owner" else user["id"]
+    if not store.delete_shared_note_invite(note_id, invite_id, nur):
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Diese Einladung gibt es nicht.")
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
@@ -284,6 +302,12 @@ def accept_invite(invite_id: str, body: AcceptIn, request: Request, user: dict =
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Diese Einladung gilt nicht mehr.")
     _b64(body.key_iv, "key_iv", laenge=12)
     _b64(body.key_ct, "key_ct", hoechstens=WRAPPED_KEY_MAX)
+    _b64(body.verifier, "verifier", laenge=32)
+    # Die Kennung steht im sichtbaren Teil des Links (und damit in Protokollen);
+    # beitreten darf nur, wer auch das Geheimnis aus dem Anker hat.
+    probe = base64.b64encode(hashlib.sha256(base64.b64decode(body.verifier)).digest()).decode()
+    if not hmac.compare_digest(probe, i["verifier_hash"]):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Der Link ist unvollständig oder gehört zu einer anderen Einladung.")
     if store.join_shared_note(i["note_id"], user["id"], key_iv=body.key_iv, key_ct=body.key_ct,
                               key_version=body.key_version) == "full":
         raise HTTPException(status.HTTP_409_CONFLICT, "Diese Notiz hat schon die höchste Zahl an Mitgliedern.")
@@ -302,8 +326,13 @@ def _mit_store(fn):
         store.close()
 
 
-def _zustand(note_id: str, since: int) -> dict:
-    return _mit_store(lambda s: s.shared_note_state(note_id, since))
+def _zustand(note_id: str, user_id: int, since: int) -> dict | None:
+    """Der Stand ab ``since`` — ``None``, wenn das Konto nicht mehr dabei ist."""
+    return _mit_store(lambda s: s.shared_note_state(note_id, since) if s.shared_note_member(note_id, user_id) else None)
+
+
+def _dabei(note_id: str, user_id: int) -> bool:
+    return _mit_store(lambda s: s.shared_note_member(note_id, user_id) is not None)
 
 
 def _anhaengen(note_id: str, user_id: int, iv: str, ct: str) -> int | str | None:
@@ -379,7 +408,10 @@ class _Live:
         await self.verteilen(note_id, {"t": "presence", "online": online})
 
     async def kick(self, note_id: str, user_id: int | None) -> None:
-        """Entfernte Mitglieder (oder alle, wenn die Notiz weg ist) trennen."""
+        """Entfernte Mitglieder (oder alle, wenn die Notiz weg ist) trennen —
+        und ihre noch nicht eingelösten Tickets verwerfen."""
+        for k in [k for k, (n, u, _) in self.tickets.items() if n == note_id and (user_id is None or u == user_id)]:
+            self.tickets.pop(k, None)
         for v in [v for v in self.raeume.get(note_id, ()) if user_id is None or v.user_id == user_id]:
             try:
                 await v.ws.close(code=4403)
@@ -399,11 +431,27 @@ async def live_socket(ws: WebSocket, note_id: str, ticket: str = "") -> None:
     if user_id is None:
         await ws.close(code=4401)
         return
+    # Das Ticket kann älter sein als ein Rauswurf: hier noch einmal fragen.
+    if not await run_in_threadpool(_dabei, note_id, user_id):
+        await ws.close(code=4403)
+        return
     await ws.accept()
     ich = _Verbindung(ws, user_id)
     live.raeume.setdefault(note_id, set()).add(ich)
     await ich.senden({"t": "hello", "you": user_id})
     await live.anwesend(note_id)
+
+    async def waechter() -> None:
+        while True:
+            await asyncio.sleep(MEMBERSHIP_CHECK_SECONDS)
+            if not await run_in_threadpool(_dabei, note_id, user_id):
+                try:
+                    await ws.close(code=4403)
+                except Exception:  # noqa: BLE001
+                    pass
+                return
+
+    wache = asyncio.create_task(waechter())
     try:
         while True:
             roh = await ws.receive_text()
@@ -420,7 +468,10 @@ async def live_socket(ws: WebSocket, note_id: str, ticket: str = "") -> None:
             art = m.get("t") if isinstance(m, dict) else None
             if art == "sync":
                 since = m.get("since") if isinstance(m.get("since"), int) else 0
-                zustand = await run_in_threadpool(_zustand, note_id, max(0, since))
+                zustand = await run_in_threadpool(_zustand, note_id, user_id, max(0, since))
+                if zustand is None:
+                    await ws.close(code=4403)
+                    return
                 await ich.senden({"t": "sync", **zustand})
             elif art == "update":
                 if not (_ok_b64(m.get("iv"), laenge=12) and _ok_b64(m.get("ct"), hoechstens=UPDATE_MAX)):
@@ -450,6 +501,7 @@ async def live_socket(ws: WebSocket, note_id: str, ticket: str = "") -> None:
     except WebSocketDisconnect:
         pass
     finally:
+        wache.cancel()
         raum = live.raeume.get(note_id)
         if raum is not None:
             raum.discard(ich)

@@ -6082,7 +6082,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List Invites */
+        /**
+         * List Invites
+         * @description Die Leitung sieht alle offenen Einladungen, ein Mitglied nur seine eigenen.
+         */
         get: operations["list_invites_api_shared_notes__note_id__invites_get"];
         put?: never;
         /**
@@ -7431,6 +7434,8 @@ export interface components {
             key_iv: string;
             /** Key Version */
             key_version: number;
+            /** Verifier */
+            verifier: string;
         };
         /**
          * AccountPasskey
@@ -14453,6 +14458,8 @@ export interface components {
             days: number;
             /** Iv */
             iv: string;
+            /** Verifier Hash */
+            verifier_hash: string;
         };
         /**
          * ItemAmendment
@@ -32614,4 +32621,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 4747d82958bcccc19580253eb7f599947045912646cd2942ed066709b151855c
+// vertrag-sha256: 41aa96fc1b72b7c1c4ed08694967a883470d7c1c3b9f5241b74e3c4cba0aba72

@@ -24,6 +24,7 @@ const random = (n: number): Bytes => crypto.getRandomValues(new Uint8Array(n));
 
 const KEY_AAD = enc.encode("ratslotse-geteilter-schluessel-v1");
 const INVITE_INFO = enc.encode("ratslotse-einladung-v1");
+const VERIFIER_INFO = enc.encode("ratslotse-einladung-nachweis-v1");
 
 async function aes(raw: Bytes, usages: KeyUsage[] = ["encrypt", "decrypt"]): Promise<CryptoKey> {
   return crypto.subtle.importKey("raw", raw, { name: "AES-GCM" }, false, usages);
@@ -88,11 +89,33 @@ async function inviteKey(secret: Bytes): Promise<CryptoKey> {
     base, { name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]);
 }
 
+/** Proof that someone holds the link's secret — derived with its own HKDF
+ *  label, so it opens nothing. The server keeps only its SHA-256 and asks
+ *  for the proof itself on joining: the invite id alone (visible part of the
+ *  link, may end up in logs) is not enough to join. */
+async function verifierBytes(secret: Bytes): Promise<Bytes> {
+  const base = await crypto.subtle.importKey("raw", secret, "HKDF", false, ["deriveBits"]);
+  return new Uint8Array(await crypto.subtle.deriveBits(
+    { name: "HKDF", hash: "SHA-256", salt: new Uint8Array(0), info: VERIFIER_INFO }, base, 256));
+}
+
 /** An invite: the note key sealed with a fresh secret. The secret goes into
- *  the link's fragment, the sealed key to the server. */
-export async function makeInvite(nk: NoteKey): Promise<{ secret: string; sealed: Sealed }> {
+ *  the link's fragment; the sealed key and the hash of the proof go to the server. */
+export async function makeInvite(nk: NoteKey): Promise<{ secret: string; sealed: Sealed; verifierHash: string }> {
   const secret = random(32);
-  return { secret: toB64Url(secret), sealed: await seal(await inviteKey(secret), nk.raw, KEY_AAD) };
+  const hash = new Uint8Array(await crypto.subtle.digest("SHA-256", await verifierBytes(secret)));
+  return {
+    secret: toB64Url(secret),
+    sealed: await seal(await inviteKey(secret), nk.raw, KEY_AAD),
+    verifierHash: toB64(hash),
+  };
+}
+
+/** The proof to send when joining; `null` for a malformed secret. */
+export async function inviteVerifier(secret: string): Promise<string | null> {
+  const raw = fromB64Url(secret);
+  if (!raw || raw.length !== 32) return null;
+  return toB64(await verifierBytes(raw));
 }
 
 /** `null`: the secret does not fit (wrong or cut-off link). */

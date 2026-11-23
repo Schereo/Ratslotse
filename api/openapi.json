@@ -17,12 +17,18 @@
             "minimum": 1.0,
             "title": "Key Version",
             "type": "integer"
+          },
+          "verifier": {
+            "maxLength": 64,
+            "title": "Verifier",
+            "type": "string"
           }
         },
         "required": [
           "key_iv",
           "key_ct",
-          "key_version"
+          "key_version",
+          "verifier"
         ],
         "title": "AcceptIn",
         "type": "object"
@@ -17081,11 +17087,17 @@
             "maxLength": 32,
             "title": "Iv",
             "type": "string"
+          },
+          "verifier_hash": {
+            "maxLength": 64,
+            "title": "Verifier Hash",
+            "type": "string"
           }
         },
         "required": [
           "iv",
-          "ciphertext"
+          "ciphertext",
+          "verifier_hash"
         ],
         "title": "InviteIn",
         "type": "object"
@@ -48770,6 +48782,7 @@
     },
     "/api/shared-notes/{note_id}/invites": {
       "get": {
+        "description": "Die Leitung sieht alle offenen Einladungen, ein Mitglied nur seine eigenen.",
         "operationId": "list_invites_api_shared_notes__note_id__invites_get",
         "parameters": [
           {

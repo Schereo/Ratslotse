@@ -1086,6 +1086,9 @@ CREATE TABLE IF NOT EXISTS shared_note_invites (
     owner_id   INTEGER NOT NULL,
     iv         TEXT NOT NULL,
     ciphertext TEXT NOT NULL,
+    -- SHA-256 eines Nachweises, den nur das Link-Geheimnis ergibt (HKDF mit
+    -- eigener Kennung): Beitreten verlangt ihn, die Kennung allein reicht nicht.
+    verifier_hash TEXT NOT NULL,
     expires_at TEXT NOT NULL,
     created_at TEXT NOT NULL
 );
@@ -7192,15 +7195,16 @@ class Store:
         return True
 
     def create_shared_note_invite(self, note_id: str, owner_id: int, iv: str, ciphertext: str,
-                                  expires_at: str) -> str:
+                                  expires_at: str, verifier_hash: str) -> str:
         invite_id = secrets.token_urlsafe(16)
         now = datetime.utcnow().isoformat(timespec="seconds")
         with self._conn:
             # Abgelaufene räumen sich beim Anlegen einer neuen mit weg.
             self._conn.execute("DELETE FROM shared_note_invites WHERE expires_at < ?", (now,))
             self._conn.execute(
-                "INSERT INTO shared_note_invites (id, note_id, owner_id, iv, ciphertext, expires_at, created_at) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?)", (invite_id, note_id, owner_id, iv, ciphertext, expires_at, now))
+                "INSERT INTO shared_note_invites (id, note_id, owner_id, iv, ciphertext, verifier_hash, expires_at, "
+                "created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                (invite_id, note_id, owner_id, iv, ciphertext, verifier_hash, expires_at, now))
         return invite_id
 
     def get_shared_note_invite(self, invite_id: str) -> dict | None:
@@ -7212,16 +7216,25 @@ class Store:
             (invite_id, now)).fetchone()
         return dict(r) if r else None
 
-    def shared_note_invites(self, note_id: str) -> list[dict]:
+    def shared_note_invites(self, note_id: str, owner_id: int | None = None) -> list[dict]:
+        """Offene Einladungen — mit ``owner_id`` nur die dieses Kontos."""
         now = datetime.utcnow().isoformat(timespec="seconds")
-        return [dict(r) for r in self._conn.execute(
-            "SELECT id, expires_at, created_at FROM shared_note_invites WHERE note_id = ? AND expires_at >= ? "
-            "ORDER BY created_at DESC", (note_id, now))]
+        sql = "SELECT id, owner_id, expires_at, created_at FROM shared_note_invites WHERE note_id = ? AND expires_at >= ?"
+        args: list[object] = [note_id, now]
+        if owner_id is not None:
+            sql += " AND owner_id = ?"
+            args.append(owner_id)
+        return [dict(r) for r in self._conn.execute(sql + " ORDER BY created_at DESC", args)]
 
-    def delete_shared_note_invite(self, note_id: str, invite_id: str) -> bool:
+    def delete_shared_note_invite(self, note_id: str, invite_id: str, owner_id: int | None = None) -> bool:
+        """Zurückziehen — mit ``owner_id`` nur eine eigene."""
+        sql = "DELETE FROM shared_note_invites WHERE id = ? AND note_id = ?"
+        args: list[object] = [invite_id, note_id]
+        if owner_id is not None:
+            sql += " AND owner_id = ?"
+            args.append(owner_id)
         with self._conn:
-            return self._conn.execute("DELETE FROM shared_note_invites WHERE id = ? AND note_id = ?",
-                                      (invite_id, note_id)).rowcount == 1
+            return self._conn.execute(sql, args).rowcount == 1
 
     def join_shared_note(self, note_id: str, user_id: int, *, key_iv: str, key_ct: str, key_version: int) -> str:
         """Beitreten oder den eigenen Schlüssel erneuern. ``ok``, ``full``."""
@@ -7250,7 +7263,10 @@ class Store:
             if not n:
                 return
             self._conn.execute("DELETE FROM shared_note_members WHERE note_id = ? AND user_id = ?", (note_id, user_id))
-            self._conn.execute("DELETE FROM shared_note_invites WHERE note_id = ? AND owner_id = ?", (note_id, user_id))
+            # ALLE offenen Einladungen fallen weg, nicht nur die eigenen: Wer
+            # geht, kennt die Links der anderen womöglich — und den alten
+            # Notizschlüssel. Mit einem Link wäre er sonst gleich wieder drin.
+            self._conn.execute("DELETE FROM shared_note_invites WHERE note_id = ?", (note_id,))
             if n["owner_id"] != user_id:
                 return
             nach = self._conn.execute("SELECT user_id FROM shared_note_members WHERE note_id = ? "

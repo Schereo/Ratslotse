@@ -188,8 +188,9 @@ function EinladenDialog({ note, nk, onClose }: { note: SharedNote; nk: NoteKey; 
     let gone = false;
     (async () => {
       try {
-        const { secret, sealed } = await makeInvite(nk);
-        const inv = await api.post<Invite>(`/shared-notes/${note.id}/invites`, { iv: sealed.iv, ciphertext: sealed.ct, days: 7 });
+        const { secret, sealed, verifierHash } = await makeInvite(nk);
+        const inv = await api.post<Invite>(`/shared-notes/${note.id}/invites`,
+          { iv: sealed.iv, ciphertext: sealed.ct, verifier_hash: verifierHash, days: 7 });
         // Das Geheimnis steht im Anker (#…): Den schickt kein Browser an einen Server.
         const url = `${window.location.origin}/notiz-einladung?i=${encodeURIComponent(inv.id)}#${secret}`;
         if (!gone) setLink({ url, invite: inv });

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  fromB64Url, makeInvite, newNoteKey, openBlob, openInvite, sealBlob, toB64Url, unwrapForMe, wrapForMe,
+  fromB64Url, inviteVerifier, makeInvite, newNoteKey, openBlob, openInvite, sealBlob, toB64Url, unwrapForMe, wrapForMe,
 } from "./shared-note-crypto";
 
 const dk = () => crypto.subtle.importKey("raw", crypto.getRandomValues(new Uint8Array(32)), { name: "AES-GCM" }, false,
@@ -26,6 +26,25 @@ describe("Schlüssel gemeinsamer Notizen", () => {
     expect(await openInvite(anderes, sealed)).toBeNull();
     expect(await openInvite(secret.slice(0, 20), sealed)).toBeNull();
     expect(await openInvite("kein+gültiges/zeichen", sealed)).toBeNull();
+  });
+
+  it("der Nachweis passt zum Hash beim Server und öffnet selbst nichts", async () => {
+    const nk = await newNoteKey();
+    const { secret, sealed, verifierHash } = await makeInvite(nk);
+    const v = await inviteVerifier(secret);
+    const b64 = (u: Uint8Array) => btoa(String.fromCharCode(...u));
+    const raw = Uint8Array.from(atob(v!), (c) => c.charCodeAt(0));
+    expect(raw.length).toBe(32);
+    expect(b64(new Uint8Array(await crypto.subtle.digest("SHA-256", raw)))).toBe(verifierHash);
+    // Ein anderes Geheimnis ergibt einen anderen Nachweis.
+    expect(await inviteVerifier((await makeInvite(nk)).secret)).not.toBe(v);
+    expect(await inviteVerifier(secret.slice(0, 20))).toBeNull();
+    // Als Schlüssel benutzt, öffnet der Nachweis die Einladung nicht.
+    const alsSchluessel = await crypto.subtle.importKey("raw", raw, { name: "AES-GCM" }, false, ["decrypt"]);
+    const iv = Uint8Array.from(atob(sealed.iv), (c) => c.charCodeAt(0));
+    const ct = Uint8Array.from(atob(sealed.ct), (c) => c.charCodeAt(0));
+    await expect(crypto.subtle.decrypt({ name: "AES-GCM", iv, additionalData: text("ratslotse-geteilter-schluessel-v1") },
+      alsSchluessel, ct)).rejects.toThrow();
   });
 
   it("Inhalte gehören zu ihrer Notiz und ihrer Art", async () => {

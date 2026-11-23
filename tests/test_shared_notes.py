@@ -7,6 +7,7 @@ Zusammenführen der Yjs-Änderungen prüft ``web/frontend/lib/shared-note-crypto
 from __future__ import annotations
 
 import base64
+import hashlib
 import os
 import sys
 from pathlib import Path
@@ -29,6 +30,24 @@ def b64(n: int, fill: int = 7) -> str:
 
 
 SCHLUESSEL = {"key_iv": b64(12, 1), "key_ct": b64(48, 2), "key_version": 1}
+
+
+def nachweis(fill: int = 9) -> tuple[str, str]:
+    """(Nachweis, sein Hash) — wie ``inviteVerifier``/``makeInvite`` im Browser."""
+    roh = bytes([fill]) * 32
+    return base64.b64encode(roh).decode(), base64.b64encode(hashlib.sha256(roh).digest()).decode()
+
+
+def _einladung(c: TestClient, note_id: str, fill: int = 9, iv: str | None = None, ct: str | None = None) -> dict:
+    r = c.post(f"/api/shared-notes/{note_id}/invites",
+               json={"iv": iv or b64(12), "ciphertext": ct or b64(48), "verifier_hash": nachweis(fill)[1]})
+    assert r.status_code == 200, r.text
+    return r.json()
+
+
+def _annehmen(c: TestClient, invite_id: str, fill: int = 9):
+    return c.post(f"/api/note-invites/{invite_id}/accept",
+                  json={"key_iv": b64(12, 5), "key_ct": b64(48, 6), "key_version": 1, "verifier": nachweis(fill)[0]})
 
 
 @pytest.fixture(autouse=True)
@@ -58,12 +77,12 @@ def _anlegen(c: TestClient) -> dict:
 
 
 def _einladen_und_beitreten(anna: TestClient, ben: TestClient, note_id: str) -> dict:
-    inv = anna.post(f"/api/shared-notes/{note_id}/invites", json={"iv": b64(12, 3), "ciphertext": b64(48, 4)}).json()
+    inv = _einladung(anna, note_id, iv=b64(12, 3), ct=b64(48, 4))
     info = ben.get(f"/api/note-invites/{inv['id']}").json()
     assert (info["iv"], info["ciphertext"], info["already_member"]) == (b64(12, 3), b64(48, 4), False)
     assert info["inviter_name"] == "Anna"
-    r = ben.post(f"/api/note-invites/{inv['id']}/accept", json={"key_iv": b64(12, 5), "key_ct": b64(48, 6),
-                                                                 "key_version": 1})
+    assert "verifier_hash" not in info, "der Hash geht nur an den, der ihn angelegt hat — an niemanden"
+    r = _annehmen(ben, inv["id"])
     assert r.status_code == 200, r.text
     return r.json()
 
@@ -94,16 +113,61 @@ def test_anlegen_einladen_beitreten_und_jeder_haelt_seinen_eigenen_schluessel():
 def test_einladungen_laufen_ab_und_lassen_sich_zurueckziehen():
     anna, ben = _konto("anna@example.org", "Anna"), _konto("ben@example.org", "Ben")
     note = _anlegen(anna)
-    inv = anna.post(f"/api/shared-notes/{note['id']}/invites", json={"iv": b64(12), "ciphertext": b64(48)}).json()
+    inv = _einladung(anna, note["id"])
     assert [i["id"] for i in anna.get(f"/api/shared-notes/{note['id']}/invites").json()["invites"]] == [inv["id"]]
     assert anna.delete(f"/api/shared-notes/{note['id']}/invites/{inv['id']}").status_code == 204
     assert ben.get(f"/api/note-invites/{inv['id']}").status_code == 404
-    inv2 = anna.post(f"/api/shared-notes/{note['id']}/invites", json={"iv": b64(12), "ciphertext": b64(48)}).json()
+    inv2 = _einladung(anna, note["id"])
     store = Store(RATSLOTSE_DB)
     store._conn.execute("UPDATE shared_note_invites SET expires_at = '2000-01-01T00:00:00' WHERE id = ?", (inv2["id"],))
     store._conn.commit()
     store.close()
     assert ben.get(f"/api/note-invites/{inv2['id']}").status_code == 404
+
+
+def test_beitreten_verlangt_den_nachweis_aus_dem_geheimnis():
+    """Die Kennung steht im sichtbaren Teil des Links — sie allein reicht nicht."""
+    anna, ben = _konto("anna@example.org", "Anna"), _konto("ben@example.org", "Ben")
+    note = _anlegen(anna)
+    inv = _einladung(anna, note["id"], fill=9)
+    ohne = ben.post(f"/api/note-invites/{inv['id']}/accept", json=SCHLUESSEL)
+    assert ohne.status_code == 422
+    falsch = _annehmen(ben, inv["id"], fill=8)
+    assert falsch.status_code == 403 and "Link" in falsch.json()["detail"]
+    assert ben.get("/api/shared-notes").json()["notes"] == []
+    assert _annehmen(ben, inv["id"], fill=9).status_code == 200
+    # Ohne Hash legt niemand eine Einladung an.
+    r = anna.post(f"/api/shared-notes/{note['id']}/invites", json={"iv": b64(12), "ciphertext": b64(48)})
+    assert r.status_code == 422
+
+
+def test_wer_geht_nimmt_alle_offenen_einladungen_mit():
+    """Wer entfernt wird, kennt den alten Schlüssel und womöglich die Links der
+    anderen — mit einem davon wäre er sonst gleich wieder drin."""
+    anna, ben = _konto("anna@example.org", "Anna"), _konto("ben@example.org", "Ben")
+    note = _anlegen(anna)
+    _einladen_und_beitreten(anna, ben, note["id"])
+    offen = _einladung(anna, note["id"], fill=4)
+    assert anna.delete(f"/api/shared-notes/{note['id']}/members/{_ich(ben)}").status_code == 204
+    assert anna.get(f"/api/shared-notes/{note['id']}/invites").json()["invites"] == []
+    assert _annehmen(ben, offen["id"], fill=4).status_code == 404
+    assert ben.get("/api/shared-notes").json()["notes"] == []
+
+
+def test_einladungen_sieht_und_zieht_nur_zurueck_wer_sie_angelegt_hat_oder_leitet():
+    anna, ben = _konto("anna@example.org", "Anna"), _konto("ben@example.org", "Ben")
+    note = _anlegen(anna)
+    _einladen_und_beitreten(anna, ben, note["id"])
+    von_anna = _einladung(anna, note["id"], fill=1)
+    von_ben = _einladung(ben, note["id"], fill=2)
+    pfad = f"/api/shared-notes/{note['id']}/invites"
+    # Die Leitung sieht alle (auch die, mit der Ben beitrat — ein Link darf mehrere einladen).
+    assert {von_anna["id"], von_ben["id"]} <= {i["id"] for i in anna.get(pfad).json()["invites"]}
+    assert [i["id"] for i in ben.get(pfad).json()["invites"]] == [von_ben["id"]]
+    assert ben.delete(f"{pfad}/{von_anna['id']}").status_code == 404
+    assert anna.delete(f"{pfad}/{von_ben['id']}").status_code == 204
+    assert ben.delete(f"{pfad}/{von_anna['id']}").status_code == 404
+    assert anna.delete(f"{pfad}/{von_anna['id']}").status_code == 204
 
 
 def test_entfernen_gehen_und_loeschen():
@@ -245,6 +309,71 @@ def test_wer_entfernt_wird_fliegt_aus_der_live_verbindung(leitung):
         # Über dieselbe Schleife wie die Verbindung, mit Annas Cookie.
         leitung.cookies = anna.cookies
         assert leitung.delete(f"/api/shared-notes/{note['id']}/members/{_ich(ben)}").status_code == 204
+        with pytest.raises(WebSocketDisconnect) as e:
+            for _ in range(10):
+                wb.receive_json()
+        assert e.value.code == 4403
+
+
+def _ohne_rauswurf_entfernen(note_id: str, user_id: int) -> None:
+    """Mitgliedschaft endet auf einem Weg, der niemanden trennt (wie beim Löschen eines Kontos)."""
+    store = Store(RATSLOTSE_DB)
+    try:
+        store.leave_shared_note(note_id, user_id)
+    finally:
+        store.close()
+
+
+def test_ein_rauswurf_verwirft_auch_offene_tickets(leitung):
+    anna, ben = _konto("anna@example.org", "Anna"), _konto("ben@example.org", "Ben")
+    note = _anlegen(anna)
+    _einladen_und_beitreten(anna, ben, note["id"])
+    ticket = ben.post(f"/api/shared-notes/{note['id']}/ticket").json()["ticket"]
+    leitung.cookies = anna.cookies
+    assert leitung.delete(f"/api/shared-notes/{note['id']}/members/{_ich(ben)}").status_code == 204
+    leitung.cookies.clear()
+    with pytest.raises(WebSocketDisconnect) as e:
+        with leitung.websocket_connect(f"/api/shared-notes/{note['id']}/live?ticket={ticket}") as ws:
+            ws.receive_json()
+    assert e.value.code == 4401
+
+
+def test_ein_altes_ticket_hilft_nach_dem_ende_der_mitgliedschaft_nicht(leitung):
+    anna, ben = _konto("anna@example.org", "Anna"), _konto("ben@example.org", "Ben")
+    note = _anlegen(anna)
+    _einladen_und_beitreten(anna, ben, note["id"])
+    ticket = ben.post(f"/api/shared-notes/{note['id']}/ticket").json()["ticket"]
+    _ohne_rauswurf_entfernen(note["id"], _ich(ben))
+    with pytest.raises(WebSocketDisconnect) as e:
+        with leitung.websocket_connect(f"/api/shared-notes/{note['id']}/live?ticket={ticket}") as ws:
+            ws.receive_json()
+    assert e.value.code == 4403
+
+
+def test_nachholen_fragt_die_mitgliedschaft_noch_einmal(leitung):
+    anna, ben = _konto("anna@example.org", "Anna"), _konto("ben@example.org", "Ben")
+    note = _anlegen(anna)
+    _einladen_und_beitreten(anna, ben, note["id"])
+    with _live(ben, leitung, note["id"]) as wb:
+        _bis(wb, "hello")
+        _ohne_rauswurf_entfernen(note["id"], _ich(ben))
+        wb.send_json({"t": "sync", "since": 0})
+        with pytest.raises(WebSocketDisconnect) as e:
+            for _ in range(10):
+                wb.receive_json()
+        assert e.value.code == 4403
+
+
+def test_der_waechter_trennt_auch_ohne_rauswurf(leitung, monkeypatch):
+    from app.routers import shared_notes
+
+    monkeypatch.setattr(shared_notes, "MEMBERSHIP_CHECK_SECONDS", 0.05)
+    anna, ben = _konto("anna@example.org", "Anna"), _konto("ben@example.org", "Ben")
+    note = _anlegen(anna)
+    _einladen_und_beitreten(anna, ben, note["id"])
+    with _live(ben, leitung, note["id"]) as wb:
+        _bis(wb, "hello")
+        _ohne_rauswurf_entfernen(note["id"], _ich(ben))
         with pytest.raises(WebSocketDisconnect) as e:
             for _ in range(10):
                 wb.receive_json()
