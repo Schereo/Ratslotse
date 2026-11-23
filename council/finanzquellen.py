@@ -69,7 +69,7 @@ from dataclasses import dataclass, field
 from datetime import date, timedelta
 from collections.abc import Callable
 
-from council import (anlagenspiegel, bilanz, budget_accounts, buergschaften, indicators,
+from council import (anlagenspiegel, bilanz, budget_accounts, buergschaften, holding_quarterly, indicators,
                      income_budget, finanzberichte, herkunft, investitionsprogramm, konzernabschluss,
                      pruefberichte, stellenplan)
 from council.store import CouncilStore
@@ -729,6 +729,21 @@ def _bestand_haushaltsvollzug(store: CouncilStore) -> set[tuple]:
     Jahrgang sind die vier Stichtage vier verschiedene Erwartungen an
     dasselbe Jahresende."""
     return store.haushaltsvollzug_einheiten()
+
+
+def _bestand_holding_quarterly(store: CouncilStore) -> set[tuple]:
+    """Welche ``(Jahr, Stichtag)`` im Bestand stehen.
+
+    Die Einheit ist der Bericht, nicht der Jahrgang: Ein Jahr trägt bis zu drei
+    Hochrechnungen (30.06., 30.09., 31.12.), und jede ist eine eigene Aussage.
+    Wer je Jahr buchführte, hielte 2025 mit dem Bericht zum 30.06. für
+    erledigt und zöge die beiden folgenden nie nach."""
+    return store.holding_forecast_einheiten()
+
+
+def _einheiten_holding_quarterly(row: dict) -> set[tuple]:
+    einheit = holding_quarterly.einheit_aus_kopf(row.get("label"), row.get("kopf"))
+    return {einheit} if einheit else set()
 
 
 def _bestand_haushaltssatzung(store: CouncilStore) -> set[tuple]:
@@ -3203,6 +3218,37 @@ for _q in (
         balance=_bestand_gesellschaft_abschluss,
     ),
     Finanzquelle(
+        key="holding_quarterly",
+        label="Quartalsberichte der Beteiligungen",
+        was="Wie das laufende Jahr bei den städtischen Gesellschaften und "
+            "Eigenbetrieben steht: Plan und Hochrechnung je Stichtag aus dem "
+            "Quartalsbericht, den die Verwaltung dem Finanzausschuss vorlegt "
+            "(Klinikum, Verkehr und Wasser, Bäder, Weser-Ems-Halle und die "
+            "übrigen). Jede Hochrechnung eines Jahres steht für sich, das Ist "
+            "kommt erst aus dem Abschluss.",
+        tabelle="council_holding_forecasts",
+        unit="Stichtag",
+        # Gemessen an den Beratungsterminen: Der Bericht zum 30.06. liegt im
+        # September im Ausschuss, der zum 30.09. im Dezember, der zum 31.12.
+        # im Februar/März des Folgejahres. Der März ist die Schwelle des
+        # SPÄTESTEN Berichts eines Jahrgangs. Keine Ampel gegen die
+        # Drei-Wochen-Frist des Handbuchs: Sie gilt gegenüber den Organen,
+        # nicht für den Termin im Ausschuss.
+        erwarteter_monat=3,
+        versatz=1,
+        herkunft="ris",
+        # Erkannt am Titel der Sammelvorlage; die Anlage heißt mal
+        # „Quartalsbericht 30.06.2021“, mal „Anlage“, mal „Bericht Q2 2025
+        # Endfassung“. Die Ad-hoc-Berichte (Corona 2020) tragen andere Titel.
+        erkennung=Erkennung(vorlagen_muster=(holding_quarterly.TITEL_MUSTER,),
+                            ordnung="document_id"),
+        einheiten_von=_einheiten_holding_quarterly,
+        nachschub="liegt schon im Bestand (Anlagentext), "
+                  "scripts/ingest_holding_quarterly.py",
+        balance=_bestand_holding_quarterly,
+        lauf=("scripts/ingest_holding_quarterly.py",),
+    ),
+    Finanzquelle(
         key="budget_bylaw_published",
         label="Beschlossene Haushaltssatzung (Amtsblatt)",
         was="Die Haushaltssatzung in der Fassung, die der Rat beschlossen und "
@@ -3419,6 +3465,7 @@ REIHENFOLGE = ("haushaltsplan", "budget_notes", "income_budget", "finance_budget
                "konzernabschluss", "beteiligungsbericht", "fees",
                "budget_bylaw", "budget_bylaw_published",
                "wirtschaftsplan", "enterprise_accounts", "company_accounts",
+               "holding_quarterly",
                "schulden", "loans", "liquidity",
                "lsn_steuerkraft", "lsn_realsteuern", "lsn_gewerbesteuer", "bundesvergleich",
                "regionalstatistik")

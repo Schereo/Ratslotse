@@ -4411,7 +4411,54 @@ class HoldingsHandbook(TypedDict):
     rules: list[HoldingsHandbookRule]
 
 
+class HoldingForecastStation(TypedDict):
+    """Ein Quartalsbericht: Plan und Hochrechnung zu einem Stichtag.
+
+    Beträge in Euro (auch wo der Bericht in TEUR rechnet, ``rounded``).
+    ``plan_kind`` sagt, welcher Plan es ist: ``original`` (nicht als geändert
+    bezeichnet) oder ``adjusted``; ``None``, wo der Bericht es nicht nennt.
+    ``plan_other`` ist der zweite Planwert des Seitentexts (VWG). Nie
+    verrechnet — die Seite stellt Plan und Hochrechnung nebeneinander."""
+    as_of: str
+    quarter: int
+    plan: float
+    plan_kind: str | None
+    forecast: float
+    plan_other: float | None
+    plan_other_kind: str | None
+    rounded: bool
+    conflict_note: str | None
+    statement: str | None
+    template_number: str
+    herkunft_id: int | None
+
+
+class HoldingForecastActual(TypedDict):
+    """Das Ist laut Abschluss. ``source``: ``annual_accounts`` oder
+    ``holdings_report`` (Beteiligungsbericht)."""
+    value: float
+    source: str
+    herkunft_id: int | None
+
+
+class HoldingForecastYear(TypedDict):
+    """Ein Unternehmen im jüngsten Jahr mit Quartalsbericht: drei getrennte
+    Stationen — Plan und Hochrechnungen (``stations``, je Stichtag eine), das
+    Ist (``actual``, nur aus dem Abschluss). ``basis`` ist ``result``
+    (Jahresergebnis) oder ``subsidy_need`` (Gesamtzuschussbedarf der VWG,
+    dort ohne ``actual`` und mit ``actual_note``)."""
+    company: str
+    year: int
+    basis: str
+    stations: list[HoldingForecastStation]
+    actual: HoldingForecastActual | None
+    actual_note: str | None
+
+
 class BudgetHoldings(TypedDict):
+    #: Plan und Hochrechnungen aus den Quartalsberichten, je Unternehmen das
+    #: jüngste Jahr (Gesellschaften und Eigenbetriebe).
+    forecasts: list[HoldingForecastYear]
     report_years: Any
     owners: Any
     #: Je Gesellschaft zusätzlich ``board_term`` (aus welcher Ratsperiode die
