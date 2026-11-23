@@ -63,8 +63,16 @@ Abstand aus derselben Jahreszeit früherer Jahre.
 
 Jeder Tagesordnungspunkt hat eine eigene Seite (`/council/punkt`) mit
 Kurzfassung, Vorgeschichte, Unterlagen und „Frag den Rat“ zu genau diesem
-Punkt. Die Karten der Sitzungsseite führen dorthin. Die folgenden Abschnitte
-sind die Bausteine dieser Seite. Sie haben eine gemeinsame Regel: Was ein
+Punkt. Die Karten der Sitzungsseite führen dorthin.
+
+Die Lesespalte steht in Reitern: Überblick (Kurzfassung, Dossier, Haushalt,
+Wahlprogramme, Ähnliches), Argumente, Fraktionen, Vorgeschichte, Unterlagen
+und, hinter dem Schalter `notizen`, Meine Notiz. „Frag den Rat“ bleibt in der
+Seitenspalte. So stehen Notiz und Chat nebeneinander, und die Notiz bleibt
+beim Scrollen neben einem langen Chat stehen. Nur der Notiz-Reiter wird
+gemerkt (`sessionStorage`): Wer eine Sitzung Punkt für Punkt mitschreibt,
+landet mit „Weiter“ wieder in der Notiz. Die folgenden Abschnitte sind die
+Bausteine dieser Seite. Sie haben eine gemeinsame Regel: Was ein
 Modell schreibt, wird im Code gegen die Quelle geprüft, und was sich nicht
 belegen lässt, erscheint nicht.
 

@@ -19,9 +19,10 @@ async function stubs(page: Page, features = ["punkt-seite", "punkt-argumente"]) 
 }
 
 test.describe("Punkt-Seite: Argumente und Fraktionen", () => {
-  test("Argumente zuerst, je Aussage Urheber und Fundstelle", async ({ page }) => {
+  test("Argumente als eigener Reiter, je Aussage Urheber und Fundstelle", async ({ page }) => {
     await stubs(page);
     await page.goto(URL);
+    await page.getByRole("tab", { name: /^Argumente/ }).click();
     await expect(page.getByRole("tab", { name: /^Argumente/ })).toHaveAttribute("aria-selected", "true");
     await expect(page.getByRole("heading", { name: "Worüber gestritten wird" })).toBeVisible();
     await expect(page.getByText(/9 dafür · 7 dagegen oder mit Bedenken/i).first()).toBeVisible();
@@ -34,6 +35,7 @@ test.describe("Punkt-Seite: Argumente und Fraktionen", () => {
   test("„Dazu fragen“ nimmt Punkt und Streitpunkt mit", async ({ page }) => {
     await stubs(page);
     await page.goto(URL);
+    await page.getByRole("tab", { name: /^Argumente/ }).click();
     const link = page.locator("article").filter({ hasText: "Streitpunkt 1 von 2" }).getByRole("link", { name: "Dazu fragen" });
     const href = await link.getAttribute("href");
     const u = new globalThis.URL(href!, "https://x.test");
@@ -57,7 +59,7 @@ test.describe("Punkt-Seite: Argumente und Fraktionen", () => {
   test("ohne Schalter keine neuen Reiter", async ({ page }) => {
     await stubs(page, ["punkt-seite"]);
     await page.goto(URL);
-    await expect(page.getByRole("tab", { name: /^Vorgeschichte/ })).toHaveAttribute("aria-selected", "true");
+    await expect(page.getByRole("tab", { name: /^Vorgeschichte/ })).toBeVisible();
     await expect(page.getByRole("tab", { name: /^Argumente/ })).toHaveCount(0);
     await expect(page.getByRole("tab", { name: /^Fraktionen/ })).toHaveCount(0);
   });
@@ -67,6 +69,7 @@ test.describe("Punkt-Seite: Argumente und Fraktionen", () => {
       await stubs(page);
       await page.setViewportSize({ width: breite, height: 844 });
       await page.goto(URL);
+      await page.getByRole("tab", { name: /^Argumente/ }).click();
       await expect(page.getByRole("heading", { name: "Worüber gestritten wird" })).toBeVisible();
       await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth))
         .toBeLessThanOrEqual(0);

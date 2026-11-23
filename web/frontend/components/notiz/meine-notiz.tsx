@@ -5,24 +5,29 @@
    `docs/entwurf-sitzungsseite/bilder/punkt-desktop-2.png` rechts unten). */
 
 import { Karte, Fuss, LINK, NotizSchloss, SperrenKnopf, type Offen } from "@/components/notiz/notiz-schloss";
+import { NoteField } from "@/components/notiz/note-field";
 import { statusText, useVerschluesselt } from "@/components/notiz/use-verschluesselt";
 import type { NoteDoc, TargetKind } from "@/lib/notizen";
 
 const leer: NoteDoc = { text: "" };
 const istLeer = (d: NoteDoc) => !d.text.trim();
 
-export function MeineNotiz({ targetKind, targetKey, wofuer = "Punkt" }: {
-  targetKind: TargetKind; targetKey: string; wofuer?: "Punkt" | "Beschluss";
+/** `rows`: Höhe des Felds — in der Seitenspalte knapp, als eigener Reiter
+ *  der Punkt-Seite (neben dem Chat) mit Platz zum Schreiben. */
+export function MeineNotiz({ targetKind, targetKey, wofuer = "Punkt", rows = 5 }: {
+  targetKind: TargetKind; targetKey: string; wofuer?: "Punkt" | "Beschluss"; rows?: number;
 }) {
   return (
     <NotizSchloss titel="Meine Notiz" id="meine-notiz"
       angebot={`Notiere dir, was du zu diesem ${wofuer} wissen oder nachfragen willst. Nur du kannst es lesen.`}>
-      {(o) => <Editor key={`${targetKind}|${targetKey}`} o={o} targetKind={targetKind} targetKey={targetKey} wofuer={wofuer} />}
+      {(o) => <Editor key={`${targetKind}|${targetKey}`} o={o} targetKind={targetKind} targetKey={targetKey} wofuer={wofuer} rows={rows} />}
     </NotizSchloss>
   );
 }
 
-function Editor({ o, targetKind, targetKey, wofuer }: { o: Offen; targetKind: TargetKind; targetKey: string; wofuer: string }) {
+function Editor({ o, targetKind, targetKey, wofuer, rows }: {
+  o: Offen; targetKind: TargetKind; targetKey: string; wofuer: string; rows: number;
+}) {
   const v = useVerschluesselt<NoteDoc>(o.dk, o.keyVersion, targetKind, targetKey, "note", leer, istLeer);
   return (
     <Karte titel="Meine Notiz" id="meine-notiz" rechts={<SperrenKnopf owner={o.owner} />}>
@@ -31,11 +36,10 @@ function Editor({ o, targetKind, targetKey, wofuer }: { o: Offen; targetKind: Ta
           Diese Notiz lässt sich mit dem jetzigen Schlüssel nicht lesen. Was du schreibst, ersetzt sie.
         </p>
       )}
-      <label htmlFor="notiz-text" className="sr-only">Meine Notiz zu diesem {wofuer}</label>
-      <textarea id="notiz-text" value={v.doc.text} disabled={v.stand === "lädt"} rows={5} maxLength={8000}
-        onChange={(e) => v.setDoc({ text: e.target.value })} onBlur={() => { void v.jetztSpeichern(); }}
-        placeholder={`Was willst du dir zu diesem ${wofuer} merken?`}
-        className="w-full resize-y rounded-xl border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
+      <NoteField id="notiz-text" label={`Meine Notiz zu diesem ${wofuer}`} value={v.doc.text}
+        disabled={v.stand === "lädt"} rows={rows}
+        onChange={(text) => v.setDoc({ text })} onBlur={() => { void v.jetztSpeichern(); }}
+        placeholder={`Was willst du dir zu diesem ${wofuer} merken?`} />
       {v.stand === "konflikt" && (
         <Konflikt text={v.konflikt?.doc?.text ?? ""} onUebernehmen={v.uebernehmen} onBehalten={v.behalten} was="Notiz" />
       )}

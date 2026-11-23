@@ -7,7 +7,7 @@
  * der echte nur Blobs hält (Form und Version prüft `tests/test_notizen.py`).
  * So läuft der Test auch gegen das Backend der CI, das den Schalter nicht kennt.
  */
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type BrowserContext, type Page } from "@playwright/test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { zustandsDatei } from "./konten";
@@ -26,6 +26,18 @@ async function schein(page: Page, ablage: Ablage) {
 }
 
 const karte = (page: Page) => page.locator("section", { has: page.locator("#meine-notiz") });
+/** Die Notiz ist ein Reiter der Lesespalte — neben dem Chat, nicht unter ihm. */
+const zurNotiz = (page: Page) => page.getByRole("tab", { name: "Meine Notiz" }).click();
+
+/** Ein virtueller Authenticator mit PRF — so, wie ein iPhone oder Mac ihn mitbringt. */
+async function passkeyGeraet(page: Page, context: BrowserContext) {
+  const cdp = await context.newCDPSession(page);
+  await cdp.send("WebAuthn.enable");
+  await cdp.send("WebAuthn.addVirtualAuthenticator", { options: {
+    protocol: "ctap2", ctap2Version: "ctap2_1", transport: "internal", hasResidentKey: true,
+    hasUserVerification: true, isUserVerified: true, hasPrf: true, automaticPresenceSimulation: true,
+  } });
+}
 
 test.describe("Meine Notiz", () => {
   test.setTimeout(90_000);
@@ -34,6 +46,7 @@ test.describe("Meine Notiz", () => {
     const ablage: Ablage = { keys: null, notes: new Map() };
     await schein(page, ablage);
     await page.goto(URL);
+    await zurNotiz(page);
     const k = karte(page);
     await k.getByRole("button", { name: "Notizen einrichten" }).click();
     await passphraseWeg(k);
@@ -55,6 +68,8 @@ test.describe("Meine Notiz", () => {
     expect(Buffer.from(String(gespeichert.ciphertext), "base64").toString("latin1")).not.toContain("Unfallzahlen");
 
     await page.reload();
+    // Der Notiz-Reiter bleibt gewählt — wer mitschreibt, schreibt weiter.
+    await expect(page.getByRole("tab", { name: "Meine Notiz" })).toHaveAttribute("aria-selected", "true");
     await expect(k.getByText("Gesperrt", { exact: true })).toBeVisible();
     await expect(k.locator("textarea")).toHaveCount(0);
     await k.locator("input[type=password]").fill(PASS);
@@ -66,6 +81,7 @@ test.describe("Meine Notiz", () => {
     const p2 = await ctx2.newPage();
     await schein(p2, ablage);
     await p2.goto(URL);
+    await zurNotiz(p2);
     const k2 = karte(p2);
     await k2.locator("input[type=password]").fill("eine ganz andere Passphrase");
     await k2.getByRole("button", { name: /Entsperren/ }).click();
@@ -91,16 +107,11 @@ test.describe("Meine Notiz", () => {
   });
 
   test("mit Passkey einrichten, sperren und wieder entsperren — ohne Passphrase, ohne Code", async ({ page, context }) => {
-    // Ein virtueller Authenticator mit PRF — so, wie ein iPhone oder Mac ihn mitbringt.
-    const cdp = await context.newCDPSession(page);
-    await cdp.send("WebAuthn.enable");
-    await cdp.send("WebAuthn.addVirtualAuthenticator", { options: {
-      protocol: "ctap2", ctap2Version: "ctap2_1", transport: "internal", hasResidentKey: true,
-      hasUserVerification: true, isUserVerified: true, hasPrf: true, automaticPresenceSimulation: true,
-    } });
+    await passkeyGeraet(page, context);
     const ablage: Ablage = { keys: null, notes: new Map() };
     await schein(page, ablage);
     await page.goto(URL);
+    await zurNotiz(page);
     const k = karte(page);
     await k.getByRole("button", { name: "Notizen einrichten" }).click();
     await k.getByRole("button", { name: "Mit Passkey einrichten" }).click();
@@ -124,12 +135,7 @@ test.describe("Meine Notiz", () => {
     // Tims Befund 23.11.2026: Mitten im Tippen stand „Auf einem anderen Gerät
     // wurde diese Notiz inzwischen geändert“ — mit dem EIGENEN Text von eben.
     // Das zweite Speichern trug die Version von vor dem ersten.
-    const cdp = await context.newCDPSession(page);
-    await cdp.send("WebAuthn.enable");
-    await cdp.send("WebAuthn.addVirtualAuthenticator", { options: {
-      protocol: "ctap2", ctap2Version: "ctap2_1", transport: "internal", hasResidentKey: true,
-      hasUserVerification: true, isUserVerified: true, hasPrf: true, automaticPresenceSimulation: true,
-    } });
+    await passkeyGeraet(page, context);
     const ablage: Ablage = { keys: null, notes: new Map() };
     await schein(page, ablage);
     // Ein langsamer Server: So überholt das Tippen seine Antwort.
@@ -138,6 +144,7 @@ test.describe("Meine Notiz", () => {
       await r.fallback();
     });
     await page.goto(URL);
+    await zurNotiz(page);
     const k = karte(page);
     await k.getByRole("button", { name: "Notizen einrichten" }).click();
     await k.getByRole("button", { name: "Mit Passkey einrichten" }).click();
@@ -153,11 +160,53 @@ test.describe("Meine Notiz", () => {
     await expect(k.locator("textarea")).toHaveValue("Defizit 182 Millionen €, kann Oldenburg nicht selber schließen");
   });
 
+  test("die Leiste formatiert: Liste fortsetzen, beenden, fett, abhaken", async ({ page, context }) => {
+    await passkeyGeraet(page, context);
+    const ablage: Ablage = { keys: null, notes: new Map() };
+    await schein(page, ablage);
+    await page.goto(URL);
+    await zurNotiz(page);
+    const k = karte(page);
+    await k.getByRole("button", { name: "Notizen einrichten" }).click();
+    await k.getByRole("button", { name: "Mit Passkey einrichten" }).click();
+    const feld = k.locator("textarea");
+    const leiste = k.getByRole("toolbar", { name: "Formatierung" });
+
+    await feld.fill("Unfallzahlen");
+    await leiste.getByRole("button", { name: "Aufzählung" }).click();
+    await expect(feld).toHaveValue("- Unfallzahlen");
+    // Der Knopf zeigt, in welcher Liste der Cursor steht — und nimmt dem Feld den Fokus nicht.
+    await expect(leiste.getByRole("button", { name: "Aufzählung" })).toHaveAttribute("aria-pressed", "true");
+    await expect(feld).toBeFocused();
+    // ↩ setzt die Liste fort, ↩ auf dem leeren Punkt beendet sie.
+    await feld.press("End");
+    await feld.press("Enter");
+    await feld.pressSequentially("Kosten");
+    await feld.press("Enter");
+    await feld.press("Enter");
+    await feld.pressSequentially("Wichtig");
+    await expect(feld).toHaveValue("- Unfallzahlen\n- Kosten\nWichtig");
+    // Fett ohne Auswahl meint das Wort am Cursor.
+    await leiste.getByRole("button", { name: "Fett" }).click();
+    await expect(feld).toHaveValue("- Unfallzahlen\n- Kosten\n**Wichtig**");
+    // Die Zeile als Aufgabe, dann abhaken (⌘↩ bzw. Strg+↩).
+    await leiste.getByRole("button", { name: "Checkliste" }).click();
+    await expect(feld).toHaveValue("- Unfallzahlen\n- Kosten\n- [ ] **Wichtig**");
+    await feld.press("ControlOrMeta+Enter");
+    await expect(feld).toHaveValue("- Unfallzahlen\n- Kosten\n- [x] **Wichtig**");
+    // Rückgängig nimmt den letzten Schritt zurück, nicht alles.
+    await feld.press("ControlOrMeta+z");
+    await expect(feld).toHaveValue("- Unfallzahlen\n- Kosten\n- [ ] **Wichtig**");
+    await feld.blur();
+    await expect(k.getByText(/Gespeichert um/)).toBeVisible({ timeout: 10_000 });
+  });
+
   test("ohne Schalter keine Karte", async ({ page }) => {
     await page.route("**/api/app-config", (r) => r.fulfill({ json: { min_build: 0, features: ["punkt-seite"] } }));
     await page.route("**/api/council/session/4654/item**", (r) => r.fulfill({ json: PUNKT }));
     await page.goto(URL);
     await expect(page.getByRole("heading", { name: "Weißenmoorstraße", level: 1 })).toBeVisible();
+    await expect(page.getByRole("tab", { name: "Meine Notiz" })).toHaveCount(0);
     await expect(page.locator("#meine-notiz")).toHaveCount(0);
   });
 });

@@ -25,9 +25,12 @@ test.describe("Punkt-Seite", () => {
     await stubs(page);
     await page.goto("/council/punkt?ksinr=4654&top=%C3%96%2011.1");
     await expect(page.getByRole("heading", { name: "Weißenmoorstraße", level: 1 })).toBeVisible();
+    // Die Lesespalte steht in Reitern; vorn der Überblick mit der Kurzfassung.
+    await expect(page.getByRole("tab", { name: "Überblick" })).toHaveAttribute("aria-selected", "true");
     await expect(page.getByText("Das Wichtigste in Kürze")).toBeVisible();
-    await expect(page.getByRole("tab", { name: /Vorgeschichte/ })).toHaveAttribute("aria-selected", "true");
+    await page.getByRole("tab", { name: /Vorgeschichte/ }).click();
     await expect(page.getByText(/Verkehrsausschuss · diese Sitzung/)).toBeVisible();
+    await expect(page.getByText("Das Wichtigste in Kürze")).toHaveCount(0);
     await page.getByRole("tab", { name: /Unterlagen/ }).click();
     await expect(page.getByRole("link", { name: /VCD-Antrag/ })).toHaveAttribute("target", "_blank");
     await expect(page.locator("#password")).toHaveCount(0);

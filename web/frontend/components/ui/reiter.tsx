@@ -28,7 +28,8 @@
 import { useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
 
-export type Reiter<T extends string> = { id: T; label: string };
+/** `count`: eine Zahl hinter der Beschriftung (Punkt-Seite: „Unterlagen 30"). */
+export type Reiter<T extends string> = { id: T; label: string; count?: number };
 
 export function ReiterLeiste<T extends string>({ reiter, aktiv, onChange, label, className }: {
   reiter: Reiter<T>[];
@@ -103,6 +104,7 @@ export function ReiterLeiste<T extends string>({ reiter, aktiv, onChange, label,
               )}
             >
               {r.label}
+              {r.count != null && <span className="ml-1 text-xs font-normal text-muted-foreground">{r.count}</span>}
             </button>
           );
         })}

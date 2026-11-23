@@ -630,6 +630,14 @@ Passkey meldet hier niemanden an (das tut die Sitzung), er ersetzt nur die
 Passphrase. Wer eine falsche Verpackung hochlädt, sperrt sich selbst aus,
 niemanden sonst.
 
+**Formatiert wird mit Markdown im Klartext**, nicht mit HTML: Die Leiste
+über dem Feld setzt `**fett**`, `*kursiv*`, `- Punkte`, `1. Nummern` und
+`- [ ] Aufgaben`, ↩ setzt eine Liste fort (`lib/note-format.ts`). Der Grund
+ist das Format `{ text }`: Die App bearbeitet dasselbe Feld in einem
+schlichten Textfeld, und Konfliktanzeige und Export zeigen den Text, wie er
+ist. Markdown liest sich überall, eine Notiz von vorher ist schon gültig.
+Dasselbe Feld trägt „Mein Mitschrieb“.
+
 Zwei Geräte, eine Notiz: Jede Notiz trägt eine Version. Wer eine ältere
 schickt, bekommt 409 und den neuen Stand, und der Client fragt, statt still
 zu überschreiben. Ein Feld speichert dafür nie zweimal zugleich, und die
