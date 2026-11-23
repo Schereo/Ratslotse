@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { BrandMark } from "@/components/brand";
 import { BackLink } from "@/components/back-link";
-import { KONTAKT_EMAIL, KONTAKT_MAILTO } from "@/lib/kontakt";
+import { ANSCHRIFT, KONTAKT_EMAIL, KONTAKT_MAILTO } from "@/lib/kontakt";
 import { RIS_BASE, RIS_HOST } from "@/lib/ris";
 import { KopfKontoLink } from "@/components/kopf-konto-link";
 
@@ -44,7 +44,7 @@ export default function DatenschutzPage() {
         <div className="mt-6 space-y-6">
           <Section title="Verantwortlicher">
             <p>
-              Tim Sigl, Krusenweg 26, 26135 Oldenburg ·{" "}
+              {ANSCHRIFT.name}, {ANSCHRIFT.street}, {ANSCHRIFT.city} ·{" "}
               <a href={KONTAKT_MAILTO} className="text-primary hover:underline">{KONTAKT_EMAIL}</a>
             </p>
           </Section>
