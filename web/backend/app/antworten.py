@@ -4390,9 +4390,33 @@ class BudgetGroup(TypedDict):
     entity: list[Any]
 
 
+class HoldingsHandbookRule(TypedDict):
+    """Eine Regel des Handbuchs Beteiligungen als Kurzfassung für die Seite."""
+    key: str
+    title: str
+    summary: str
+    #: Seiten der Broschüre, z. B. „S. 14–16".
+    pages: str
+
+
+class HoldingsHandbook(TypedDict):
+    """Das Handbuch Beteiligungen der Stadt (``council/shareholding_handbook.py``):
+    Fundstelle samt Ratsbeschluss und die Regeln, die die Seite zeigt."""
+    title: str
+    version: str
+    adopted_date: str
+    adopted_template: str
+    adopted_decision_id: int
+    url: str
+    rules: list[HoldingsHandbookRule]
+
+
 class BudgetHoldings(TypedDict):
     report_years: Any
     owners: Any
+    #: Je Gesellschaft zusätzlich ``board_term`` (aus welcher Ratsperiode die
+    #: Besetzung im Bericht stammt, mit ``note``, wenn sie abgelaufen ist) und
+    #: ``handbook_scope`` (gilt das Handbuch Beteiligungen, und wie — S. 10).
     companies: list[Any]
     provenance: Provenance
     years: list[Any]
@@ -4400,6 +4424,7 @@ class BudgetHoldings(TypedDict):
     group_comparison: Any
     people: list[Any]
     texts: Any
+    handbook: HoldingsHandbook
 
 
 class FinanceBudgetRow(TypedDict):

@@ -59,10 +59,12 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowRight, Building2, FileText } from "lucide-react";
 import { useFetch } from "@/lib/use-fetch";
 import {
-  BeteiligungsDaten, Gesellschaft, Kennzahl, RECHTSFORM_TITEL, Rechtsform,
-  auftragSatz, einordnungFuer, eur, herkunftVon, rechtsform, reihen, sortiert,
-  istMinderheit, stadtAnteil, wertText,
+  BeteiligungsDaten, Gesellschaft, Handbuch, Kennzahl, RECHTSFORM_TITEL, Rechtsform,
+  auftragSatz, einordnungFuer, eur, handbuchSeite, herkunftVon, rechtsform, reihen,
+  sortiert, istMinderheit, stadtAnteil, wertText,
 } from "@/lib/haushalt-beteiligungen";
+import { decisionHref } from "@/lib/routes";
+import { GlossaryText } from "@/components/glossary-text";
 import type { JahrPunkt } from "@/components/grafik/daten";
 import { deZahl } from "@/components/grafik/format";
 import { ZeitreiheMini } from "@/components/grafik/zeitreihe";
@@ -179,6 +181,60 @@ function Karte({ daten, g, onOeffnen }: {
           className="flex-none transition-transform group-hover:translate-x-0.5" />
       </div>
     </article>
+  );
+}
+
+
+/** „Wie die Stadt ihre Gesellschaften steuert" — vier Regeln aus dem Handbuch
+ *  Beteiligungen, jede mit ihrer Seite im Original.
+ *
+ *  Die Zahlen der Karten sagen, was eine Gesellschaft erwirtschaftet; dieser
+ *  Block sagt, wer bei ihr bestimmt. Die Kurzfassungen stehen im Backend
+ *  (`shareholding_handbook.PAGE_RULES`), dieselben Regeln beantworten in der
+ *  KI-Frage und bei Lotti die Fragen danach. Es sind Vorgaben, kein Befund
+ *  darüber, ob eine Gesellschaft sie einhält — deshalb kein Häkchen, keine
+ *  Ampel. */
+function Steuerung({ h }: { h: Handbuch }) {
+  const beschlossen = new Date(`${h.adopted_date}T12:00:00`).toLocaleDateString(
+    "de-DE", { day: "numeric", month: "long", year: "numeric" });
+  return (
+    <section className="@container rounded-2xl border border-border bg-card p-4 shadow-sm">
+      <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
+        Wie die Stadt ihre Gesellschaften steuert
+      </p>
+      <dl className="mt-2.5 grid grid-cols-1 gap-x-8 gap-y-3 @3xl:grid-cols-2">
+        {h.rules.map((r) => {
+          const seite = Number(/\d+/.exec(r.pages)?.[0] ?? 1);
+          return (
+            <div key={r.key} className="min-w-0">
+              <dt className="text-[13px] font-semibold leading-snug">{r.title}</dt>
+              <dd className="mt-0.5 text-[13px] leading-relaxed text-foreground/90">
+                <GlossaryText text={r.summary} />{" "}
+                <a href={handbuchSeite(h, seite)} target="_blank" rel="noopener noreferrer"
+                  className="whitespace-nowrap font-mono text-[11px] text-primary hover:underline">
+                  {r.pages}
+                </a>
+              </dd>
+            </div>
+          );
+        })}
+      </dl>
+      <p className="mt-3 border-t border-border pt-2.5 text-[12px] leading-relaxed text-muted-foreground">
+        Aus dem{" "}
+        <a href={h.url} target="_blank" rel="noopener noreferrer"
+          className="font-semibold text-primary hover:underline">
+          {h.title}
+        </a>{" "}
+        der Stadt, vom Rat am{" "}
+        <Link href={decisionHref(h.adopted_decision_id)} prefetch={false}
+          className="font-semibold text-primary hover:underline">
+          {beschlossen}
+        </Link>{" "}
+        beschlossen (Stand {h.version}). Es gilt für Unternehmen, an denen die
+        Stadt mit mehr als der Hälfte beteiligt ist; für die übrigen soll es sinngemäß
+        gelten. Was das für eine Gesellschaft heißt, steht in ihrem Steckbrief.
+      </p>
+    </section>
   );
 }
 
@@ -441,6 +497,8 @@ export function GesellschaftenAbschnitt({ onBestand }: {
             )}
           </section>
 
+          {data.handbook && <Steuerung h={data.handbook} />}
+
           {/* Die Grenzen — eigener Block, nicht Kleingedrucktes. Dieselbe
               Entscheidung wie auf /haushalt/konzern: Wer hier eine Zahl
               herausschreibt, soll wissen, was sie nicht ist. */}
@@ -460,7 +518,9 @@ export function GesellschaftenAbschnitt({ onBestand }: {
                 Mehrere Betriebe führen ihr Ergebnis an die Stadt ab oder bekommen es
                 ausgeglichen; in ihren Büchern bleibt dann eine Null stehen. Was sie
                 erwirtschaftet haben, zeigt der{" "}
-
+                <Link href="/haushalt/konzern#summe" className="font-semibold text-primary">
+                  Gesamtabschluss
+                </Link>.
               </li>
               <li>
                 <strong>Die Jahrgänge vor 2022 fehlen.</strong> Die Stadt hat den Bericht
@@ -474,8 +534,16 @@ export function GesellschaftenAbschnitt({ onBestand }: {
                 sich nichts rechnen.
               </li>
               <li>
-                <strong>Kein Stimmverhalten in Aufsichtsräten, keine Gehälter.</strong>{" "}
-                Beides steht nicht im Bericht — die Seite behauptet es deshalb auch nicht.
+                <strong>Kein Stimmverhalten, keine Vergütungen.</strong>{" "}
+                Gesellschafterversammlung und Aufsichtsrat tagen nicht öffentlich, und der
+                Bericht nennt weder Abstimmungen noch Bezüge. Die Aufwandsentschädigungen
+                der Gremienmitglieder sollen die Gesellschaften selbst nennen, im Bericht
+                zur Unternehmensführung beim Jahresabschluss
+                {data.handbook && (
+                  <> (<a href={handbuchSeite(data.handbook, 27)} target="_blank"
+                    rel="noopener noreferrer" className="font-semibold text-primary hover:underline">
+                    Handbuch Beteiligungen, S. 27–28</a>)</>
+                )}.
               </li>
             </ul>
           </section>

@@ -9932,6 +9932,7 @@ export interface components {
             companies: unknown[];
             /** Group Comparison */
             group_comparison: unknown;
+            handbook: components["schemas"]["HoldingsHandbook"];
             /** Indicators */
             indicators: unknown;
             /** Owners */
@@ -13932,6 +13933,41 @@ export interface components {
         HighestDecisionId: {
             /** Highest Id */
             highest_id: number;
+        };
+        /**
+         * HoldingsHandbook
+         * @description Das Handbuch Beteiligungen der Stadt (``council/shareholding_handbook.py``):
+         *     Fundstelle samt Ratsbeschluss und die Regeln, die die Seite zeigt.
+         */
+        HoldingsHandbook: {
+            /** Adopted Date */
+            adopted_date: string;
+            /** Adopted Decision Id */
+            adopted_decision_id: number;
+            /** Adopted Template */
+            adopted_template: string;
+            /** Rules */
+            rules: components["schemas"]["HoldingsHandbookRule"][];
+            /** Title */
+            title: string;
+            /** Url */
+            url: string;
+            /** Version */
+            version: string;
+        };
+        /**
+         * HoldingsHandbookRule
+         * @description Eine Regel des Handbuchs Beteiligungen als Kurzfassung für die Seite.
+         */
+        HoldingsHandbookRule: {
+            /** Key */
+            key: string;
+            /** Pages */
+            pages: string;
+            /** Summary */
+            summary: string;
+            /** Title */
+            title: string;
         };
         /**
          * Idea
@@ -31842,4 +31878,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: df137331a579699207073aa1a4a9c64556e0f91377d36a5e6a183b988ca4ce8c
+// vertrag-sha256: 13c98be90b758034529a56b4c508e1cb4d91aaa2b96798dfac0f80ac77102f21

@@ -52,11 +52,12 @@ import Link from "next/link";
 import { ArrowLeft, ChevronDown } from "lucide-react";
 import {
   ABSCHNITTE, Aufsichtsperson, BeteiligungsDaten, Eigentuemer, Gesellschaft,
-  KENNZAHL_TITEL, Kennzahl, RECHTSFORM_TITEL,
+  Handbuch, KENNZAHL_TITEL, Kennzahl, RECHTSFORM_TITEL,
   absatzVorschau, anteilsGewicht, aufsichtsgruppen,
-  aufsichtspersonen, eigentuemerVon, einordnungFuer, eur, gremiumName, herkunftVon,
-  percent, rechtsform, reihen, textVon, wertText,
+  aufsichtspersonen, eigentuemerVon, einordnungFuer, eur, gremiumName, handbuchSeite,
+  herkunftVon, percent, rechtsform, reihen, textVon, wertText,
 } from "@/lib/haushalt-beteiligungen";
+import { GlossaryText } from "@/components/glossary-text";
 import { personHref } from "@/lib/routes";
 import type { JahrPunkt } from "@/components/grafik/daten";
 import { deZahl } from "@/components/grafik/format";
@@ -365,10 +366,52 @@ function Person({ p, zeigeFunktion }: { p: Aufsichtsperson; zeigeFunktion: boole
   );
 }
 
+/** Ein Verweis auf eine Seite des Handbuchs Beteiligungen — das Original,
+ *  nicht unsere Zusammenfassung. */
+function HandbuchVerweis({ h, seite, text }: { h: Handbuch; seite: number; text: string }) {
+  return (
+    <a href={handbuchSeite(h, seite)} target="_blank" rel="noopener noreferrer"
+      className="font-semibold text-primary hover:underline">
+      {text}
+    </a>
+  );
+}
+
+/** Die Regeln hinter dem Gremium: Gilt das Handbuch Beteiligungen für diese
+ *  Gesellschaft — und ist die Besetzung im Bericht noch die heutige?
+ *
+ *  Beide Sätze kommen fertig aus dem Backend (`shareholding_handbook`). Sie
+ *  sagen, was das Handbuch VORSIEHT, nie, ob eine Gesellschaft es einhält: Das
+ *  steht in keiner unserer Quellen. */
+function Gremienregeln({ g, h }: { g: Gesellschaft; h?: Handbuch }) {
+  const stand = g.board_term?.note;
+  const geltung = g.handbook_scope;
+  if (!stand && !(geltung && h)) return null;
+  return (
+    <div className="mt-3 flex max-w-[74ch] flex-col gap-1.5 border-t border-dashed border-border pt-3 text-[12.5px] leading-relaxed text-muted-foreground">
+      {stand && (
+        <p>
+          <span className="font-semibold text-foreground">Stand der Besetzung.</span>{" "}
+          {stand}
+          {h && <> (<HandbuchVerweis h={h} seite={22} text="Handbuch Beteiligungen, S. 16–17 und 22" />)</>}
+        </p>
+      )}
+      {geltung && h && (
+        <p>
+          <span className="font-semibold text-foreground">Regeln der Stadt.</span>{" "}
+          {geltung.text}{" "}
+          (<HandbuchVerweis h={h} seite={10} text={`Handbuch Beteiligungen, ${geltung.pages}`} />)
+        </p>
+      )}
+    </div>
+  );
+}
+
 /** „Wer sie beaufsichtigt": die Mitglieder, nach Funktion gebündelt. */
-function Aufsichtsorgan({ personen, zuordenbar, herkunft }: {
+function Aufsichtsorgan({ personen, zuordenbar, herkunft, g, handbuch }: {
   personen: Aufsichtsperson[]; zuordenbar: boolean;
   herkunft: ReturnType<typeof herkunftVon>;
+  g: Gesellschaft; handbuch?: Handbuch;
 }) {
   const gruppen = useMemo(() => aufsichtsgruppen(personen, zuordenbar),
     [personen, zuordenbar]);
@@ -382,7 +425,9 @@ function Aufsichtsorgan({ personen, zuordenbar, herkunft }: {
           Wer einen Eintrag hat, ist verlinkt — das sieht man. */}
       {committee && (
         <p className="mt-1.5 text-[13px] leading-relaxed text-foreground/90">
-          Das Aufsichtsorgan ist der {committee}.
+          {/* Die Gremiennamen sind Glossar-Begriffe (Aufsichtsrat,
+              Verwaltungsrat, Betriebsausschuss, Gesellschafterversammlung). */}
+          <GlossaryText text={`Das Aufsichtsorgan ist der ${committee}.`} />
         </p>
       )}
 
@@ -410,6 +455,7 @@ function Aufsichtsorgan({ personen, zuordenbar, herkunft }: {
           ist aus dieser Tabelle nicht möglich.
         </p>
       )}
+      <Gremienregeln g={g} h={handbuch} />
       <Fundstelle h={herkunft} className="mt-3" />
     </Abschnitt>
   );
@@ -534,6 +580,7 @@ export function Steckbrief({ daten, g, zurueck }: {
           // Ohne Angabe gilt „unbekannt": Eine alte API, die das Feld nicht
           // kennt, darf keine Ämter behaupten.
           zuordenbar={g.roles_assignable === true}
+          g={g} handbuch={daten.handbook}
           herkunft={herkunftVon(daten, personen[0].herkunft_id ?? organe?.herkunft_id ?? null)} />
       ) : organe ? (
         <Rohtext kicker={TITEL.aufsichtsorgane} text={organe.text}
