@@ -13,10 +13,15 @@ Zum Zeitpunkt der Recherche umfasste der Bestand 23 Finanztabellen und
 
 ## Die stärkste Bestätigung
 
-Zwei Recherchen fanden unabhängig voneinander **dieselbe Zahl**: Die Bilanz
-der Stadt weist zum 31.12.2024 Geldschulden von **43.690.971,71 €** aus, die
-Bundesstatistik für den Kernhaushalt **43.690.972 €**. Die beiden
-unabhängigen Quellen stimmen bis auf einen Cent Rundung überein.
+Die Stadt weist in ihrer Bilanz zum 31.12.2024 unter Position 2.1
+Geldschulden von **43.690.971,71 €** aus.
+[Bilanz 2024 der Stadt Oldenburg](https://www.oldenburg.de/fileadmin/oldenburg/Benutzer/Dateien/20_Controlling_und_Finanzen/200_Finanzen/Jahresabschluss_2024/01_Veroeffentlichung_Jahresabschluss_2024_Internet_Bilanz_2024.pdf)
+
+Die Statistischen Ämter weisen die Schulden des Oldenburger Kernhaushalts
+in ganzen Euro aus. Tabelle 2, Blatt `NI`, nennt für den Regionalschlüssel
+`034030000000` **43.690.972 €**. Auf ganze Euro gerundet ergibt der
+Bilanzwert denselben Betrag. Die ungerundete Differenz beträgt **0,29 €**.
+[Tabellenband zum 31.12.2024](https://www.statistikportal.de/sites/default/files/2025-12/Integrierte_Schulden_der_Gemeinden_und_Gemeindeverbaende_2024_Tabellenband_0.xlsx)
 
 ## Rang 1 — Die drei Schuldenzahlen
 

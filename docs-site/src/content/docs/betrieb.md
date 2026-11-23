@@ -174,7 +174,12 @@ Repository-Secrets.
 Neben der Produktion läuft eine **eigene Dev-VM** mit eigenen Datenbanken und
 eigenen Secrets. Sie unterscheidet sich bewusst von Prod:
 
-- **Basic-Auth vor dem vhost** schränkt den öffentlichen Zugriff ein.
+- **Öffentlich erreichbar seit 10/2026.** Die Dev-Umgebung verlangt keine
+  Basic-Auth. Für die reguläre Registrierung setzt Dev
+  `SIGNUP_REQUIRES_APPROVAL=1`. Neue Konten aus diesem Registrierungsweg
+  bleiben bis zur Freischaltung im Admin-Panel gesperrt. Der Dev-Build
+  sperrt Crawling über `robots.ts`. Caddy setzt zusätzlich
+  `X-Robots-Tag: noindex`.
 - **Kein Mailversand.** Ohne Resend-Key überspringt Ratslotse die Zustellung
   ohne Fehlermeldung.
 - **Keine Cron-Jobs.** Die Dev-Umgebung dient der Vorschau und erfasst keine
@@ -229,7 +234,7 @@ prüft, ob jeder Job in der Tabelle steht.
 | `weekly_enrich.py` | sonntags `0 3 * * 0` | Nachläufe mit und ohne Modell in 23 Schritten (siehe unten). |
 | `remind_setup.py` | täglich `0 11 * * *` | Genau eine Service-Mail an Konten, die den Einrichtungs-Assistenten angefangen und seit 48 h nicht beendet haben. |
 | `abendmeldungen.py` | täglich `0 18 * * *` | Abend-Anlässe aus Design 30a: N5 Vorabend-Erinnerung täglich, N6 Wochenüberblick nur sonntags. N5 ist standardmäßig aus, N6 seit 09/2026 für neue Konten an. |
-| `check_finanzdaten.py`&nbsp;¹ | sonntags `0 6 * * 0` | Neue Haushalts-Jahrgänge aus dem Anlagenbestand einlesen (Jahresabschluss, Teilhaushalts-Pläne, Prüfberichte) und melden, wenn ein erwarteter Jahrgang ausbleibt. Lädt nichts herunter, ergänzt nur Fehlendes — siehe [Stadtfinanzen](/docs/haushalt/#der-bereich-hält-sich-selbst-aktuell). |
+| `check_finanzdaten.py`&nbsp;¹ | sonntags `0 6 * * 0` | Neue Haushalts-Jahrgänge aus dem Anlagenbestand einlesen (Jahresabschluss, Teilhaushalts-Pläne, Prüfberichte) und melden, wenn ein erwarteter Jahrgang ausbleibt. Lädt nichts herunter, ergänzt nur Fehlendes — siehe [Stadtfinanzen](/docs/haushalt/#aktualisierung-der-haushaltsdaten). |
 | `check_beteiligungsbericht.py` | sonntags `30 6 * * 0` | Lädt die Beteiligungsberichte von oldenburg.de und liest Gesellschaften, Aufsichtsorgane und Kennzahlen daraus. Der einzige Haushalts-Cron, der selbst herunterlädt. |
 | `archive_statistik.py` | täglich `0 4 * * *` | Sichert die amtlichen Statistik-Quellen versioniert unter `data/archiv/` — siehe unten. |
 | `check_vorlage_follows.py` | täglich `30 9 * * *` | Neue Beratungsstationen und nachgetragene Ergebnisse zu Vorlagen, denen jemand folgt. |
@@ -978,7 +983,7 @@ gesetzt; wer sie ändert, misst gegen das Gold-Set
 | `FEATURE_FLAGS` | Kommaliste der eingeschalteten [Feature-Schalter](/docs/referenz/feature-schalter/); `*` schaltet alle an (so steht es auf dev) | nein | leer |
 | `STATS_EXCLUDE_DOMAINS` | Kommaliste von Mail-Domains, deren Konten aus der Nutzungsstatistik fallen (eigene Testkonten) | nein | leer |
 | `SOCIAL_API_TOKEN` | Token für die Schnittstelle des Social-Media-Bots (`routers/social.py`); ohne Token sind die Endpunkte aus | nein | leer |
-| `SOCIAL_MEDIA_DIR` / `SOCIAL_MEDIA_BASE_URL` | Ablage der Bilder für Social Media und die öffentliche Adresse dazu | nein | `web/frontend/public/social`, `https://ratslotse.de/social` |
+| `SOCIAL_MEDIA_DIR` / `SOCIAL_MEDIA_BASE_URL` | Verzeichnis für Social-Media-Bilder und öffentliche Basis-URL. Der Upload legt das Verzeichnis bei Bedarf an. | nein | `web/frontend/public/social`, `https://ratslotse.de/social` |
 | `BACKEND_URL` | Adresse des Backends für die Server-Routen des Frontends (`app/api/council/ask/route.ts`) | nein | `http://localhost:8000` |
 | `NEXT_PUBLIC_CARTO_API_KEY` | Schlüssel der Kartenkacheln, zur **Bauzeit** des Frontends einkompiliert (`lib/basemap.ts`); ohne ihn tragen die Kacheln ein Wasserzeichen | nein | nicht gesetzt |
 | `GEO_BUNDLE_VERSION` / `LOTTI_BUNDLE_VERSION` | Versionsmarken, die der Frontend-Build an die Adressen der Geodaten und der Lotti-Grafiken hängt, damit der Browser sie lange halten darf (`lib/asset-paths.ts`) | nein | nicht gesetzt |

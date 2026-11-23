@@ -45,7 +45,7 @@ Alles, was GitHub Actions für dieses Repo tut: Prüfungen je Pull Request, die 
 | **Ops: Tragweite-Rollout** (`ops-tragweite-rollout.yml`) | von Hand | Manuell auslösbarer Ops-Lauf: Tragweite-Score (RL-U16) auf Prod scharf schalten. |
 | **Ops: Vorlagen aufbereiten** (`ops-vorlagen-aufbereiten.yml`) | von Hand | Manuell auslösbar: die einmaligen Nachläufe und die crontab-Zeilen des Plans „Vorlagen aufbereiten“ (docs/plan-vorlagen-aufbereiten.md, Schritte 2, 6, 12, 17) — auf dev sofort, auf Prod erst nach dem Release, das die Skripte bringt. |
 | **Ops: Vorlagen-Backfill** (`ops-vorlagen-backfill.yml`) | von Hand | Manuell auslösbarer Ops-Lauf: holt alle fehlenden Vorlagen-Volltexte und Anlagen (inkl. Fraktions-Anträge mit Antragsteller-Erkennung) auf dem Server nach und baut anschließend den FTS-Index neu. |
-| **Ops – Wartungsbarriere & Generalprobe (Prod)** (`ops-wartungsbarriere.yml`) | von Hand | Notausgang für einen abgebrochenen Deploy. |
+| **Ops – Wartungsbarriere & Generalprobe (Prod)** (`ops-wartungsbarriere.yml`) | von Hand | Manuelle Wiederherstellung nach einem abgebrochenen Deploy. |
 | **Ops: Wortbeiträge neu extrahieren** (`ops-wortbeitraege-neu.yml`) | von Hand | Manuell auslösbarer Ops-Lauf: extrahiert die Wortbeiträge des Bestands neu (`scripts/extract_wortbeitraege.py --neu-vor`). |
 | **Statusseite veröffentlichen** (`statusseite.yml`) | Push auf `main`, von Hand | Veröffentlicht die Statusseite auf GitHub Pages. |
 | **Sync production back to dev** (`sync-main-to-dev.yml`) | Push auf `main`, von Hand | Produktion darf nie dauerhaft Commits enthalten, die im Integrationsbranch fehlen. |

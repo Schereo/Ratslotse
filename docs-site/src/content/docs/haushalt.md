@@ -563,7 +563,7 @@ Anbinden einer Tabelle, ob die neuen Suchmuster die richtige Quelle
 auswählen und die Auswahl vorhandener Quellen nicht unbeabsichtigt ändern.
 :::
 
-## Der Bereich hält sich selbst aktuell
+## Aktualisierung der Haushaltsdaten
 
 Alle **dreiunddreißig** Datenschichten wurden anfangs manuell eingelesen.
 `check_finanzdaten.py` überwacht die Aktualität am Sonntag. Für **zehn**
@@ -1978,7 +1978,7 @@ mit doppelter Fehlerquelle.
 Der Beteiligungsbericht liegt auf oldenburg.de außerhalb des
 Ratsinformationssystems. Damit der bestehende Job weiterhin nur
 vorhandene Anlagen verarbeitet, lädt ihn `scripts/check_beteiligungsbericht.py`
-in einem **eigenen Job** alle vier Wochen. Die Quelle erscheint einmal im Jahr.
+in einem **eigenen Job** sonntags um 6:30 Uhr. Die Quelle erscheint einmal im Jahr.
 Für den Download verwendet der Job `council/stadtdownload.py` mit den
 folgenden Prüfungen.
 

@@ -121,11 +121,35 @@ Code in `kern/prompts.py`, damit jede Änderung im Pull Request sichtbar ist.
 Das Modell je Aufgabe ist über eine Umgebungsvariable wählbar; die Vorgaben
 stehen unter [Betrieb](/docs/betrieb/#modellwahl-je-aufgabe).
 
-Drei Regeln gelten über alle Aufgaben:
+- **Modellrouting.** In der Standardkonfiguration gehen Aufrufe mit
+  Nutzereingaben über OpenRouter an einen für das Modell hinterlegten
+  EU-Endpunkt. Ratslotse verlangt dort Zero Data Retention (ZDR). Das gilt
+  auch für Aufrufe ohne Feature-Kennung. Für die Verarbeitung
+  ausschließlich öffentlicher Ratsdaten verlangt der Client kein ZDR.
+  Das aktive Routing übermittelt `data_collection: deny` und schließt
+  die Anbieter auf der konfigurierten Sperrliste aus. Die Standardliste
+  enthält fünf Anbieter-Slugs für Anbieter aus China.
 
-- **Nutzereingaben bleiben in der EU**, bei Anbietern ohne Training und mit
-  Zero Data Retention; Anbieter aus China sind ausgeschlossen
-  ([ADR 0002](/docs/adr/0002-dsgvo-provider-routing/)).
+  Bei `RATSLOTSE_KI_AUSSERHALB_EU=1` kann der Client bei einem Ausfall auf
+  andere Endpunkte ausweichen und Modelle ohne EU-Endpunkt aufrufen. Nur
+  für fünf Features mit Nutzereingaben entfällt dabei die ZDR-Pflicht:
+  Lottis Erklärungen (`assistant_explain`), Antworten in „Frag den Rat“
+  (`qa_answer`), ihre vereinfachte Fassung (`qa_simple`), der Bericht der
+  ausführlichen Recherche (`deep_report`) und die Parteipositionen
+  (`party_opinions`). Für die Frageanalyse samt Suchbegriffen, die
+  Zerlegung einer ausführlichen Recherche und den Themenabgleich bleibt
+  ZDR Pflicht. Dasselbe gilt für die Erzeugung von Themenbeschreibungen,
+  die Prüfung auf zu allgemeine Themen und die Stichprobenprüfung von
+  Lottis Antworten.
+
+  Die fünf Ausnahmen wurden für GPT-6 Luna festgelegt, weil es in einem
+  Faktencheck weniger Fehler machte als das bisherige Modell und damals
+  noch nicht mit ZDR verfügbar war. Im regulären EU-Routing fordert der
+  Client auch für diese Features ZDR an.
+  [ADR 0002](/docs/adr/0002-dsgvo-provider-routing/)
+
+  `NWZ_OPENROUTER_ZDR=0` hebt die ZDR-Vorgabe auch für EU-Aufrufe auf.
+  `NWZ_OPENROUTER_ROUTING=off` deaktiviert alle Routing-Vorgaben des Clients.
 - **Ratslotse prüft Modellaussagen soweit möglich anhand der Quelle.**
   Der Beleg muss das Zitat im Wortlaut und die genannten Zahlen enthalten
   (`council/evidence.py`, `council/kritiker.py`).
