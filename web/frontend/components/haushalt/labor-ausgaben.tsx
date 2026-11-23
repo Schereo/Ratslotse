@@ -63,7 +63,7 @@ export function AusgabenWerkbank({
                   ? <span className="text-muted-foreground">{deMio(f.aus)}&nbsp;Mio.&nbsp;€</span>
                   : <>
                       <span className="text-muted-foreground line-through">{deMio(f.aus)}</span>
-                      <strong className="ml-2 text-signal">
+                      <strong className="ml-2 text-signal-ink">
                         {deMio(f.aus * (1 + pct / 100))} ({pct > 0 ? "+" : "−"}{Math.abs(pct)}&nbsp;%)
                       </strong>
                     </>

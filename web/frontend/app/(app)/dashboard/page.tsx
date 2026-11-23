@@ -156,7 +156,7 @@ export default function DashboardPage() {
         <HeuteWidget id="zahl-der-woche" title="Zahl der Woche" icon={Hash}>
           {zahl?.kind === "amount" && (
             <div className="inhalt-auf">
-              <p className="font-display text-[40px] font-extrabold leading-none tracking-tight text-signal">
+              <p className="font-display text-[40px] font-extrabold leading-none tracking-tight text-signal-ink">
                 <CountUpEuro amount={zahl.amount_eur} /></p>
               <p className="mt-2 line-clamp-3 flex-1 text-hinweis text-muted-foreground">
                 beschlossen für: {zahl.title}
@@ -177,7 +177,7 @@ export default function DashboardPage() {
                   10/2026 stand hier fest „7 Tage — in der Sitzungspause",
                   auch wenn die Ausschüsse längst wieder tagten. */}
               <p className={cn("font-display text-[40px] font-extrabold leading-none tracking-tight",
-                zahl.count > 0 ? "text-signal" : "text-muted-foreground")}>
+                zahl.count > 0 ? "text-signal-ink" : "text-muted-foreground")}>
                 <CountUpNumber value={zahl.count} />
               </p>
               <p className="mt-2 flex-1 text-hinweis text-muted-foreground">

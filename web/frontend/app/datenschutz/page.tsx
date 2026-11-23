@@ -45,7 +45,7 @@ export default function DatenschutzPage() {
           <Section title="Verantwortlicher">
             <p>
               {ANSCHRIFT.name}, {ANSCHRIFT.street}, {ANSCHRIFT.city} ·{" "}
-              <a href={KONTAKT_MAILTO} className="text-primary hover:underline">{KONTAKT_EMAIL}</a>
+              <a href={KONTAKT_MAILTO} className="textlink">{KONTAKT_EMAIL}</a>
             </p>
           </Section>
 
@@ -163,7 +163,7 @@ export default function DatenschutzPage() {
               <li>
                 <strong>Woher:</strong> ausschließlich aus den veröffentlichten Einladungen, Vorlagen, Niederschriften
                 und Beschlüssen unter{" "}
-                <a href={RIS_BASE} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+                <a href={RIS_BASE} target="_blank" rel="noopener noreferrer" className="textlink">
                   {RIS_HOST}
                 </a>
                 . Es werden keine weiteren Quellen zusammengeführt, keine Profile aus sozialen Netzwerken ergänzt und
@@ -188,7 +188,7 @@ export default function DatenschutzPage() {
               <li>
                 <strong>Widerspruch und Korrektur:</strong> Wer in diesen Daten vorkommt, kann der Verarbeitung nach
                 Art. 21 DSGVO widersprechen sowie Auskunft, Berichtigung oder Löschung verlangen — formlos an{" "}
-                <a href={KONTAKT_MAILTO} className="text-primary hover:underline">{KONTAKT_EMAIL}</a>.
+                <a href={KONTAKT_MAILTO} className="textlink">{KONTAKT_EMAIL}</a>.
                 Fehlerhafte Zuordnungen (etwa Namensverwechslungen) korrigiere ich auch ohne förmlichen Antrag; ein
                 Hinweis genügt. Bei einem Widerspruch prüfe ich im Einzelfall, ob das öffentliche Interesse an der
                 Nachvollziehbarkeit einer konkreten Entscheidung überwiegt, und teile das Ergebnis mit.
@@ -207,7 +207,7 @@ export default function DatenschutzPage() {
         </div>
 
         <footer className="mt-12 border-t border-border pt-6 text-sm text-muted-foreground">
-          <Link href="/impressum" className="text-primary hover:underline">Impressum</Link>
+          <Link href="/impressum" className="textlink">Impressum</Link>
           {" · "}
           <Link href="/" className="hover:text-foreground">Startseite</Link>
         </footer>

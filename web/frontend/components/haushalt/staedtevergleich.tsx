@@ -135,7 +135,7 @@ export function Zeitreihe({
       <span className="inline-flex flex-wrap items-baseline gap-x-0.5 font-mono text-[12px] tabular-nums text-muted-foreground">
         {punkte.map((p, i) => (
           <span key={p.year} className="whitespace-nowrap">
-            {i > 0 && <span className="px-1 text-muted-foreground/60">→</span>}
+            {i > 0 && <span className="px-1 text-muted-foreground">→</span>}
             {euroJeEw(p.value)}&nbsp;€
             <span className="ml-0.5 text-[10px]">({p.year})</span>
           </span>
@@ -144,7 +144,7 @@ export function Zeitreihe({
       {delta != null && (
         // Signal-Orange steht hier für „das ist die Differenz", nicht für
         // „das ist schlimm" — dieselbe Lesart wie in der Hantel.
-        <span className="font-mono text-[12px] font-semibold tabular-nums text-signal">
+        <span className="font-mono text-[12px] font-semibold tabular-nums text-signal-ink">
           {delta > 0 ? "+" : ""}{delta}&nbsp;%
         </span>
       )}

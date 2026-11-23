@@ -275,7 +275,7 @@ function Filterleiste({ liste, form, setForm, suche, setSuche }: {
         type="search" value={suche} onChange={(e) => setSuche(e.target.value)}
         placeholder="Gesellschaft suchen — Klinikum, Bäder, Wohnen …"
         aria-label="Gesellschaft suchen"
-        className="h-10 w-full rounded-xl border border-border bg-card px-3.5 text-[13.5px] shadow-sm outline-none placeholder:text-muted-foreground/70 focus:border-primary/50"
+        className="h-10 w-full rounded-xl border border-border bg-card px-3.5 text-[13.5px] shadow-sm outline-none placeholder:text-muted-foreground focus:border-primary/50"
       />
     </div>
   );
@@ -503,7 +503,7 @@ export function GesellschaftenAbschnitt({ onBestand }: {
               Entscheidung wie auf /haushalt/konzern: Wer hier eine Zahl
               herausschreibt, soll wissen, was sie nicht ist. */}
           <section className="@container rounded-2xl border border-border border-l-[3px] border-l-signal bg-card p-4 shadow-sm">
-            <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-signal">
+            <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-signal-ink">
               Was dieser Bericht nicht hergibt
             </p>
             <ul className="mt-2 grid list-disc grid-cols-1 gap-x-8 gap-y-1.5 pl-4 text-[13px] leading-relaxed text-foreground/90 @3xl:grid-cols-2">

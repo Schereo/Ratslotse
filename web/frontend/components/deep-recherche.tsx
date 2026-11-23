@@ -141,7 +141,7 @@ export function RechercheFortschritt({ phase, facets, facettenFertig, dokumente,
   const schritt = (zustand: "fertig" | "aktiv" | "offen", text: string) => (
     <span className={cn("flex items-center gap-2 text-xs",
       zustand === "aktiv" ? "font-semibold text-foreground"
-        : zustand === "fertig" ? "text-muted-foreground" : "text-muted-foreground/60")}>
+        : zustand === "fertig" ? "text-muted-foreground" : "text-muted-foreground")}>
       {zustand === "fertig" ? <Check className="h-3.5 w-3.5 shrink-0 text-green-600" aria-hidden />
         : zustand === "aktiv" ? <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-primary" aria-hidden />
           : <span aria-hidden className="mx-[1px] h-3 w-3 shrink-0 rounded-full border-2 border-dotted border-border" />}
@@ -184,7 +184,7 @@ export function RechercheFortschritt({ phase, facets, facettenFertig, dokumente,
                     "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10.5px] font-medium",
                     fertig ? "border-green-600/25 bg-green-600/5 text-green-700 dark:text-green-500"
                       : aktiv ? "border-primary/35 bg-primary/[0.06] text-primary"
-                        : "border-border bg-card text-muted-foreground/70")}>
+                        : "border-border bg-card text-muted-foreground")}>
                     {fertig ? <Check className="h-2.5 w-2.5" aria-hidden />
                       : aktiv ? <Loader2 className="h-2.5 w-2.5 animate-spin" aria-hidden /> : null}
                     {KANAL_TEXT[c.name] ?? c.name}{fertig ? ` · ${c.hits}` : ""}
@@ -228,7 +228,7 @@ export function RechercheFortschritt({ phase, facets, facettenFertig, dokumente,
           <Square className="h-2.5 w-2.5 fill-current" aria-hidden /> Abbrechen
         </button>
       </div>
-      <p className="mt-2.5 text-[11px] leading-relaxed text-muted-foreground/70">
+      <p className="mt-2.5 text-[11px] leading-relaxed text-muted-foreground">
         Du kannst währenddessen weiterlesen oder die App schließen — der Bericht
         erscheint hier im Gespräch, sobald er fertig ist.
       </p>
@@ -390,7 +390,7 @@ export function WieEsWeitergeht({ planning_procedures }: { planning_procedures: 
           </div>
         ))}
       </div>
-      <p className="mt-2 text-[10.5px] leading-relaxed text-muted-foreground/70">
+      <p className="mt-2 text-[10.5px] leading-relaxed text-muted-foreground">
         Termine aus dem Sitzungskalender — Ratslotse erinnert dich, wenn du das Thema abonnierst.
       </p>
     </div>

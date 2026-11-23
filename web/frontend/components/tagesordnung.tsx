@@ -190,7 +190,7 @@ export function AgendaRow({ it, query, outcome, decisionId, pageHref, myTopic, d
             der Tagesordnung — die Marke muss deshalb an der Zeile selbst
             hängen, sonst liest er sich wie ein gewöhnlicher Punkt. */}
         {it.dringlich && (
-          <span className="mb-0.5 flex items-center gap-1 font-mono text-[9.5px] font-semibold uppercase tracking-[0.11em] text-signal">
+          <span className="mb-0.5 flex items-center gap-1 font-mono text-[9.5px] font-semibold uppercase tracking-[0.11em] text-signal-ink">
             <Flame className="h-3 w-3" aria-hidden /> Dringlichkeitsantrag
           </span>
         )}
@@ -238,7 +238,7 @@ export function AgendaRow({ it, query, outcome, decisionId, pageHref, myTopic, d
             „Kurzfassung" sagt, dass hier eine Maschine zusammengefasst hat. */}
         {kurzfassung(it) && (
           <p className="mt-0.5 text-[12.5px] leading-relaxed text-muted-foreground">
-            <span className="mr-1 font-mono text-[9.5px] uppercase tracking-[0.1em] text-muted-foreground/70">
+            <span className="mr-1 font-mono text-[9.5px] uppercase tracking-[0.1em] text-muted-foreground">
               Kurzfassung
             </span>
             {kurzfassung(it)}
@@ -248,11 +248,13 @@ export function AgendaRow({ it, query, outcome, decisionId, pageHref, myTopic, d
         {/* Tims Befund 12.08.: Die TOP-Anhänge (RIS-PDFs) fehlten in der App
             komplett — gerade Fraktions-Anträge ohne Vorlage hängen NUR hier. */}
         {(it.anlagen?.length ?? 0) > 0 && (
-          <p className="mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5">
+          // `min-h-6`: 24 px Fangfläche (WCAG 2.5.8) — die Zeile war 16 px hoch,
+          // und mehrere Anlagen untereinander lagen Fingerkuppe an Fingerkuppe.
+          <p className="flex flex-wrap gap-x-3">
             {it.anlagen!.map((a) => (
               <a key={a.url} href={a.url} target="_blank" rel="noreferrer"
                 onClick={(e) => e.stopPropagation()}
-                className="relative z-[1] inline-flex max-w-full items-center gap-1 text-xs text-primary hover:underline">
+                className="relative z-[1] inline-flex min-h-6 max-w-full items-center gap-1 text-xs text-primary hover:underline">
                 <Paperclip className="h-3 w-3 shrink-0" aria-hidden />
                 <span className="truncate">{a.label}</span>
               </a>
@@ -261,7 +263,7 @@ export function AgendaRow({ it, query, outcome, decisionId, pageHref, myTopic, d
         )}
         {myTopic && (
           /* RL-902: TOP passt zu einem eigenen Thema. */
-          <span className="mt-1 inline-flex rounded-full bg-signal/10 px-2 py-0.5 text-[11px] font-semibold text-signal">
+          <span className="mt-1 inline-flex rounded-full bg-signal/10 px-2 py-0.5 text-[11px] font-semibold text-signal-ink">
             dein Thema · {myTopic}
           </span>
         )}
@@ -352,10 +354,10 @@ export function AenderungenSection({ aenderungen }: { aenderungen: AgendaAenderu
                   {" — "}{z.title}
                 </span>
                 {z.nichtoeffentlich && (
-                  <span className="ml-1 text-[11px] text-muted-foreground/70">(nichtöffentlich)</span>
+                  <span className="ml-1 text-[11px] text-muted-foreground">(nichtöffentlich)</span>
                 )}
                 {z.detail && (
-                  <span className="block text-[12px] text-muted-foreground/80">{z.detail}</span>
+                  <span className="block text-[12px] text-muted-foreground">{z.detail}</span>
                 )}
               </li>
             ))}
@@ -409,7 +411,7 @@ export function DringlichkeitsBlock({ items, ksinr, videoByItem }: {
           className="rounded-lg border border-signal/25 bg-signal/[0.05] px-3 py-2.5">
           <div className="flex items-start gap-3">
             <div className="min-w-0 flex-1">
-              <span className="flex items-center gap-1.5 font-mono text-[9.5px] font-semibold uppercase tracking-[0.11em] text-signal">
+              <span className="flex items-center gap-1.5 font-mono text-[9.5px] font-semibold uppercase tracking-[0.11em] text-signal-ink">
                 <Flame className="h-3 w-3" aria-hidden /> Dringlichkeitsantrag
               </span>
               <p className="mt-1 text-sm font-semibold leading-snug text-foreground">
@@ -422,7 +424,7 @@ export function DringlichkeitsBlock({ items, ksinr, videoByItem }: {
               )}
               {/* Warum der Punkt anders ist als die anderen — ohne diesen Satz
                   sieht die Hervorhebung nach Laune aus. */}
-              <p className="mt-1.5 text-[11.5px] leading-relaxed text-muted-foreground/85">
+              <p className="mt-1.5 text-[11.5px] leading-relaxed text-muted-foreground">
                 Kurzfristig eingebracht: Er steht in keiner Tagesordnung. Zu Beginn
                 der Sitzung wird erst darüber abgestimmt, ob er überhaupt behandelt wird.
               </p>

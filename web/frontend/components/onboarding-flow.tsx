@@ -300,8 +300,12 @@ export function OnboardingFlow() {
         leeres Drittel des Bildschirms (Tims Befund, 01.09.2026). Ein Blatt ist
         so hoch wie sein Inhalt und steht mittig; ist der Inhalt länger als das
         Fenster, scrollt er im Blatt, die Fußleiste bleibt. Der Auftakt bekommt
-        kein Blatt — er ist ein Moment, keine Seite. */}
-    <div ref={rootRef} className={cn(
+        kein Blatt — er ist ein Moment, keine Seite.
+
+        `role="dialog"` + `aria-modal`: Der Wächter oben hält nur den Tastatur-
+        Fokus fest. Ein Screenreader las mit dem Lesecursor trotzdem die App
+        dahinter vor — Navigation, Seitenleiste —, als läge sie offen. */}
+    <div ref={rootRef} role="dialog" aria-modal="true" aria-label="Ratslotse einrichten" className={cn(
       "fixed inset-0 z-[var(--level-flaeche)] flex flex-col bg-background",
       "pb-[calc(1.25rem+env(safe-area-inset-bottom))] pt-[calc(0.75rem+env(safe-area-inset-top))]",
       step > 0 && "lg:flex-row lg:items-center lg:justify-center lg:p-6 xl:p-10",
@@ -1427,7 +1431,7 @@ function TopicZeile({ topic, istStadtteil, onEdit, onRemove }: {
         <img src={stadtthemaBild(topic.image_key)} alt="" width={28} height={28} loading="lazy"
           className="h-7 w-7 shrink-0 rounded-md bg-muted object-cover" />
       ) : (
-        <span className={cn("shrink-0", istStadtteil ? "text-primary" : "text-signal")} aria-hidden>
+        <span className={cn("shrink-0", istStadtteil ? "text-primary" : "text-signal-ink")} aria-hidden>
           {istStadtteil ? <MapPin className="h-3.5 w-3.5" /> : <Sparkles className="h-3.5 w-3.5" />}
         </span>
       )}

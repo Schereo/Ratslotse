@@ -59,7 +59,10 @@ export function LottiErklaert({
     // zurückging und nicht auf eine Entscheidung. Der Kommentar behauptete
     // „~80 Zeichen", das waren in Wahrheit 80 **ch**. Nachgemessen im Browser
     // (Range.getClientRects über 120 Absätze echten Seitentexts).
-    <aside className={cn(
+    // `role="note"` statt `<aside>`: Mehrere Kästen je Seite wären mehrere
+    // namenlose Landmarken, und der Screenreader listet sie als „Ergänzung,
+    // Ergänzung, Ergänzung" (axe 11/2026). Eine Notiz ist, was er ist.
+    <div role="note" className={cn(
       "flex max-w-[70ch] gap-3.5 rounded-2xl border border-primary/20 bg-primary/[0.04] p-3.5",
       className,
     )}>
@@ -72,7 +75,7 @@ export function LottiErklaert({
           <GlossaryText text={text} />
         </p>
       </div>
-    </aside>
+    </div>
   );
 }
 
@@ -94,7 +97,7 @@ export function LottiVergleich({
     // Dieselbe Bauform wie `LottiErklaert` — Deckel an der Karte, s. dort.
     // Auch dieselben 70ch: Der Wert muss mit der Schwester zusammenpassen,
     // beide Kästen stehen auf denselben Seiten untereinander.
-    <aside className={cn(
+    <div role="note" className={cn(
       "flex max-w-[70ch] gap-3.5 rounded-2xl border border-primary/20 bg-primary/[0.04] p-3.5",
       className,
     )}>
@@ -113,6 +116,6 @@ export function LottiVergleich({
           Keine amtliche Kennzahl — die Stadt weist sie so nicht aus.
         </p>
       </div>
-    </aside>
+    </div>
   );
 }

@@ -63,7 +63,7 @@ function PunktInner() {
   if (!an) {
     return (
       <div className="mx-auto max-w-2xl py-10 text-center">
-        <p className="text-foreground">Diesen Punkt findest du in der Tagesordnung der Sitzung.</p>
+        <h1 className="text-foreground">Diesen Punkt findest du in der Tagesordnung der Sitzung.</h1>
         <Link href={sitzungHref(ksinr, [nr])} className="mt-3 inline-flex min-h-11 items-center gap-1.5 font-medium text-primary hover:underline">
           Zur Sitzung <ArrowRight className="h-4 w-4" aria-hidden /></Link>
       </div>
@@ -114,7 +114,7 @@ function PunktView({ p }: { p: Punkt }) {
       {p.decision_id != null && (
         <p className="mt-3 rounded-xl border border-primary/25 bg-primary/[0.06] p-3 text-sm text-foreground">
           Zu diesem Punkt gibt es inzwischen einen Beschluss.{" "}
-          <Link href={decisionHref(p.decision_id)} className="font-medium text-primary hover:underline">Zum Beschluss</Link>
+          <Link href={decisionHref(p.decision_id)} className="font-medium textlink">Zum Beschluss</Link>
         </p>
       )}
 

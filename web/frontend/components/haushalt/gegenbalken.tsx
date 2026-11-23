@@ -35,7 +35,7 @@ function Leiste({
   aktiv: string | null;
 }) {
   return (
-    <div className="flex h-8 gap-[1.5px] overflow-hidden rounded-md" role="list">
+    <div className="flex h-8 gap-[1.5px] overflow-hidden rounded-md">
       {zeilen.map(({ z, value }, i) => {
         const breite = (value / skala) * 100;
         const gewaehlt = aktiv === z.area;
@@ -49,7 +49,6 @@ function Leiste({
           <button
             key={z.area}
             type="button"
-            role="listitem"
             aria-label={`${kanon.name}: ${deMio(value)} Mio. Euro`}
             onClick={() => onPin(z.area)}
             onMouseEnter={() => onHover(z.area)}
@@ -230,7 +229,7 @@ export function Gegenbalken({ zeilen, year }: { zeilen: HaushaltZeile[]; year: n
               style={{ left: `${einEnde}%`, right: 0 }}
             >
               {100 - einEnde >= 20 && (
-                <span className="whitespace-nowrap font-mono text-[9.5px] font-bold uppercase text-signal">
+                <span className="whitespace-nowrap font-mono text-[9.5px] font-bold uppercase text-signal-ink">
                   {/* Schraffur = aus der Rücklage gedeckt; das stand nirgends
                       dabei, und der Kasten hing frei zwischen den Balken
                       (Durchsicht 02.09.2026). */}
@@ -239,7 +238,7 @@ export function Gegenbalken({ zeilen, year }: { zeilen: HaushaltZeile[]; year: n
               )}
             </div>
             {100 - einEnde < 20 && (
-              <p className="absolute right-0 top-6 font-mono text-[9.5px] font-bold uppercase text-signal">
+              <p className="absolute right-0 top-6 font-mono text-[9.5px] font-bold uppercase text-signal-ink">
                 {deMio(-balance)}&#8239;Mio.&nbsp;€ geplantes Minus · aus der Rücklage
               </p>
             )}

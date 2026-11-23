@@ -83,7 +83,7 @@ export function AbgelehnteStufe({
 
         {mehr != null && (
           <div className="flex-none text-right">
-            <p className="font-display text-[15px] font-bold leading-none tabular-nums text-signal">
+            <p className="font-display text-[15px] font-bold leading-none tabular-nums text-signal-ink">
               +{deZahl(mehr)}
               <span className="ml-0.5 text-[11px] font-semibold">Punkte</span>
             </p>

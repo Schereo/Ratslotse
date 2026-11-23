@@ -99,7 +99,7 @@ export default function LoginPage() {
         {weiter && !firstRun && (
           <p className="mt-1.5 text-sm text-muted-foreground">
             Noch kein Konto?{" "}
-            <Link href={`/register${weiter}`} className="font-medium text-primary hover:underline">Kostenlos registrieren</Link>
+            <Link href={`/register${weiter}`} className="font-medium textlink">Kostenlos registrieren</Link>
           </p>
         )}
         <div className="mt-6">
@@ -148,7 +148,7 @@ export default function LoginPage() {
         ) : (
           <p className="mt-3 text-center text-sm text-muted-foreground">
             Noch kein Konto?{" "}
-            <Link href={`/register${weiter}`} className="font-medium text-primary hover:underline">
+            <Link href={`/register${weiter}`} className="font-medium textlink">
               Registrieren
             </Link>
           </p>
