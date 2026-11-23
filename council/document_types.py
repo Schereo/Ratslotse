@@ -16,9 +16,12 @@ from typing import Literal
 DocType = Literal["template", "amendment", "motion", "report_request", "synopsis", "statute",
                   "plan", "statement", "objection_table", "audit_report", "report", "presentation", "other"]
 
-#: Reihenfolge in der Gegenlese-Liste (§ 6.1, Punkt 4).
+#: Reihenfolge in der Gegenlese-Liste (§ 6.1, Punkt 4): erst der Lesestoff, dann
+#: das Belegmaterial. Ein Bericht ist Lesestoff (§ 2.4) und stand bis 11/2026
+#: hinter Plänen und Prüfberichten — mit eingeklapptem Belegmaterial sprangen die
+#: Nummern dann von 1 auf 8.
 ORDER: tuple[DocType, ...] = ("template", "amendment", "motion", "report_request", "synopsis",
-                              "statute", "statement", "objection_table", "audit_report", "plan", "report",
+                              "statute", "statement", "report", "objection_table", "audit_report", "plan",
                               "presentation", "other")
 
 KOPF_ZEICHEN = 1_500

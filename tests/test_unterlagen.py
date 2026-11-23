@@ -2,6 +2,9 @@
 Kennung, Steckbrief, Seiten, Art — und dass das Neu-Einlesen nichts verliert."""
 from __future__ import annotations
 
+import pathlib
+import re
+
 from datetime import date, timedelta
 
 from council import document_types, unterlagen_seiten as us
@@ -55,6 +58,20 @@ def test_art_aus_label_und_kopf():
     # Rangfolge: Anträge vor Satzungen, ein Änderungsantrag zur Satzung ist ein Antrag.
     assert document_types.classify("Änderungsantrag zur Satzung") == "amendment"
     assert document_types.rank("amendment") < document_types.rank("statute") < document_types.rank("other")
+
+
+def test_lesestoff_steht_vor_dem_belegmaterial():
+    """Die Nummern der Gegenlese-Liste laufen ohne Sprung durch den offenen Teil:
+    Erst alles, was das Web als Lesestoff zeigt (``web/frontend/lib/unterlagen.ts``
+    — ein Bericht gehört seit 11/2026 dazu), dann das Belegmaterial."""
+    lesestoff = ("template", "amendment", "motion", "report_request", "synopsis", "statute", "statement", "report")
+    beleg = ("objection_table", "audit_report", "plan", "presentation", "other")
+    assert max(document_types.rank(a) for a in lesestoff) < min(document_types.rank(a) for a in beleg)
+    ts = (pathlib.Path(__file__).resolve().parents[1] / "web/frontend/lib/unterlagen.ts").read_text()
+    menge = re.search(r"const LESESTOFF = new Set\(\[([^\]]*)\]", ts).group(1)
+    assert set(re.findall(r'"(\w+)"', menge)) == set(lesestoff), (
+        "Lesestoff im Web und Reihenfolge im Backend laufen auseinander — "
+        "council/document_types.py::ORDER und web/frontend/lib/unterlagen.ts::LESESTOFF gemeinsam ändern")
 
 
 def test_vorlagenseiten_aus_dem_druckkopf():
