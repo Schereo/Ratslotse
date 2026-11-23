@@ -2668,14 +2668,23 @@ BELEG_MIN_TREFFER = 3
 BELEG_MIN_BESTWERT = 0.75  # ohne Volltreffer muss wenigstens einer nah dran sein
 
 
-def beleglage(candidates: list[dict]) -> str:
+def beleglage(candidates: list[dict], deterministic: bool = False) -> str:
     """„solide" oder „duenn" — wie tragfähig sind die gefundenen Beschlüsse?
 
     Rein deterministisch aus den Rerank-Scores. Der Zweck ist Ehrlichkeit: Das
     einzige Nutzer-👎 mit Begründung („Falschinfo", Giftmüll am Fliegerhorst)
     traf eine Frage mit genau dieser Signatur — wenige, schwache Treffer, aber
     eine Antwort im selben selbstbewussten Ton wie sonst.
+
+    ``deterministic``: Die Auswahl kam ohne Reranker zustande („zuletzt an Ort
+    X“, Ortsüberblick) und trägt deshalb keine Scores; der Ortsbezug ist
+    trotzdem belegt. Dann zählt nur, ob überhaupt etwas da ist. Ohne diese
+    Ausnahme galt jeder Ortsüberblick als dünn — die Antworten begannen mit
+    „Die Ratsunterlagen geben nur begrenzt Auskunft“ und ließen das Stadion in
+    Donnerschwee weg (dev, 23.11.2026).
     """
+    if deterministic:
+        return "solide" if len(candidates) >= 3 else "duenn"
     werte = [c.get("score") or 0 for c in candidates]
     if not werte:
         return "duenn"
