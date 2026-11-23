@@ -161,7 +161,9 @@ export const fenster = (page: Page) => page.locator("[data-lotti-fenster]");
  *  offen, und der Test lief je nach Lage in den 30-s-Timeout. */
 export async function schuldenGeladen(page: Page) {
   await expect(
+    // `.first()`: Seit 11/2026 trägt auch der Leerhinweis die Überschrift
+    // (unsichtbar, für Screenreader) — ohne Daten treffen dann beide zu.
     page.getByRole("heading", { name: "Schulden der Stadt" })
-      .or(page.getByText(/Schuldenzeitreihe noch nicht eingelesen/)),
+      .or(page.getByText(/Schuldenzeitreihe noch nicht eingelesen/)).first(),
   ).toBeVisible({ timeout: 20_000 });
 }

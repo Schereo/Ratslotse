@@ -156,6 +156,25 @@
   body {
     @apply bg-background text-foreground antialiased;
   }
+  /* Fokus nicht verdeckt (WCAG 2.4.11). Mit Tab scrollt der Browser das
+     nächste Element gerade so weit herein, dass es an der Unterkante steht —
+     und dort liegt auf Telefon und Tablet die feste Tab-Leiste. Gemessen
+     11/2026 bei 390 px: auf sechs von neun Seiten verschwand das fokussierte
+     Element ganz darunter. Die Polsterung hält ihm die Leiste frei
+     (4rem = TABLEISTE_INHALT in lib/tableiste.ts). Nur unten: Oben würde sie
+     sich zu den `scroll-mt-*` der Sprungziele addieren. */
+  @media not ((pointer: fine) and (min-width: 1024px)) {
+    html {
+      scroll-padding-bottom: calc(env(safe-area-inset-bottom) + 4rem + 0.75rem);
+    }
+    /* Oben dasselbe für die Kopfleiste, aber NUR am fokussierten Element:
+       Ein Knopf, der im DOM nach seinem Inhalt steht und optisch darüber
+       (Teilen/Merken an den Tagesordnungspunkten), landete sonst unter ihr.
+       Als `scroll-padding-top` am html zählte es zu jedem Sprungziel dazu. */
+    :focus-visible {
+      scroll-margin-top: calc(env(safe-area-inset-top) + 3.8125rem + 0.75rem);
+    }
+  }
   /* Sichtbarer Tastatur-Fokus für Links (Karten-Links, Nav, Footer) —
      Buttons/Inputs bringen ihren eigenen focus-visible-Ring mit. */
   a:focus-visible {

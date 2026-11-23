@@ -353,7 +353,11 @@ function SearchBox({
   const showPanel = open && !value.trim() && (history.length > 0 || vorschlaege.length > 0);
 
   return (
-    <div className="relative" ref={wrapRef}>
+    // Verlässt der Fokus das Feld samt Liste (Tab), geht die Liste zu. Sie
+    // schloss sonst nur auf Mausklick oder Escape und lag beim Weitertabben
+    // über den Filterknöpfen — fokussiert, aber unsichtbar (WCAG 2.4.11).
+    <div className="relative" ref={wrapRef}
+      onBlur={(e) => { if (!wrapRef.current?.contains(e.relatedTarget as Node | null)) setOpen(false); }}>
       <Search className={cn(
         "pointer-events-none absolute top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground",
         large ? "left-4" : "left-3",
@@ -980,7 +984,7 @@ function SessionHighlights({ punkte, ksinr }: { punkte: NonNullable<CouncilSessi
               {(p.topic_name || p.top) && (
                 <span className={cn(
                   "mb-0.5 block font-mono text-[9px] font-semibold uppercase tracking-[0.11em]",
-                  p.topic_name ? "text-signal-ink" : "text-primary/80",
+                  p.topic_name ? "text-signal-ink" : "text-primary",
                 )}>
                   {p.topic_name ? `Dein Thema · ${p.topic_name}` : p.dringlich ? "Dringlichkeitsantrag" : "Wichtiger Punkt"}
                 </span>
@@ -1253,7 +1257,7 @@ function SessionsTab({ committees }: { committees: string[] }) {
         <div className="space-y-3">
           <SearchBox placeholder="In Tagesordnungen suchen …" value={q} onChange={setQ} />
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <Select value={committee} onChange={(e) => setCommittee(e.target.value)}>
+            <Select aria-label="Ausschuss" value={committee} onChange={(e) => setCommittee(e.target.value)}>
               <option value="">Alle Ausschüsse</option>
               {committees.map((c) => <option key={c} value={c} title={c}>{shortCommittee(c)}</option>)}
             </Select>

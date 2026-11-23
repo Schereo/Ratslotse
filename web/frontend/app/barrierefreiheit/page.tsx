@@ -63,7 +63,8 @@ export default function BarrierefreiheitPage() {
               Geprüft wurden rund 30 Seiten der Website (öffentliche und angemeldete), jeweils im hellen und im dunklen Modus:
               automatisch mit dem Prüfwerkzeug axe-core gegen WCAG 2.2 AA, dazu von Hand ein Durchlauf nur mit der
               Tastatur, eine Darstellung bei 320 Pixel Breite und bei 200 % Textgröße. Die gefundenen Mängel bei
-              Kontrasten, Link-Kennzeichnung, Tippflächen und Seitenstruktur sind behoben. Ein Test mit
+              Kontrasten, Link-Kennzeichnung, Tippflächen, Seitenstruktur und verdecktem Tastatur-Fokus sind
+              behoben. Seitdem läuft dieselbe automatische Prüfung bei jeder Änderung am Code mit. Ein Test mit
               Screenreadern durch Betroffene steht noch aus.
             </p>
           </Section>
