@@ -193,3 +193,18 @@ def test_ueberblick_gilt_nicht_als_duenn():
     assert qa.beleglage(ohne_scores) == "duenn"
     assert qa.beleglage(ohne_scores, deterministic=True) == "solide"
     assert qa.beleglage(ohne_scores[:2], deterministic=True) == "duenn"
+
+
+# --- Teilgebiete gehören zum Ort -------------------------------------------
+
+def test_ortsregel_zaehlt_teilgebiete_zum_gefragten_ort():
+    """„Was wurde zum Sanierungsgebiet Innenstadt beschlossen?“ bekam auf dev
+    zweimal „kein Beschluss mit genau diesem Ortsbezug“ — die Sanierungsgebiete
+    heißen „Nördliche“ und „Mittlere Innenstadt“, und die Regel kannte nur die
+    Warnung vor dem größeren Bereich, nicht das Teilgebiet."""
+    ort = {"id": "innenstadt", "name": "Innenstadt", "kind_label": "Ortsbereich"}
+    messages, _ = qa._answer_messages("Was wurde zum Sanierungsgebiet Innenstadt beschlossen?",
+                                      [{"id": 1, "title": "T"}], typ="place", ort=ort)
+    text = " ".join(str(m.get("content")) for m in messages)
+    assert "Teilgebiet" in text
+    assert "genau diesem Ort" not in text
