@@ -12,6 +12,7 @@ import { AuthShell } from "@/components/auth-shell";
 import { useAuth } from "@/lib/auth";
 import { SETUP_QUERY_KEY, holeSetupStand } from "@/lib/onboarding-setup";
 import { mitRuecksprung } from "@/lib/public-routes";
+import { offeneEinladung } from "@/lib/einladung-merken";
 
 // "anmelden": Die Erstbestätigung braucht die Sitzung des Kontos selbst
 // (Backend, `verify_email`). Der Link ist dabei NICHT verbraucht — nach der
@@ -73,9 +74,12 @@ function VerifyInner() {
   // Assistent kam — ein dritter Screen zwischen Mail und Einrichtung, der
   // nichts trug. Wer aus der Mail zurückkommt, springt jetzt direkt ins
   // Einrichten; bis dahin läuft der Lade-Zustand dieser Seite weiter.
+  //
+  // Kam die Person über eine Einladung zu einer gemeinsamen Notiz, geht es
+  // dorthin zurück statt auf „Heute“: Sie hat sich nur deshalb registriert.
   useEffect(() => {
     if (state !== "ok") return;
-    router.replace(istWechsel ? "/account" : "/dashboard");
+    router.replace(istWechsel ? "/account" : offeneEinladung() ?? "/dashboard");
   }, [state, router, istWechsel]);
 
   if (state === "missing") {

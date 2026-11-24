@@ -724,8 +724,15 @@ Notizfeld: „Nur ich“, die gemeinsamen Notizen zu diesem Ziel, „+ Gemeinsam
 | Übergabe | Notizschlüssel per ECDH (kurzlebiger Schlüssel, HKDF, AES-GCM) für den öffentlichen Schlüssel des Eingeladenen | `shared_note_address_invites.grant_*` |
 
 **Einladen per Link.** Der Link heißt `/notiz-einladung?i=<Kennung>#<Geheimnis>`.
-Kein Browser schickt den Anker an einen Server; die Seite rettet ihn vor der
-Anmeldung in den `sessionStorage` und nimmt ihn aus der Adresszeile. Wer
+Kein Browser schickt den Anker an einen Server; die Seite legt ihn in den
+`localStorage` (höchstens acht Tage, weg mit dem Beitreten) und nimmt ihn aus
+der Adresszeile. `localStorage` und nicht `sessionStorage`, weil jemand ohne
+Konto sich erst registriert und die Adresse über einen Link aus der Mail
+bestätigt — der öffnet einen neuen Tab. Die Bestätigungsseite führt dann
+zurück zur Einladung (`lib/einladung-merken.ts`), bis dahin sagt die
+Einladungsseite „Bestätige noch deine E-Mail-Adresse“ und fragt beim
+Zurückkommen erneut. Nach dem Beitreten wartet der Einrichtungs-Assistent
+eines neuen Kontos bis zum nächsten Besuch: erst die Notiz. Wer
 beitritt, packt den Notizschlüssel mit dem Geheimnis aus und verpackt ihn mit
 dem eigenen Datenschlüssel neu. Es gibt kein Adressbuch und keine Suche nach
 Konten, und der Server kann sich nicht selbst einladen, weil er das Geheimnis

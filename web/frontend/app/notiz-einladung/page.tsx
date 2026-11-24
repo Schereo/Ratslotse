@@ -4,9 +4,10 @@
 
    Der Link sieht so aus: /notiz-einladung?i=<Kennung>#<Geheimnis>. Das
    Geheimnis im Anker öffnet den Notizschlüssel; kein Browser schickt den
-   Anker an einen Server. Bevor diese Seite zur Anmeldung schickt, rettet sie
-   ihn in den sessionStorage — die Rückleitung (`?weiter=`) trägt keinen
-   Anker — und nimmt ihn aus der Adresszeile, damit er nicht im Verlauf steht.
+   Anker an einen Server. Bevor diese Seite zur Anmeldung schickt, legt sie
+   ihn in den localStorage — die Rückleitung (`?weiter=`) trägt keinen Anker,
+   und die Bestätigung einer neuen Adresse kommt in einem neuen Tab an — und
+   nimmt ihn aus der Adresszeile, damit er nicht im Verlauf steht.
 
    Beitreten heißt: Notizschlüssel mit dem Geheimnis auspacken, mit dem
    eigenen Datenschlüssel neu verpacken (dafür die eigenen Notizen
@@ -31,6 +32,7 @@ import { mitRuecksprung } from "@/lib/public-routes";
 import { decisionHref, punktHref } from "@/lib/routes";
 import { inviteVerifier, openInvite, wrapForMe } from "@/lib/shared-note-crypto";
 import { acceptInvitation, declineInvitation, joinInvitation } from "@/lib/shared-note-invite";
+import { EINRICHTUNG_SPAETER, offeneEinladungMerken, offeneEinladungVergessen } from "@/lib/einladung-merken";
 import type { ApiAntwort } from "@/lib/vertrag";
 
 type Info = ApiAntwort<"/note-invites/{invite_id}">;
@@ -41,8 +43,46 @@ const zielHref = (i: Pick<Info, "target_kind" | "target_key">) => {
   return punktHref(Number(ksinr), nr);
 };
 
+/** Nach dem Beitreten: im Punkt gleich den Notiz-Reiter zeigen — und den
+ *  Einrichtungs-Assistenten eines neuen Kontos erst beim nächsten Besuch
+ *  (`components/onboarding-gate.tsx`): Wer eingeladen wurde, will zuerst die Notiz. */
 function merken() {
-  try { sessionStorage.setItem("ratslotse:punkt-reiter", "note"); } catch { /* privat */ }
+  try {
+    sessionStorage.setItem("ratslotse:punkt-reiter", "note");
+    sessionStorage.setItem(EINRICHTUNG_SPAETER, "1");
+  } catch { /* privat */ }
+}
+
+/* Das Geheimnis aus dem Anker liegt im localStorage, nicht im
+   sessionStorage: Wer noch kein Konto hat, registriert sich und bestätigt
+   die Adresse über einen Link aus der Mail — der öffnet einen NEUEN Tab, und
+   den sessionStorage des alten sieht er nicht. Es bleibt höchstens acht Tage
+   (die Einladung gilt sieben) und geht mit dem Beitreten weg. */
+const GEHEIMNIS_TAGE = 8;
+const geheimnisKey = (id: string) => `ratslotse:einladung:${id}`;
+
+function geheimnisLesen(id: string): string | null {
+  try {
+    const roh = localStorage.getItem(geheimnisKey(id));
+    if (roh) {
+      const v = JSON.parse(roh) as { s?: string; at?: number };
+      if (v.s && typeof v.at === "number" && Date.now() - v.at < GEHEIMNIS_TAGE * 86_400_000) return v.s;
+      localStorage.removeItem(geheimnisKey(id));
+    }
+  } catch { /* privat oder kaputt */ }
+  try { return sessionStorage.getItem(geheimnisKey(id)); } catch { return null; }
+}
+
+function geheimnisMerken(id: string, s: string) {
+  try { localStorage.setItem(geheimnisKey(id), JSON.stringify({ s, at: Date.now() })); } catch { /* privat */ }
+  try { sessionStorage.setItem(geheimnisKey(id), s); } catch { /* privat */ }
+  offeneEinladungMerken(`/notiz-einladung?i=${encodeURIComponent(id)}`);
+}
+
+function geheimnisVergessen(id: string) {
+  try { localStorage.removeItem(geheimnisKey(id)); } catch { /* privat */ }
+  try { sessionStorage.removeItem(geheimnisKey(id)); } catch { /* privat */ }
+  offeneEinladungVergessen();
 }
 
 type AdressInfo = ApiAntwort<"/note-invites/address/{invite_id}">;
@@ -121,7 +161,8 @@ function AdressEinladung({ id }: { id: string }) {
         </p>
       ) : (
         <div className="mt-4">
-          <NotizSchloss titel="Deine Notizen" id="einladung-notizen" angebot="Dafür brauchst du deine Notizen.">
+          <NotizSchloss titel="Notizen einrichten" id="einladung-notizen" kopf={false} fuss=""
+            angebot={`Richte deine Notizen ein, um mit ${info.inviter_name} zusammen zu schreiben.`}>
             {(o) => (
               <AdressSchritt info={info} o={o} onInfo={setInfo} onJoined={oeffnen} onFehler={setFehler}
                 onAblehnen={() => { declineInvitation(info).then(() => setAbgelehnt(true)).catch((e) => setFehler(String(e?.message ?? e))); }} />
@@ -186,7 +227,7 @@ function AdressSchritt({ info, o, onInfo, onJoined, onFehler, onAblehnen }: {
 
 function LinkEinladung({ id }: { id: string }) {
   const router = useRouter();
-  const { user, loading } = useAuth();
+  const { user, loading, refresh } = useAuth();
   const config = useAppConfig();
   const an = featureAktiv(config.data, "notizen") && featureAktiv(config.data, "notizen-teilen");
   const [geheimnis, setGeheimnis] = useState<string | null | undefined>(undefined);
@@ -195,17 +236,14 @@ function LinkEinladung({ id }: { id: string }) {
   const [laeuft, setLaeuft] = useState(false);
 
   useEffect(() => {
-    const key = `ratslotse:einladung:${id}`;
     const anker = window.location.hash.slice(1);
     if (anker) {
-      try { sessionStorage.setItem(key, anker); } catch { /* privat: dann eben nur jetzt */ }
+      geheimnisMerken(id, anker);
       window.history.replaceState(null, "", window.location.pathname + window.location.search);
       setGeheimnis(anker);
       return;
     }
-    let gemerkt: string | null = null;
-    try { gemerkt = sessionStorage.getItem(key); } catch { /* privat */ }
-    setGeheimnis(gemerkt);
+    setGeheimnis(geheimnisLesen(id));
   }, [id]);
 
   useEffect(() => {
@@ -213,14 +251,31 @@ function LinkEinladung({ id }: { id: string }) {
     router.replace(mitRuecksprung("/login", `/notiz-einladung?i=${encodeURIComponent(id)}`));
   }, [loading, user, geheimnis, id, router]);
 
+  // Ein frisch registriertes Konto ist erst nach der Bestätigung der Adresse
+  // aktiv (403). Bestätigt wird in einem anderen Tab oder auf einem anderen
+  // Gerät — kommt man hierher zurück, wird noch einmal gefragt.
+  const [unbestaetigt, setUnbestaetigt] = useState(false);
+  const [runde, setRunde] = useState(0);
+  useEffect(() => {
+    if (!unbestaetigt) return;
+    const zurueck = () => { if (document.visibilityState === "visible") { void refresh().catch(() => {}); setRunde((r) => r + 1); } };
+    document.addEventListener("visibilitychange", zurueck);
+    window.addEventListener("focus", zurueck);
+    return () => { document.removeEventListener("visibilitychange", zurueck); window.removeEventListener("focus", zurueck); };
+  }, [unbestaetigt, refresh]);
   useEffect(() => {
     if (!user || !an || !id) return;
     let gone = false;
     api.get<Info>(`/note-invites/${encodeURIComponent(id)}`)
-      .then((r) => { if (!gone) setInfo(r); })
-      .catch((e) => { if (!gone) { setInfo(null); setFehler(e instanceof ApiError && e.status === 404 ? null : String(e?.message ?? e)); } });
+      .then((r) => { if (!gone) { setInfo(r); setUnbestaetigt(false); setFehler(null); } })
+      .catch((e) => {
+        if (gone) return;
+        if (e instanceof ApiError && e.status === 403) { setUnbestaetigt(true); setInfo(undefined); return; }
+        setInfo(null);
+        setFehler(e instanceof ApiError && e.status === 404 ? null : String(e?.message ?? e));
+      });
     return () => { gone = true; };
-  }, [user, an, id]);
+  }, [user, an, id, runde]);
 
   const beitreten = async (o: Offen) => {
     if (!info || !geheimnis) return;
@@ -236,10 +291,8 @@ function LinkEinladung({ id }: { id: string }) {
       const w = await wrapForMe(o.dk, nk);
       await api.post(`/note-invites/${encodeURIComponent(info.invite_id)}/accept`,
         { key_iv: w.iv, key_ct: w.ct, key_version: o.keyVersion, verifier });
-      try {
-        sessionStorage.removeItem(`ratslotse:einladung:${id}`);
-        sessionStorage.setItem(OFFEN_KEY, info.note_id);
-      } catch { /* privat */ }
+      geheimnisVergessen(id);
+      try { sessionStorage.setItem(OFFEN_KEY, info.note_id); } catch { /* privat */ }
       merken();
       router.push(zielHref(info));
     } catch (e) {
@@ -255,6 +308,14 @@ function LinkEinladung({ id }: { id: string }) {
     return (
       <AuthShell title="Gemeinsame Notiz">
         <p className="text-sm text-foreground">Der Link ist unvollständig. Lass ihn dir noch einmal schicken.</p>
+      </AuthShell>
+    );
+  }
+  if (unbestaetigt) {
+    return (
+      <AuthShell title="Gemeinsame Notiz">
+        <p className="text-sm text-foreground">Bestätige noch deine E-Mail-Adresse. Danach geht es hier weiter.</p>
+        <p className="mt-1 text-meta text-muted-foreground">Den Link haben wir dir geschickt.</p>
       </AuthShell>
     );
   }
@@ -281,7 +342,8 @@ function LinkEinladung({ id }: { id: string }) {
         </p>
       ) : (
         <div className="mt-4">
-          <NotizSchloss titel="Deine Notizen" id="einladung-notizen" angebot="Dafür brauchst du deine Notizen.">
+          <NotizSchloss titel="Notizen einrichten" id="einladung-notizen" kopf={false} fuss=""
+            angebot={`Richte deine Notizen ein, um mit ${info.inviter_name} zusammen zu schreiben.`}>
             {(o) => (
               <button type="button" disabled={laeuft} onClick={() => void beitreten(o)} className={KNOPF_PRIMAER}>
                 {laeuft ? "Tritt bei …" : "Beitreten"}

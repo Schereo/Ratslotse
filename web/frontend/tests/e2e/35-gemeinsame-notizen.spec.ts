@@ -39,6 +39,22 @@ async function person(browser: Browser, name: string): Promise<{ ctx: BrowserCon
   return { ctx, page, email };
 }
 
+/** Jemand ohne Konto: Browser mit Authenticator, sonst nichts. */
+async function besucher(browser: Browser): Promise<{ ctx: BrowserContext; page: Page }> {
+  const ctx = await browser.newContext({ storageState: { cookies: [], origins: [] } });
+  const page = await ctx.newPage();
+  const cdp = await ctx.newCDPSession(page);
+  await cdp.send("WebAuthn.enable");
+  await cdp.send("WebAuthn.addVirtualAuthenticator", { options: {
+    protocol: "ctap2", ctap2Version: "ctap2_1", transport: "internal", hasResidentKey: true,
+    hasUserVerification: true, isUserVerified: true, hasPrf: true, automaticPresenceSimulation: true,
+  } });
+  await page.route("**/api/app-config", (r) => r.fulfill({ json: { min_build: 0,
+    features: ["punkt-seite", "notizen", "notizen-teilen"] } }));
+  await page.route("**/api/council/session/4654/item**", (r) => r.fulfill({ json: PUNKT }));
+  return { ctx, page };
+}
+
 const karte = (page: Page) => page.locator("section", { has: page.locator("#meine-notiz") });
 
 async function notizenEinrichten(scope: ReturnType<Page["locator"]>) {
@@ -126,6 +142,47 @@ test.describe("Gemeinsame Notizen", () => {
     } finally {
       await anna.ctx.close();
       await ben.ctx.close();
+    }
+  });
+
+  test("per Link ohne Konto: registrieren, einrichten, beitreten — der Assistent wartet", async ({ browser }) => {
+    const anna = await person(browser, "Anna");
+    const neu = await besucher(browser);
+    try {
+      await anna.page.goto(URL);
+      await anna.page.getByRole("tab", { name: "Meine Notiz" }).click();
+      const ka = karte(anna.page);
+      await notizenEinrichten(ka);
+      await ka.getByRole("button", { name: "+ Gemeinsam" }).click();
+      await ka.getByRole("button", { name: "Gemeinsame Notiz anlegen" }).click();
+      await expect(ka.getByText("Live", { exact: true })).toBeVisible({ timeout: 15_000 });
+      await ka.getByRole("button", { name: "Einladen" }).click();
+      const bereich = ka.getByRole("region", { name: "Einladen" });
+      await bereich.getByRole("button", { name: "Link erstellen" }).click();
+      const link = await bereich.getByRole("textbox", { name: "Einladungslink" }).inputValue();
+
+      // Ohne Konto: Anmeldeseite, von dort registrieren — und zurück zur Einladung.
+      await neu.page.goto(link);
+      await neu.page.waitForURL(/\/login\?weiter=/);
+      await neu.page.getByRole("link", { name: "Kostenlos registrieren" }).click();
+      await neu.page.locator("#display-name").fill("Carla");
+      await neu.page.locator("#email").fill(neueAdresse("carla"));
+      await neu.page.locator("#password").fill("password123");
+      await neu.page.getByRole("button", { name: "Konto erstellen" }).click();
+      await neu.page.waitForURL(/\/notiz-einladung\?i=/);
+      await expect(neu.page.getByText("Richte deine Notizen ein, um mit Anna zusammen zu schreiben.")).toBeVisible({ timeout: 15_000 });
+      await notizenEinrichten(neu.page.locator("section", { has: neu.page.locator("#einladung-notizen") }));
+      await neu.page.getByRole("button", { name: "Beitreten" }).click();
+      await neu.page.waitForURL(/\/council\/punkt/);
+      // Die Notiz ist da und bedienbar — kein Assistent davor.
+      const feld = karte(neu.page).getByRole("textbox", { name: "Gemeinsame Notiz" });
+      await expect(feld).toBeVisible({ timeout: 15_000 });
+      await feld.click();
+      await neu.page.keyboard.type("Hallo von Carla");
+      await expect(ka.getByRole("textbox", { name: "Gemeinsame Notiz" })).toContainText("Hallo von Carla", { timeout: 10_000 });
+    } finally {
+      await anna.ctx.close();
+      await neu.ctx.close();
     }
   });
 
