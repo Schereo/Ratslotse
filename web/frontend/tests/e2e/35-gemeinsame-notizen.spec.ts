@@ -66,11 +66,16 @@ test.describe("Gemeinsame Notizen", () => {
       await expect(ka.getByText("Live", { exact: true })).toBeVisible();
 
       // Einladen: der Link trägt das Geheimnis im Anker.
+      // Kein Dialog: Der Bereich klappt in der Karte auf, die Notiz bleibt bedienbar.
       await ka.getByRole("button", { name: "Einladen" }).click();
-      const dialog = anna.page.getByRole("dialog", { name: "Zum Mitschreiben einladen" });
-      const link = await dialog.getByRole("textbox", { name: "Einladungslink" }).inputValue();
+      await expect(anna.page.getByRole("dialog")).toHaveCount(0);
+      const bereich = ka.getByRole("region", { name: "Zum Mitschreiben einladen" });
+      const link = await bereich.getByRole("textbox", { name: "Einladungslink" }).inputValue();
       expect(link).toMatch(/\/notiz-einladung\?i=[\w-]+#[\w-]{43}$/);
-      await dialog.getByRole("button", { name: "Schließen" }).click();
+      await expect(feldA).toBeEditable();
+      await bereich.getByRole("button", { name: "Schließen" }).click();
+      await expect(bereich).toHaveCount(0);
+      await expect(ka.getByRole("button", { name: "Einladen" })).toBeFocused();
 
       // Ben öffnet den Link, richtet seine Notizen ein und tritt bei.
       await ben.page.goto(link);

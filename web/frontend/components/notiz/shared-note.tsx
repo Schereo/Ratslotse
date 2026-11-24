@@ -4,13 +4,17 @@
    unwrap the note key with the own data key, keep the Yjs document in step
    (`lib/shared-note-live.ts`), show who is there, invite by link, manage
    members. Loaded on demand from „Meine Notiz" — Yjs and the live connection
-   reach no page where nobody opens a shared note. */
+   reach no page where nobody opens a shared note.
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import * as DialogPrimitive from "@radix-ui/react-dialog";
+   Inviting and the member list open IN the card, above the text, not as a
+   dialog (Tim 24.11.2026: „keine modale bitte"): the note stays visible and
+   writable while the link is copied. */
+
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import * as Y from "yjs";
 import { Awareness } from "y-protocols/awareness";
-import { Check, Copy, LogOut, Share2, Trash2, UserPlus, Users, X } from "lucide-react";
+import { Check, Copy, Loader2, LogOut, Share2, Trash2, UserPlus, Users, X } from "lucide-react";
+import { Aufklapp } from "@/components/aufklapp";
 import { NoteField } from "@/components/notiz/note-field";
 import { api, ApiError } from "@/lib/api";
 import type { NoteDocument } from "@/lib/doc-ref";
@@ -71,7 +75,12 @@ function Live({ note, nk, meId, meName, rows, documents, seed, onChanged }: Shar
   const [status, setStatus] = useState<LiveStatus>("connecting");
   const [synced, setSynced] = useState(false);
   const [online, setOnline] = useState<number[]>([]);
-  const [dialog, setDialog] = useState<"invite" | "members" | null>(null);
+  const [bereich, setBereich] = useState<"invite" | "members" | null>(null);
+  const [einladung, setEinladung] = useState<Einladung | null>(null);
+  const [entsteht, setEntsteht] = useState(false);
+  const einladenRef = useRef<HTMLButtonElement>(null);
+  const mitgliederRef = useRef<HTMLButtonElement>(null);
+  const bereichId = useId();
   const onChangedRef = useRef(onChanged);
   useEffect(() => { onChangedRef.current = onChanged; });
 
@@ -117,6 +126,32 @@ function Live({ note, nk, meId, meName, rows, documents, seed, onChanged }: Shar
     : status === "offline" ? "Offline — deine Änderungen gehen hinaus, sobald die Verbindung zurück ist."
       : status === "removed" ? "Du bist nicht mehr Mitglied dieser Notiz." : "Verbindet …";
 
+  const schliessen = (fokus = false) => {
+    if (fokus) (bereich === "invite" ? einladenRef : mitgliederRef).current?.focus();
+    setBereich(null);
+  };
+  // Der Bereich fährt erst auf, wenn der Link steht (DESIGNSPRACHE: „Was
+  // nachlädt, fährt erst auf, wenn es da ist“) — bis dahin dreht der Knopf.
+  // Jedes Öffnen macht einen frischen Link: Ein älterer kann inzwischen
+  // weggefallen sein (endet eine Mitgliedschaft, enden alle Einladungen).
+  const einladen = async () => {
+    if (bereich === "invite") return schliessen();
+    if (entsteht) return;
+    setEntsteht(true);
+    try {
+      const { secret, sealed, verifierHash } = await makeInvite(nk);
+      const inv = await api.post<Invite>(`/shared-notes/${note.id}/invites`,
+        { iv: sealed.iv, ciphertext: sealed.ct, verifier_hash: verifierHash, days: 7 });
+      // Das Geheimnis steht im Anker (#…): Den schickt kein Browser an einen Server.
+      setEinladung({ url: `${window.location.origin}/notiz-einladung?i=${encodeURIComponent(inv.id)}#${secret}`, invite: inv });
+    } catch (e) {
+      setEinladung({ fehler: e instanceof Error ? e.message : "Das hat nicht geklappt." });
+    } finally {
+      setEntsteht(false);
+      setBereich("invite");
+    }
+  };
+
   return (
     <div>
       <div className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-1">
@@ -131,14 +166,34 @@ function Live({ note, nk, meId, meName, rows, documents, seed, onChanged }: Shar
           ))}
         </ul>
         <div className="flex items-center gap-1">
-          <button type="button" className={KNOPF} onClick={() => setDialog("invite")}>
-            <UserPlus className="h-4 w-4" aria-hidden /> Einladen
+          <button ref={einladenRef} type="button" className={cn(KNOPF, bereich === "invite" && "bg-accent")}
+            aria-expanded={bereich === "invite"} aria-controls={bereichId} aria-busy={entsteht || undefined}
+            onClick={() => void einladen()}>
+            {entsteht ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <UserPlus className="h-4 w-4" aria-hidden />}
+            Einladen
           </button>
-          <button type="button" className={KNOPF} onClick={() => setDialog("members")} aria-label="Mitglieder verwalten">
+          <button ref={mitgliederRef} type="button" className={cn(KNOPF, bereich === "members" && "bg-accent")}
+            aria-expanded={bereich === "members"} aria-controls={bereichId} aria-label="Mitglieder verwalten"
+            onClick={() => setBereich((b) => (b === "members" ? null : "members"))}>
             <Users className="h-4 w-4" aria-hidden />
           </button>
         </div>
       </div>
+      <Aufklapp offen={bereich !== null}>
+        <div id={bereichId} className="pb-2">
+          {bereich === "invite" && einladung && (
+            <Bereich titel="Zum Mitschreiben einladen" onClose={schliessen}>
+              <EinladenInhalt note={note} einladung={einladung} onDone={() => schliessen(true)} />
+            </Bereich>
+          )}
+          {bereich === "members" && (
+            <Bereich titel="Mitglieder" onClose={schliessen}>
+              <MitgliederInhalt note={note} meId={meId} online={online}
+                onDone={() => { onChanged(); schliessen(true); }} />
+            </Bereich>
+          )}
+        </div>
+      </Aufklapp>
       {collab && (
         <NoteField key={collab.doc.guid} id={`geteilt-${note.id}`} label="Gemeinsame Notiz" value="" onChange={() => {}}
           rows={rows} disabled={status === "removed"} documents={documents} collab={collab}
@@ -146,114 +201,85 @@ function Live({ note, nk, meId, meName, rows, documents, seed, onChanged }: Shar
       )}
       <p className={cn("mt-1 min-h-5 text-meta", status === "offline" ? "text-amber-700 dark:text-amber-300" : "text-muted-foreground")}
         aria-live="polite">{zustand}</p>
-      {dialog === "invite" && <EinladenDialog note={note} nk={nk} onClose={() => setDialog(null)} />}
-      {dialog === "members" && (
-        <MitgliederDialog note={note} meId={meId} online={online} onClose={() => setDialog(null)} onChanged={onChanged} />
-      )}
     </div>
   );
 }
 
-function NotizDialog({ titel, children, onClose }: { titel: string; children: React.ReactNode; onClose: () => void }) {
+type Einladung = { url: string; invite: Invite; fehler?: undefined } | { fehler: string; url?: undefined; invite?: undefined };
+
+/** Ein Bereich in der Karte, über dem Text — kein Dialog, kein Abdunkler. */
+function Bereich({ titel, children, onClose }: {
+  titel: string; children: React.ReactNode; onClose: (fokus?: boolean) => void;
+}) {
+  const id = useId();
   return (
-    <DialogPrimitive.Root open onOpenChange={(o) => { if (!o) onClose(); }}>
-      <DialogPrimitive.Portal>
-        <DialogPrimitive.Overlay className="scrim fixed inset-0" style={{ zIndex: "var(--level-dialog)" }} />
-        <DialogPrimitive.Content style={{ zIndex: "var(--level-dialog)" }}
-          onKeyDown={(e) => { if (e.key === "Escape") e.stopPropagation(); }}
-          className="fixed left-1/2 top-1/2 max-h-[calc(100dvh-2rem)] w-[calc(100vw-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-xl border border-border bg-card p-4 shadow-lg">
-          <div className="flex items-center justify-between gap-2">
-            <DialogPrimitive.Title className="text-base font-semibold text-foreground">{titel}</DialogPrimitive.Title>
-            <DialogPrimitive.Close aria-label="Schließen"
-              className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground">
-              <X className="h-4 w-4" aria-hidden />
-            </DialogPrimitive.Close>
-          </div>
-          <DialogPrimitive.Description className="sr-only">{titel}</DialogPrimitive.Description>
-          <div className="mt-2">{children}</div>
-        </DialogPrimitive.Content>
-      </DialogPrimitive.Portal>
-    </DialogPrimitive.Root>
+    <section aria-labelledby={id} className="rounded-xl border border-border bg-muted/40 p-3"
+      onKeyDown={(e) => { if (e.key === "Escape") { e.stopPropagation(); onClose(true); } }}>
+      <div className="-mt-1.5 -mr-1.5 flex items-center justify-between gap-2">
+        <h3 id={id} className="text-sm font-semibold text-foreground">{titel}</h3>
+        <button type="button" aria-label="Schließen" onClick={() => onClose(true)}
+          className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground desk:h-9 desk:w-9">
+          <X className="h-4 w-4" aria-hidden />
+        </button>
+      </div>
+      <div className="mt-1">{children}</div>
+    </section>
   );
 }
 
 const datum = (iso: string) => new Date(iso.endsWith("Z") ? iso : `${iso}Z`).toLocaleDateString("de-DE",
   { day: "numeric", month: "long" });
 
-function EinladenDialog({ note, nk, onClose }: { note: SharedNote; nk: NoteKey; onClose: () => void }) {
-  const [link, setLink] = useState<{ url: string; invite: Invite } | null>(null);
-  const [fehler, setFehler] = useState<string | null>(null);
+function EinladenInhalt({ note, einladung, onDone }: { note: SharedNote; einladung: Einladung; onDone: () => void }) {
   const [kopiert, setKopiert] = useState(false);
-  useEffect(() => {
-    let gone = false;
-    (async () => {
-      try {
-        const { secret, sealed, verifierHash } = await makeInvite(nk);
-        const inv = await api.post<Invite>(`/shared-notes/${note.id}/invites`,
-          { iv: sealed.iv, ciphertext: sealed.ct, verifier_hash: verifierHash, days: 7 });
-        // Das Geheimnis steht im Anker (#…): Den schickt kein Browser an einen Server.
-        const url = `${window.location.origin}/notiz-einladung?i=${encodeURIComponent(inv.id)}#${secret}`;
-        if (!gone) setLink({ url, invite: inv });
-      } catch (e) {
-        if (!gone) setFehler(e instanceof Error ? e.message : "Das hat nicht geklappt.");
-      }
-    })();
-    return () => { gone = true; };
-  }, [note.id, nk]);
+  if (einladung.fehler !== undefined) return <p className="text-sm text-destructive" role="alert">{einladung.fehler}</p>;
+  const { url, invite } = einladung;
 
   const kopieren = async () => {
-    if (!link) return;
     try {
-      await navigator.clipboard.writeText(link.url);
+      await navigator.clipboard.writeText(url);
       setKopiert(true);
       setTimeout(() => setKopiert(false), 2000);
     } catch { /* Ohne Zwischenablage bleibt das Feld zum Markieren. */ }
   };
   const zurueckziehen = async () => {
-    if (!link) return;
-    await api.del(`/shared-notes/${note.id}/invites/${link.invite.id}`);
-    onClose();
+    await api.del(`/shared-notes/${note.id}/invites/${invite.id}`);
+    onDone();
   };
 
   return (
-    <NotizDialog titel="Zum Mitschreiben einladen" onClose={onClose}>
-      {fehler && <p className="text-sm text-destructive" role="alert">{fehler}</p>}
-      {!link && !fehler && <p className="min-h-11 text-sm text-muted-foreground" role="status">Link entsteht …</p>}
-      {link && (
-        <div className="space-y-3">
-          <p className="text-sm text-foreground">
-            Wer diesen Link hat, kann bis zum {datum(link.invite.expires_at)} beitreten und mitschreiben. Schick ihn nur
-            an Leute, die dabei sein sollen.
-          </p>
-          <label className="block">
-            <span className="sr-only">Einladungslink</span>
-            <input readOnly value={link.url} onFocus={(e) => e.currentTarget.select()}
-              className="h-11 w-full rounded-lg border border-input bg-background px-2 font-mono text-xs" />
-          </label>
-          <div className="flex flex-wrap gap-2">
-            <button type="button" onClick={kopieren}
-              className="inline-flex h-11 items-center gap-1.5 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90">
-              {kopiert ? <Check className="h-4 w-4" aria-hidden /> : <Copy className="h-4 w-4" aria-hidden />}
-              {kopiert ? "Kopiert" : "Link kopieren"}
-            </button>
-            {typeof navigator !== "undefined" && "share" in navigator && (
-              <button type="button" className={cn(KNOPF, "border border-border")}
-                onClick={() => { void navigator.share({ title: "Gemeinsame Notiz", url: link.url }).catch(() => {}); }}>
-                <Share2 className="h-4 w-4" aria-hidden /> Teilen
-              </button>
-            )}
-            <button type="button" className={cn(KNOPF, "ml-auto text-muted-foreground")} onClick={zurueckziehen}>
-              Link zurückziehen
-            </button>
-          </div>
-        </div>
-      )}
-    </NotizDialog>
+    <div className="space-y-3">
+      <p className="text-sm text-foreground">
+        Wer diesen Link hat, kann bis zum {datum(invite.expires_at)} beitreten und mitschreiben. Schick ihn nur
+        an Leute, die dabei sein sollen.
+      </p>
+      <label className="block">
+        <span className="sr-only">Einladungslink</span>
+        <input readOnly value={url} onFocus={(e) => e.currentTarget.select()}
+          className="h-11 w-full rounded-lg border border-input bg-background px-2 font-mono text-xs" />
+      </label>
+      <div className="flex flex-wrap gap-2">
+        <button type="button" onClick={kopieren}
+          className="inline-flex h-11 items-center gap-1.5 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90">
+          {kopiert ? <Check className="h-4 w-4" aria-hidden /> : <Copy className="h-4 w-4" aria-hidden />}
+          {kopiert ? "Kopiert" : "Link kopieren"}
+        </button>
+        {typeof navigator !== "undefined" && "share" in navigator && (
+          <button type="button" className={cn(KNOPF, "border border-border bg-card")}
+            onClick={() => { void navigator.share({ title: "Gemeinsame Notiz", url }).catch(() => {}); }}>
+            <Share2 className="h-4 w-4" aria-hidden /> Teilen
+          </button>
+        )}
+        <button type="button" className={cn(KNOPF, "ml-auto text-muted-foreground")} onClick={zurueckziehen}>
+          Link zurückziehen
+        </button>
+      </div>
+    </div>
   );
 }
 
-function MitgliederDialog({ note, meId, online, onClose, onChanged }: {
-  note: SharedNote; meId: number; online: number[]; onClose: () => void; onChanged: () => void;
+function MitgliederInhalt({ note, meId, online, onDone }: {
+  note: SharedNote; meId: number; online: number[]; onDone: () => void;
 }) {
   const leite = note.role === "owner";
   const [loeschen, setLoeschen] = useState(false);
@@ -261,14 +287,13 @@ function MitgliederDialog({ note, meId, online, onClose, onChanged }: {
   const tun = async (fn: () => Promise<unknown>) => {
     try {
       await fn();
-      onChanged();
-      onClose();
+      onDone();
     } catch (e) {
       setFehler(e instanceof Error ? e.message : "Das hat nicht geklappt.");
     }
   };
   return (
-    <NotizDialog titel="Mitglieder" onClose={onClose}>
+    <>
       <ul className="divide-y divide-border">
         {note.members.map((m) => (
           <li key={m.user_id} className="flex min-h-11 items-center gap-2 py-1.5 text-sm">
@@ -293,7 +318,7 @@ function MitgliederDialog({ note, meId, online, onClose, onChanged }: {
         ))}
       </ul>
       {leite && (
-        <div className="mt-3 border-t border-border pt-3">
+        <div className="mt-2 border-t border-border pt-2">
           {!loeschen ? (
             <button type="button" className={cn(KNOPF, "text-destructive")} onClick={() => setLoeschen(true)}>
               <Trash2 className="h-4 w-4" aria-hidden /> Für alle löschen
@@ -313,6 +338,6 @@ function MitgliederDialog({ note, meId, online, onClose, onChanged }: {
         </div>
       )}
       {fehler && <p className="mt-2 text-sm text-destructive" role="alert">{fehler}</p>}
-    </NotizDialog>
+    </>
   );
 }
