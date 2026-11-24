@@ -242,7 +242,7 @@ prüft, ob jeder Job in der Tabelle steht.
 | `render_plaene.py` | sonntags `30 4 * * 0` | Neue Bauleitplan-Anlagen (Planzeichnung, Lageplan) als Bilder für die Beschluss-Seite. |
 | `speicherfristen.py` | täglich `40 4 * * *` | Löscht Recherchen von Konten ohne Einwilligung ins Speichern sieben Tage nach ihrem letzten Stand (dieselbe Frist greift zusätzlich bei jedem Start des Backends). |
 | `check_wahltermine.py` | täglich `15 6 * * *` | Vergleicht den Terminkalender des Votemanagers mit `kommunalwahl/wahlen/` — meldet eine unbekannte Wahl und eine Wahl-Id, die endlich da ist oder kurz vor dem Wahltag noch fehlt. Legt nichts an. |
-| `check_herzschlag.py` | täglich `30 6 * * *` | Meldet Jobs, die gegen ihren Takt aus `kern/jobs.py` schweigen, einen vollen Datenträger, auffällige Registrierungen, Verstöße gegen die Datenregeln und ein Ratsinformationssystem, das nicht wie erwartet antwortet. |
+| `check_herzschlag.py` | täglich `30 6 * * *` | Meldet Jobs, die gegen ihren Takt aus `kern/jobs.py` schweigen, einen vollen Datenträger, auffällige Registrierungen, Verstöße gegen die Datenregeln und ein Ratsinformationssystem, das nicht wie erwartet antwortet. Zieht außerdem wöchentlich die Wegwerf-Liste nach. |
 | `check_cities.py` | werktags `15 10 * * 1-6` mit `--nur-oldenburg`, sonntags `0 5 * * 0` | Städte-Speicher: werktags nur Oldenburg übernehmen und einbetten (ohne Netz und Modell — daraus entsteht „Anderswo" unter neuen Beschlüssen), sonntags zusätzlich die Vergleichsstädte, Einordnung, Ideen-Gruppen und Urteile. Kostengrenze je Lauf `CITIES_MAX_USD` (Vorgabe 2 $), Frist `CITIES_MAX_SECONDS`. |
 
 ¹ **Nur auf Prod** — und das ist seit 09/2026 die richtige Seite. Der
@@ -355,6 +355,18 @@ selbst einen `RisError` (dauerhafte Weiterleitung, fremder Host, keine
 SessionNet-Seite, vier Monate leerer Kalender) — der betroffene Cron stürzt
 ab und meldet sich über `run_guarded` schon beim ersten Lauf.
 `RATSLOTSE_RIS_PROBE=0` schaltet die Tagesprobe ab.
+
+Seit 11/2026 hält derselbe Lauf die **Wegwerf-Liste** frisch
+(`kern/disposable_email.py`): Ist sie eine Woche alt, holt er den Stand des
+öffentlichen Projekts, prüft ihn (keine kaputten Zeilen, höchstens zehn
+Prozent Schwund, kein geschützter Anbieter) und schreibt ihn nach
+`data/disposable_email_domains.txt` — dorthin, weil der Deploy `data/` nicht
+überschreibt. Gelesen wird die neuere Fassung von Kopie und Repo-Datei nach
+ihrem `# Stand:`-Kopf, ohne Neustart des Dienstes. Gemeldet wird erst, wenn
+das Nachziehen einen Monat lang scheitert. `RATSLOTSE_WEGWERF_NACHZIEHEN=0`
+schaltet es ab. Anlass: Die Liste stand von September bis November still, und
+am 23.11.2026 kam ein Konto über einen Anbieter herein, den sie upstream
+längst führte.
 
 Seit 10/2026 prüft derselbe Lauf auch den **Rats-Bestand**
 (`council/datenpruefung.py`). Datenfehler können auch bei erfolgreichen
@@ -1049,6 +1061,7 @@ sind.
 | `BACKUP_RSYNC_TARGET` | Ziel des Off-Site-Mirrors; leer = kein Mirror | nein | leer |
 | `BACKUP_RSYNC_SSH_PORT` | SSH-Port des Backup-Ziels | nein | `22` |
 | `BACKUP_ENV` | `0` nimmt die `.env` mit den Geheimnissen aus der Sicherung | nein | `1` |
+| `RATSLOTSE_WEGWERF_NACHZIEHEN` | `0` hält den Herzschlag davon ab, die Wegwerf-Liste wöchentlich nachzuziehen (Tests, Rechner ohne Netz) | nein | `1` |
 | `LLM_TAGESKOSTEN_ALARM_USD` | Der tägliche Überwachungsjob meldet Modellkosten des Vortags oberhalb dieses Schwellenwerts per E-Mail. `0` deaktiviert den Alarm. | nein | 5 $ |
 | `WEEKLY_STEP_MAX_SECONDS` | Höchstdauer eines Schritts im Wochenlauf; ein Schritt darüber wird beendet und zählt als Fehlschlag, der Lauf geht weiter. `0` hebt sie auf | nein | 10.800 (3 h) |
 | `WEEKLY_ENRICH_MAX_SECONDS` | Frist für den ganzen Wochenlauf; ein wartender Deploy beendet ihn ohnehin | nein | keine |

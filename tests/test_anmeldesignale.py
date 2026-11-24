@@ -105,10 +105,13 @@ def test_signup_signals_zaehlt_beide_seiten(client):
         gruende = {r["reason"]: r["n"] for r in daten["reasons"]}
     finally:
         store.close()
-    assert daten["created"] == 1
+    # Das Wegwerf-Konto entsteht seit 24.11.2026 still (kern/disposable_email.py)
+    # — es zählt also bei den angelegten mit UND unter seinem Grund: Für den
+    # Herzschlag ist es dasselbe Signal wie früher die Abweisung.
+    assert daten["created"] == 2
     assert daten["rejected"] == 2
     assert gruende == {"disposable_email": 1, "duplicate_email": 1}
-    assert daten["series"][-1]["created"] == 1
+    assert daten["series"][-1]["created"] == 2
     assert daten["series"][-1]["rejected"] == 2
 
 
