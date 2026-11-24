@@ -54,7 +54,7 @@ const SCHWELLE_KARTEN = 620;
 const ABWEICHUNG = new Set(["B", "WB"]);
 
 function markenFarbe(mark: string): { klasse: string; stil?: React.CSSProperties } {
-  if (ABWEICHUNG.has(mark)) return { klasse: "font-bold text-signal" };
+  if (ABWEICHUNG.has(mark)) return { klasse: "font-bold text-signal-ink" };
   if (mark === "H") return { klasse: "font-semibold", stil: { color: "var(--hh-ein-1)" } };
   return { klasse: "text-muted-foreground" };
 }
@@ -91,7 +91,7 @@ function Zelle({ year, mark, luecke, mitJahr }: {
       {mitJahr && (
         <span className={cn(
           "mt-1 font-mono text-[8.5px] leading-none",
-          luecke ? "font-semibold text-signal" : "text-muted-foreground",
+          luecke ? "font-semibold text-signal-ink" : "text-muted-foreground",
         )}>
           {String(year).slice(-2)}
         </span>
@@ -223,7 +223,7 @@ export function KettenMatrix({ ketten, years, lueckenJahre, marken, detail, bele
             <span key={s.year} aria-hidden="true"
               className={cn(
                 "pb-1.5 text-center font-mono text-[10px]",
-                s.luecke ? "font-semibold text-signal" : "text-muted-foreground",
+                s.luecke ? "font-semibold text-signal-ink" : "text-muted-foreground",
               )}>
               {String(s.year).slice(-2)}
             </span>

@@ -6375,6 +6375,227 @@
         "title": "BudgetFederalComparison",
         "type": "object"
       },
+      "BudgetFinding": {
+        "properties": {
+          "chart": {
+            "title": "Chart",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "key_figure": {
+            "$ref": "#/components/schemas/BudgetFindingKeyFigure"
+          },
+          "page": {
+            "title": "Page",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "quote": {
+            "title": "Quote",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "quote_page": {
+            "title": "Quote Page",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "visual": {
+            "$ref": "#/components/schemas/BudgetFindingVisual"
+          }
+        },
+        "required": [
+          "title",
+          "text",
+          "key_figure",
+          "chart",
+          "page",
+          "quote",
+          "visual"
+        ],
+        "title": "BudgetFinding",
+        "type": "object"
+      },
+      "BudgetFindingKeyFigure": {
+        "properties": {
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "unit": {
+            "title": "Unit",
+            "type": "string"
+          },
+          "value": {
+            "title": "Value",
+            "type": "number"
+          }
+        },
+        "required": [
+          "value",
+          "unit",
+          "label"
+        ],
+        "title": "BudgetFindingKeyFigure",
+        "type": "object"
+      },
+      "BudgetFindingRow": {
+        "properties": {
+          "change": {
+            "title": "Change",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "value": {
+            "title": "Value",
+            "type": "number"
+          }
+        },
+        "required": [
+          "label",
+          "value"
+        ],
+        "title": "BudgetFindingRow",
+        "type": "object"
+      },
+      "BudgetFindingSeries": {
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "values": {
+            "items": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "title": "Values",
+            "type": "array"
+          }
+        },
+        "required": [
+          "name",
+          "values"
+        ],
+        "title": "BudgetFindingSeries",
+        "type": "object"
+      },
+      "BudgetFindingStep": {
+        "properties": {
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "value": {
+            "title": "Value",
+            "type": "number"
+          }
+        },
+        "required": [
+          "label",
+          "value"
+        ],
+        "title": "BudgetFindingStep",
+        "type": "object"
+      },
+      "BudgetFindingVisual": {
+        "description": "Wie die Seite einen Befund zeichnet. ``type``: ``columns`` (Säulen je\nKategorie, ``kinds`` vom Code gesetzt: actual · forecast · plan ·\nfinancial_plan · null), ``bridge`` (von ``start`` über ``steps`` zu\n``end``) oder ``bars`` (Rangfolge).",
+        "properties": {
+          "categories": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Categories",
+            "type": "array"
+          },
+          "end": {
+            "$ref": "#/components/schemas/BudgetFindingStep"
+          },
+          "highlight": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Highlight",
+            "type": "array"
+          },
+          "kinds": {
+            "items": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "title": "Kinds",
+            "type": "array"
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/BudgetFindingRow"
+            },
+            "title": "Rows",
+            "type": "array"
+          },
+          "series": {
+            "items": {
+              "$ref": "#/components/schemas/BudgetFindingSeries"
+            },
+            "title": "Series",
+            "type": "array"
+          },
+          "stacked": {
+            "title": "Stacked",
+            "type": "boolean"
+          },
+          "start": {
+            "$ref": "#/components/schemas/BudgetFindingStep"
+          },
+          "steps": {
+            "items": {
+              "$ref": "#/components/schemas/BudgetFindingStep"
+            },
+            "title": "Steps",
+            "type": "array"
+          },
+          "type": {
+            "title": "Type",
+            "type": "string"
+          },
+          "unit": {
+            "title": "Unit",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "unit"
+        ],
+        "title": "BudgetFindingVisual",
+        "type": "object"
+      },
       "BudgetFixedAssets": {
         "properties": {
           "accounting_systems": {
@@ -6570,8 +6791,18 @@
             "title": "Companies",
             "type": "array"
           },
+          "forecasts": {
+            "items": {
+              "$ref": "#/components/schemas/HoldingForecastYear"
+            },
+            "title": "Forecasts",
+            "type": "array"
+          },
           "group_comparison": {
             "title": "Group Comparison"
+          },
+          "handbook": {
+            "$ref": "#/components/schemas/HoldingsHandbook"
           },
           "indicators": {
             "title": "Indicators"
@@ -6604,6 +6835,7 @@
           }
         },
         "required": [
+          "forecasts",
           "report_years",
           "owners",
           "companies",
@@ -6612,7 +6844,8 @@
           "indicators",
           "group_comparison",
           "people",
-          "texts"
+          "texts",
+          "handbook"
         ],
         "title": "BudgetHoldings",
         "type": "object"
@@ -16405,6 +16638,267 @@
         "title": "HighestDecisionId",
         "type": "object"
       },
+      "HoldingForecastActual": {
+        "description": "Das Ist laut Abschluss. ``source``: ``annual_accounts`` oder\n``holdings_report`` (Beteiligungsbericht).",
+        "properties": {
+          "herkunft_id": {
+            "title": "Herkunft Id",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "value": {
+            "title": "Value",
+            "type": "number"
+          }
+        },
+        "required": [
+          "value",
+          "source",
+          "herkunft_id"
+        ],
+        "title": "HoldingForecastActual",
+        "type": "object"
+      },
+      "HoldingForecastStation": {
+        "description": "Ein Quartalsbericht: Plan und Hochrechnung zu einem Stichtag.\n\nBeträge in Euro (auch wo der Bericht in TEUR rechnet, ``rounded``).\n``plan_kind`` sagt, welcher Plan es ist: ``original`` (nicht als geändert\nbezeichnet) oder ``adjusted``; ``None``, wo der Bericht es nicht nennt.\n``plan_other`` ist der zweite Planwert des Seitentexts (VWG). Nie\nverrechnet — die Seite stellt Plan und Hochrechnung nebeneinander.",
+        "properties": {
+          "as_of": {
+            "title": "As Of",
+            "type": "string"
+          },
+          "conflict_note": {
+            "title": "Conflict Note",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "forecast": {
+            "title": "Forecast",
+            "type": "number"
+          },
+          "herkunft_id": {
+            "title": "Herkunft Id",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "plan": {
+            "title": "Plan",
+            "type": "number"
+          },
+          "plan_kind": {
+            "title": "Plan Kind",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "plan_other": {
+            "title": "Plan Other",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "plan_other_kind": {
+            "title": "Plan Other Kind",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "quarter": {
+            "title": "Quarter",
+            "type": "integer"
+          },
+          "rounded": {
+            "title": "Rounded",
+            "type": "boolean"
+          },
+          "statement": {
+            "title": "Statement",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "template_number": {
+            "title": "Template Number",
+            "type": "string"
+          }
+        },
+        "required": [
+          "as_of",
+          "quarter",
+          "plan",
+          "plan_kind",
+          "forecast",
+          "plan_other",
+          "plan_other_kind",
+          "rounded",
+          "conflict_note",
+          "statement",
+          "template_number",
+          "herkunft_id"
+        ],
+        "title": "HoldingForecastStation",
+        "type": "object"
+      },
+      "HoldingForecastYear": {
+        "description": "Ein Unternehmen im jüngsten Jahr mit Quartalsbericht: drei getrennte\nStationen — Plan und Hochrechnungen (``stations``, je Stichtag eine), das\nIst (``actual``, nur aus dem Abschluss). ``basis`` ist ``result``\n(Jahresergebnis) oder ``subsidy_need`` (Gesamtzuschussbedarf der VWG,\ndort ohne ``actual`` und mit ``actual_note``).",
+        "properties": {
+          "actual": {
+            "description": "Das Ist laut Abschluss. ``source``: ``annual_accounts`` oder\n``holdings_report`` (Beteiligungsbericht).",
+            "properties": {
+              "herkunft_id": {
+                "title": "Herkunft Id",
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "source": {
+                "title": "Source",
+                "type": "string"
+              },
+              "value": {
+                "title": "Value",
+                "type": "number"
+              }
+            },
+            "required": [
+              "value",
+              "source",
+              "herkunft_id"
+            ],
+            "title": "HoldingForecastActual",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "actual_note": {
+            "title": "Actual Note",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "basis": {
+            "title": "Basis",
+            "type": "string"
+          },
+          "company": {
+            "title": "Company",
+            "type": "string"
+          },
+          "stations": {
+            "items": {
+              "$ref": "#/components/schemas/HoldingForecastStation"
+            },
+            "title": "Stations",
+            "type": "array"
+          },
+          "year": {
+            "title": "Year",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "company",
+          "year",
+          "basis",
+          "stations",
+          "actual",
+          "actual_note"
+        ],
+        "title": "HoldingForecastYear",
+        "type": "object"
+      },
+      "HoldingsHandbook": {
+        "description": "Das Handbuch Beteiligungen der Stadt (``council/shareholding_handbook.py``):\nFundstelle samt Ratsbeschluss und die Regeln, die die Seite zeigt.",
+        "properties": {
+          "adopted_date": {
+            "title": "Adopted Date",
+            "type": "string"
+          },
+          "adopted_decision_id": {
+            "title": "Adopted Decision Id",
+            "type": "integer"
+          },
+          "adopted_template": {
+            "title": "Adopted Template",
+            "type": "string"
+          },
+          "rules": {
+            "items": {
+              "$ref": "#/components/schemas/HoldingsHandbookRule"
+            },
+            "title": "Rules",
+            "type": "array"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "version",
+          "adopted_date",
+          "adopted_template",
+          "adopted_decision_id",
+          "url",
+          "rules"
+        ],
+        "title": "HoldingsHandbook",
+        "type": "object"
+      },
+      "HoldingsHandbookRule": {
+        "description": "Eine Regel des Handbuchs Beteiligungen als Kurzfassung für die Seite.",
+        "properties": {
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "pages": {
+            "title": "Pages",
+            "type": "string"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "title",
+          "summary",
+          "pages"
+        ],
+        "title": "HoldingsHandbookRule",
+        "type": "object"
+      },
       "Idea": {
         "description": "Eine fremde IDEE samt Urteil, ob Oldenburg sie schon hat.\n\nEine Zeile je Stadt und Idee, nicht je Vorlage: Potsdam hat das\nKonzept für bürgerschaftliches Engagement in der Denkmalpflege\ndreimal beantragt, Münster den Jugendrat zweimal. Gemessen am\n09.09.2026 waren 195 von 262 Einträgen solche Wiederholungen.\nGezeigt wird die jüngste, die übrigen stehen in ``siblings``.",
         "properties": {
@@ -17451,6 +17945,54 @@
           "blocks"
         ],
         "title": "ItemBudgetContext",
+        "type": "object"
+      },
+      "ItemBudgetFindings": {
+        "description": "„Was der Haushaltsentwurf zeigt“ (``council/budget_findings.py``).",
+        "properties": {
+          "budget_year": {
+            "title": "Budget Year",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "document_id": {
+            "title": "Document Id",
+            "type": "integer"
+          },
+          "findings": {
+            "items": {
+              "$ref": "#/components/schemas/BudgetFinding"
+            },
+            "title": "Findings",
+            "type": "array"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "url": {
+            "title": "Url",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "document_id",
+          "label",
+          "url",
+          "budget_year",
+          "findings",
+          "created_at"
+        ],
+        "title": "ItemBudgetFindings",
         "type": "object"
       },
       "ItemDossier": {
@@ -34357,6 +34899,9 @@
           },
           "budget_context": {
             "$ref": "#/components/schemas/ItemBudgetContext"
+          },
+          "budget_findings": {
+            "$ref": "#/components/schemas/ItemBudgetFindings"
           },
           "committee": {
             "title": "Committee",

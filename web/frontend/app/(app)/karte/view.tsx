@@ -301,6 +301,10 @@ function Buehne() {
     // aus dem Polster aus, blieb dabei aber im 1600er-Deckel stecken.
     // `@container` für die Spalten-Varianten der Bausteine.
     <div className="@container flex flex-col desk:h-[calc(100dvh)] desk:flex-row desk:overflow-hidden">
+      {/* Die Seite braucht eine Hauptüberschrift auch dann, wenn kein Ort
+          gewählt ist — sonst springt der Screenreader ins Leere (axe 11/2026).
+          Mit Ort trägt die Seitenspalte den Ortsnamen als h1. */}
+      {!place && <h1 className="sr-only">Stadtkarte</h1>}
       {/* `isolate`: Leaflet stapelt seine Ebenen bis z-index 1000 — ohne
           eigenen Stapelkontext lägen Karte, Brotkrumen und Chips damit ÜBER
           jedem Dialog (z-50), etwa der Melde-Rückfrage. */}

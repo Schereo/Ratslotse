@@ -1232,7 +1232,7 @@ export function LottiPanel({
         onSubmit={(e) => { e.preventDefault(); void fragen(frage, !!markierung); }}
         className="flex items-center gap-2 border-t border-border px-3 py-2"
       >
-        <Sparkles className="h-4 w-4 flex-none text-signal" aria-hidden />
+        <Sparkles className="h-4 w-4 flex-none text-signal-ink" aria-hidden />
         <input
           ref={eingabeRef}
           value={frage}
@@ -1250,7 +1250,7 @@ export function LottiPanel({
         {zaehler && (
           <span id="lotti-zaehler" aria-live="polite"
                 className={cn("flex-none font-mono text-[10.5px] tabular-nums",
-                              [...frage].length >= FRAGE_MAX ? "text-signal" : "text-muted-foreground")}>
+                              [...frage].length >= FRAGE_MAX ? "text-signal-ink" : "text-muted-foreground")}>
             {zaehler}
           </span>
         )}

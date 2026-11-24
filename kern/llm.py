@@ -332,6 +332,8 @@ OHNE_NUTZEREINGABE: frozenset[str] = frozenset({
     "template_terms", "template_terms_verify",
     # Wahlprogramme zum Tagesordnungspunkt einordnen und prüfen (council/programm_bezug.py)
     "program_stance", "program_stance_verify",
+    # Was der Haushaltsentwurf zeigt: Befunde aus den Grafiken des Vorberichts (council/budget_findings.py)
+    "budget_findings", "budget_findings_verify",
     # Pläne der Stadt: Stand und Bezüge aus Vorlagen und Berichten heraussuchen
     "plan_measure_status", "plan_link_judgement", "plan_mandate_check", "plan_key_points", "plan_reports", "plan_plain",
     # Städtevergleich: fremde Ratsdokumente

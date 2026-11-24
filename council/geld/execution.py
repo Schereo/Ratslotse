@@ -29,7 +29,7 @@ import re
 import sqlite3
 from datetime import date
 
-from council import geld
+from council import geld, holding_quarterly
 from kern.dbfehler import tabelle_fehlt
 from council.store_basis import StoreBasis
 
@@ -88,7 +88,22 @@ def _abschlussjahr() -> int:
     return date.today().year - 2
 
 
+#: Wörter, die den Bericht der KERNVERWALTUNG ausdrücklich meinen. Nennt eine
+#: Frage zugleich ein Unternehmen, entscheiden sie, ob der Vollzug trotzdem
+#: antwortet.
+_KERN_AUSDRUECKLICH = re.compile(
+    r"haushaltsvollzug|finanz und leistungsbericht|leistungsbericht|kernverwaltung|"
+    r"kernhaushalt|teilhaushalt")
+
+
 def recognize(text: str, typ: str, facets: set[str]) -> bool:
+    # „Quartalsbericht“ und „Hochrechnung“ gehören auch den Berichten der
+    # Beteiligungen (Facette ``holding_forecasts``). Nennt die Frage ein
+    # Unternehmen und nicht ausdrücklich den Bericht der Kernverwaltung, ist
+    # nicht der Stadthaushalt gemeint: „Hochrechnung Klinikum 2025“ bekam
+    # bis 11/2026 den Vollzug der Kernverwaltung.
+    if holding_quarterly.firmen_in(text) and not _KERN_AUSDRUECKLICH.search(text):
+        return False
     if _HART.search(text):
         return True
     m = _JAHR.search(text)

@@ -87,7 +87,7 @@ function Zeile({ s, von, bis, skala, nachkomma }: {
         </p>
         <span className={cn(
           "flex-none font-display text-[15px] font-bold tabular-nums",
-          result && "text-signal",
+          result && "text-signal-ink",
         )}>
           {deZahl(s.value, nachkomma)}
         </span>
@@ -165,7 +165,7 @@ export function Wasserfall({ schritte, unit, kicker, beleg, nachkomma = 1, class
       </div>
 
       {probeDaneben && result && (
-        <p className="mt-2.5 text-[11px] leading-relaxed text-signal">
+        <p className="mt-2.5 text-[11px] leading-relaxed text-signal-ink">
           Summenprobe: Die Schritte ergeben {deZahl(Math.max(letzterStand, 0), nachkomma)},
           als Ergebnis übergeben sind {deZahl(result.value, nachkomma)} — die Grafik zeigt
           das, statt zu strecken.

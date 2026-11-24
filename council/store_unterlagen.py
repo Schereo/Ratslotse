@@ -52,14 +52,17 @@ class UnterlagenMixin(StoreBasis):
             out[d["document_id"]] = d
         return out
 
-    def punkt_anlagen_ohne_text(self, seit: str) -> list[dict]:
+    def punkt_anlagen_ohne_text(self, seit: str, bis: str | None = None) -> list[dict]:
         """Punkt-Anlagen kommender und jüngster Sitzungen, deren Text noch nie
-        geladen wurde (``raw_text IS NULL``; ``""`` heißt „geladen, aber Scan")."""
+        geladen wurde (``raw_text IS NULL``; ``""`` heißt „geladen, aber Scan").
+        Mit ``bis`` nur bis zu diesem Tag, die frühesten zuerst — für den
+        Nachholer des Dossier-Laufs, dem der Sitzungstag am dringendsten ist."""
+        grenze, folge = ("AND s.session_date <= ? ", "ASC") if bis else ("", "DESC")
         return [dict(r) for r in self._conn.execute(
             "SELECT DISTINCT aa.document_id, aa.label, aa.url FROM council_agenda_attachments aa "
             "JOIN council_sessions s ON s.ksinr = aa.ksinr "
-            "WHERE s.session_date >= ? AND aa.raw_text IS NULL AND aa.document_id IS NOT NULL "
-            "AND aa.label != 'Vorlage' ORDER BY s.session_date DESC", (seit,))]
+            f"WHERE s.session_date >= ? {grenze}AND aa.raw_text IS NULL AND aa.document_id IS NOT NULL "
+            f"AND aa.label != 'Vorlage' ORDER BY s.session_date {folge}", (seit, bis) if bis else (seit,))]
 
     def set_punkt_anlagentext(self, url: str, text: str) -> None:
         """Den Text einer Punkt-Anlage setzen — an jeder Zeile mit dieser URL.
@@ -525,6 +528,70 @@ class UnterlagenMixin(StoreBasis):
                  json.dumps(payload, ensure_ascii=False) if payload is not None else None, cost_usd,
                  datetime.now(UTC).isoformat(timespec="seconds")))
 
+    # ---- Was der Haushaltsentwurf zeigt (council/budget_findings.py) -------
+
+    def budget_reports(self, since: str | None = None, until: str | None = None) -> list[dict]:
+        """Anlagen mit „Vorbericht“ im Namen — an Vorlagen und an Punkten, je
+        Dokument einmal, mit dem Titel der Vorlage bzw. des Punkts (daraus das
+        Haushaltsjahr). Mit ``since``/``until`` nur die an Punkten in diesem
+        Zeitraum (über die Vorlage auch an ihren anderen Stationen)."""
+        period = "" if since is None else " AND s.session_date BETWEEN ? AND ?"
+        params: tuple = () if since is None else (since, until or "9999-12-31")
+        rows = self._conn.execute(
+            "SELECT aa.document_id, aa.label, aa.url, a.title, a.template_number, MAX(s.session_date) AS session_date "
+            "FROM council_agenda_attachments aa JOIN council_agenda_items a "
+            "ON a.ksinr = aa.ksinr AND a.item_number = aa.item_number JOIN council_sessions s ON s.ksinr = aa.ksinr "
+            f"WHERE aa.label LIKE '%Vorbericht%' AND aa.document_id IS NOT NULL{period} GROUP BY aa.document_id "
+            "UNION ALL "
+            "SELECT ca.document_id, ca.label, ca.url, t.title, t.template_number, MAX(s.session_date) "
+            "FROM council_attachments ca JOIN council_templates t ON t.kvonr = ca.kvonr "
+            "LEFT JOIN council_agenda_items a ON a.template_number = t.template_number "
+            "LEFT JOIN council_sessions s ON s.ksinr = a.ksinr "
+            f"WHERE ca.label LIKE '%Vorbericht%' AND ca.document_id IS NOT NULL{period} GROUP BY ca.document_id "
+            "ORDER BY session_date DESC", params + params).fetchall()
+        profiles = self.document_profiles([int(r["document_id"]) for r in rows])
+        out: dict[int, dict] = {}
+        for r in rows:
+            did = int(r["document_id"])
+            out.setdefault(did, {**dict(r), "n_pages": (profiles.get(did) or {}).get("n_pages")})
+        return list(out.values())
+
+    def budget_draft_findings(self, document_id: int) -> dict | None:
+        r = self._conn.execute("SELECT * FROM budget_draft_findings WHERE document_id = ?",
+                               (int(document_id),)).fetchone()
+        if not r:
+            return None
+        d = dict(r)
+        d["payload"] = json.loads(d["payload"]) if d["payload"] else None
+        return d
+
+    def save_budget_draft_findings(self, document_id: int, sources_hash: str, *, status: str, payload: dict | None,
+                                   model: str | None, verify_model: str | None, cost_usd: float | None,
+                                   prompt_version: int) -> None:
+        with self._conn:
+            self._conn.execute(
+                "INSERT OR REPLACE INTO budget_draft_findings (document_id, sources_hash, prompt_version, model, "
+                "verify_model, status, payload, cost_usd, created_at) VALUES (?,?,?,?,?,?,?,?,?)",
+                (int(document_id), sources_hash, prompt_version, model, verify_model, status,
+                 json.dumps(payload, ensure_ascii=False) if payload is not None else None, cost_usd,
+                 datetime.now(UTC).isoformat(timespec="seconds")))
+
+    def item_budget_findings(self, ksinr: int, item_number: str) -> dict | None:
+        """Die Befunde für die Punkt-Seite: aus dem Vorbericht unter den
+        Unterlagen des Punkts (auch an einer anderen Station seiner Vorlage)."""
+        from council.budget_findings import is_budget_report  # noqa: PLC0415
+
+        for d in self.item_documents(ksinr, item_number):
+            if not is_budget_report(d.get("label"), d.get("n_pages")):
+                continue
+            stored = self.budget_draft_findings(d["document_id"])
+            if not stored or stored["status"] != "ok" or not (stored["payload"] or {}).get("findings"):
+                continue
+            return {"document_id": d["document_id"], "label": d["label"], "url": d.get("url"),
+                    "budget_year": stored["payload"].get("budget_year"),
+                    "findings": stored["payload"]["findings"], "created_at": stored["created_at"]}
+        return None
+
     def vorlagen_kommender_sitzungen(self, seit: str, bis: str) -> list[str]:
         return [r[0] for r in self._conn.execute(
             "SELECT DISTINCT a.template_number FROM council_agenda_items a JOIN council_sessions s ON s.ksinr = a.ksinr "
@@ -552,6 +619,28 @@ class UnterlagenMixin(StoreBasis):
                 "SELECT sources_hash FROM template_dossiers WHERE subject_key = ? AND status = 'ok' "
                 "AND substr(created_at, 1, 10) <= ? ORDER BY created_at DESC LIMIT 1", (key, r["session_date"])).fetchone()
             d = self.template_dossier(key, z["sources_hash"]) if z else self.template_dossier(key)
+            # Der Stand zum Sitzungstag soll keine Unterlage zeigen, die erst
+            # danach kam. Wurde dasselbe Material später nur neu GELESEN —
+            # Berichte mit eigenem Auftrag, reparierte Ligaturen (11/2026) —,
+            # gilt die neuere Lesung; sonst bliebe sie an jeder vergangenen
+            # Station unsichtbar. „Dasselbe Material" heißt: dieselben Dokumente.
+            if z and d and d.get("payload"):
+                def dokumente(pl: dict) -> set:
+                    # „material": alle Dokumente, die der Lauf kannte — auch die ohne
+                    # Text. Eine Anlage, deren Text erst später geladen wurde, ist
+                    # dieselbe Unterlage (Review 23.11.2026). Ältere Dossiers kennen
+                    # nur ihre Quellen.
+                    if isinstance(pl.get("material"), list):
+                        return set(pl["material"])
+                    return {q.get("document_id") for q in (pl.get("sources") or {}).values() if isinstance(q, dict)}
+                gleich = dokumente(d["payload"])
+                for n in self._conn.execute(
+                        "SELECT sources_hash, payload FROM template_dossiers WHERE subject_key = ? AND status = 'ok' "
+                        "AND created_at > ? AND payload IS NOT NULL ORDER BY created_at DESC",
+                        (key, d["created_at"])).fetchall():
+                    if dokumente(json.loads(n["payload"])) == gleich:
+                        d = self.template_dossier(key, n["sources_hash"])
+                        break
         else:
             d = self.template_dossier(key)
         if not d or not d.get("payload"):

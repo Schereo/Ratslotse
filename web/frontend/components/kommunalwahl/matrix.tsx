@@ -8,6 +8,7 @@
 // Schmal: Listenform — These-Karte mit Chip-Reihe (Design 2a/3a Mobil).
 
 import { useState } from "react";
+import { cn } from "@/lib/utils";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui";
 import type { MatrixZeile } from "@/lib/kommunalwahl-types";
 import { AmpelLegende, BswPill, FarbPunkt, Glyph, ampel } from "./ui";
@@ -43,7 +44,7 @@ function BelegSheet({ zeile, onClose }: { zeile: MatrixZeile | null; onClose: ()
                     )}{" "}
                     ·{" "}
                     {b.href ? (
-                      <a href={b.href} target="_blank" rel="noopener noreferrer" className="text-primary">
+                      <a href={b.href} target="_blank" rel="noopener noreferrer" className="textlink">
                         {b.seitenLabel} ↗
                       </a>
                     ) : (
@@ -133,9 +134,11 @@ export function PositionsMatrix({
               </button>
             ))}
             {mitLage && (
+              // Im Dunkeln hellere Töne derselben Farben: #B04434 stand auf der
+              // dunklen Karte bei 3,1 : 1, #2E7D5B bei 3,5 : 1 (axe, 11/2026).
               <span
-                className="text-right text-[11px] font-bold"
-                style={{ color: r.lage === "strittig" ? "#B04434" : "#2E7D5B" }}
+                className={cn("text-right text-[11px] font-bold",
+                  r.lage === "strittig" ? "text-[#B04434] dark:text-[#e88a7d]" : "text-[#2E7D5B] dark:text-[#6cc79b]")}
               >
                 {r.lage}
               </span>

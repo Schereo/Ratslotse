@@ -58,7 +58,7 @@ export default function AppNotFound() {
 
   return (
     <div className="mx-auto max-w-xl py-6">
-      <EmptyState mascot="confused" title={title} hint={note} />
+      <EmptyState mascot="confused" title={title} hint={note} titleAs="h1" />
       {/* Die Suche gibt es nur für Angemeldete: `/council` verlangt ein Konto,
           Gästen (geteilter Link auf einen gelöschten Beschluss) hätte der Knopf
           also bloß die Anmeldewand vorgesetzt — eine Sackgasse hinter der

@@ -435,7 +435,7 @@ function UserDetailPanel({ userId, isSelf, rollenKatalog, section }: {
           }}
         />
       </div>
-      <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground/70">
+      <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
         {data.deep_limit === 0 ? "Recherche: unbegrenzt." : data.deep_limit != null
           ? `Recherche: ${data.deep_limit}/Tag.` : "Recherche: Standard (5/Tag)."}
         {" "}0 = unbegrenzt, leer = Standard.

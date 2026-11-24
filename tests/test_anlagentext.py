@@ -126,3 +126,65 @@ def test_haushalts_anlagen_bleiben_bei_pypdf(label, vorlagentitel, erwartet):
     Regexen, die auf pypdfs Zeilenbild abgestimmt sind. Erkannt wird wie in
     ``finanzquellen.finanz_anlagen_where`` — am Label oder am Vorlagentitel."""
     assert anlagentext.extraktor_fuer(label, vorlagentitel) == erwartet
+
+
+# ---- Ligaturen -----------------------------------------------------------------
+# Wörtlich aus dem Quartalsbericht der Beteiligungen zum 30.09.2026 (Anlage
+# 316197, Vorlage 26/0818): Seite 3 trägt die Calibri-Ligaturen als Buchstaben
+# aus Latin Extended-B, Seite 4 dieselben Glyphen als „0" und „)", Seite 5 ist
+# sauber. Das Zitat „Der durchschni0liche Casemix …" stand so auf der Punkt-Seite.
+_QUARTAL = [
+    "Bericht zum 3. Quartal 2026 der städƟschen Beteiligungsunternehmen BäderbetriebsgesellschaŌ "
+    "Oldenburg mbH (BBGO) Gemäß Hochrechnung werden die geplanten Umsatzerlöse voraussichtlich um "
+    "758.393 Euro unterschriƩen. Die prognosƟzierte Abweichung ist auf die WiƩerungseinﬂüsse "
+    "zurückzuführen. Die Aufwendungen enƞallen.",
+    "Die aktuelle Hochrechnung bestägt im Ergebnis den Wirtscha)splan 2026. Der durchschni0liche "
+    "Casemix für die Kalenderwochen 2 bis 39 liegt bei 783 Punkten. Benzo(a)pyren, (teil)funktion.",
+    "Dennoch besuchen durchschnittlich 269 Gäste pro Tag die Touristinfo. Der Wirtschaftsplan wird eingehalten.",
+]
+
+
+def test_falsch_zugeordnete_ligaturen_werden_aufgeloest():
+    s = anlagentext.ligaturen_reparieren(_QUARTAL)
+    assert "städtischen" in s[0] and "Bäderbetriebsgesellschaft" in s[0] and "unterschritten" in s[0]
+    assert "prognostizierte" in s[0] and "Witterungseinflüsse" in s[0] and "entfallen" in s[0]
+
+
+def test_ziffer_und_klammer_nur_wo_das_dokument_das_wort_kennt():
+    s = anlagentext.ligaturen_reparieren(_QUARTAL)
+    assert "durchschnittliche Casemix" in s[1]          # „durchschnittlich" steht auf Seite 3
+    assert "Wirtschaftsplan 2026" in s[1]               # „Wirtschaftsplan" auf Seite 3
+    assert "Benzo(a)pyren" in s[1] and "(teil)funktion" in s[1]   # richtig geschriebene Klammern bleiben
+    assert "bestägt" in s[1]                             # ohne Zeichen kein Hinweis — bleibt, wie es ist
+    # Adressen bleiben, auch wenn das Dokument das Wort richtig kennt (Review 23.11.2026:
+    # ohne possessiven Quantor umging das Zurückgehen die Sperre).
+    s = anlagentext.ligaturen_reparieren(["Der Wirtschaftsplan. Ablage wirtscha/splan/entwurf.pdf, "
+                                          "Post an wirtscha/splan@example.org, abc/defgh.html"])[0]
+    assert "wirtscha/splan/entwurf.pdf" in s and "wirtscha/splan@example.org" in s
+    # Ohne Gegenstück im Dokument wird nicht geraten.
+    assert anlagentext.ligaturen_reparieren(["Der durchschni0liche Wert."]) == ["Der durchschni0liche Wert."]
+
+
+def test_buchstaben_aus_latin_extended_ohne_kleinbuchstaben_daneben_bleiben():
+    assert anlagentext.ligaturen_reparieren(["ŌSAKA – Ō."]) == ["ŌSAKA – Ō."]
+    assert anlagentext.ligaturen_reparieren(["Ɵef"]) == ["tief"]
+
+
+def test_gespeicherter_text_behaelt_seine_seiten():
+    offsets, text = [], ""
+    for s in ["Vorspann ", *_QUARTAL]:
+        offsets.append(len(text))
+        text += s + "\n"
+    offsets = offsets[1:]               # der Vorspann steht vor der ersten Seite
+    neu, neu_off = anlagentext.gespeicherten_text_reparieren(text, offsets)
+    assert neu.startswith("Vorspann ") and len(neu_off) == 3
+    assert neu[neu_off[1]:].startswith("Die aktuelle Hochrechnung")
+    assert neu[neu_off[2]:].startswith("Dennoch besuchen")
+    assert anlagentext.gespeicherten_text_reparieren("städƟsch", None) == ("städtisch", None)
+
+
+def test_pdf_seiten_loest_ligaturen_auf(monkeypatch):
+    """Neue Texte kommen schon repariert in den Bestand — für beide Leser."""
+    monkeypatch.setattr(anlagentext, "_STEUERZEICHEN", __import__("re").compile("(?!)"))
+    seiten = anlagentext.pdf_seiten(_pdf(b"BT /F1 11 Tf 40 700 Td (Pflege) Tj ET"), anlagentext.PYPDF)
+    assert seiten == anlagentext.ligaturen_reparieren(seiten)

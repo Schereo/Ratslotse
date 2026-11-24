@@ -173,6 +173,9 @@ export function SchrittPfad({ href, className }: {
                   key={s.nr}
                   href={s.href}
                   prefetch={false}
+                  // Zwölf Punkte in einer Zeile; alle Schritte stehen zusätzlich
+                  // als Liste im Wegweiser (a11y-ausnahmen.json).
+                  data-a11y-ausnahme="target-size"
                   aria-current={zustand === "aktuell" ? "page" : undefined}
                   aria-label={`Schritt ${s.nr}: ${s.title}${
                     zustand === "aktuell" ? " (diese Seite)"
@@ -196,7 +199,7 @@ export function SchrittPfad({ href, className }: {
       <Link
         href="/haushalt#wegweiser"
         prefetch={false}
-        className="font-mono text-[9px] font-medium uppercase tracking-[0.1em] text-muted-foreground transition-colors hover:text-primary"
+        className="inline-flex min-h-6 items-center font-mono text-[9px] font-medium uppercase tracking-[0.1em] text-muted-foreground transition-colors hover:text-primary"
       >
         Schritt {schritt.nr} von {SCHRITTE.length} · {etappe.kicker}
       </Link>

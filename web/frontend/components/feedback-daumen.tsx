@@ -120,7 +120,7 @@ export function FeedbackDaumen({ question, answer, source = "ask", answerId = nu
         aria-pressed={abgegeben === "down"}
         onClick={() => senden("down")}
         className={cn("rounded-md p-1 transition-colors",
-          abgegeben === "down" ? "text-signal" : "text-muted-foreground hover:bg-muted hover:text-foreground",
+          abgegeben === "down" ? "text-signal-ink" : "text-muted-foreground hover:bg-muted hover:text-foreground",
           abgegeben === "up" && "opacity-40 hover:opacity-100")}>
         <ThumbsDown className="h-3.5 w-3.5" aria-hidden />
       </button>
@@ -148,7 +148,7 @@ export function FeedbackDaumen({ question, answer, source = "ask", answerId = nu
                 Feld hinein (Tims Befund beim Daumen runter). */}
             <input value={reason} onChange={(e) => setGrund(e.target.value)} autoFocus
               placeholder="Was war falsch? (optional)" maxLength={500}
-              className="h-7 w-full min-w-0 max-w-xs rounded-md border border-border bg-card px-2 text-[16px] outline-none placeholder:text-muted-foreground/60 focus:border-primary sm:h-6 sm:text-[11px]" />
+              className="h-7 w-full min-w-0 max-w-xs rounded-md border border-border bg-card px-2 text-[16px] outline-none placeholder:text-muted-foreground focus:border-primary sm:h-6 sm:text-[11px]" />
             <button type="submit" className="flex-none text-[11px] font-medium text-primary hover:underline">Senden</button>
           </div>
           {answerId && (

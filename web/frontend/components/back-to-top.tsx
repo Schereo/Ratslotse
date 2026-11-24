@@ -14,11 +14,16 @@ import { cn, pfad } from "@/lib/utils";
  * (Tims TestFlight-Feedback 11.08.).
  */
 export function BackToTop() {
-  const [show, setShow] = useState(false);
+  const [gescrollt, setGescrollt] = useState(false);
+  // Solange er den Fokus hat, bleibt er da. Sonst blendete er sich aus, während
+  // die Tabulatortaste gerade auf ihm stand (die Seite stand oben), und der
+  // Fokus saß auf einem unsichtbaren Knopf (WCAG 2.4.11, Wächter 11/2026).
+  const [fokussiert, setFokussiert] = useState(false);
+  const show = gescrollt || fokussiert;
   const imGespraech = pfad(usePathname()) === "/fragen";
 
   useEffect(() => {
-    const onScroll = () => setShow(window.scrollY > window.innerHeight * 1.5);
+    const onScroll = () => setGescrollt(window.scrollY > window.innerHeight * 1.5);
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
@@ -35,6 +40,8 @@ export function BackToTop() {
     <button
       type="button"
       onClick={toTop}
+      onFocus={() => setFokussiert(true)}
+      onBlur={() => setFokussiert(false)}
       aria-label="Nach oben scrollen"
       // Unsichtbar heißt auch: nicht per Tab erreichbar und nicht vorgelesen.
       // Bis 10/2026 war er nur durchsichtig — die Tabulatortaste landete auf

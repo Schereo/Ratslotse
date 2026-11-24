@@ -421,6 +421,16 @@ FEATURES: dict[str, Feature] = {
                     "von Tim abgenommen und auf Prod angeschaltet.",
         docs="sitzungen#was-die-wahlprogramme-dazu-sagen",
     ),
+    "haushaltsentwurf-befunde": Feature(
+        key="haushaltsentwurf-befunde",
+        description="„Was der Haushaltsentwurf zeigt“ auf der Punkt-Seite zum Haushaltsentwurf: bis zu zehn "
+                    "Befunde aus den Grafiken des Vorberichts, je mit Kennzahl und eigener Grafik — jede Zahl im "
+                    "Code gegen die Grafik geprüft, jede Deutung von einem zweiten Modell bestätigt "
+                    "(council/budget_charts.py, council/budget_findings.py).",
+        fertig_wenn="Vorbericht 2027 auf dev erzeugt, jeder Befund von Hand gegen das PDF gesichtet, "
+                    "von Tim abgenommen und auf Prod angeschaltet.",
+        docs="sitzungen#was-der-haushaltsentwurf-zeigt",
+    ),
     "punkt-seite": Feature(
         key="punkt-seite",
         description="Jeder Tagesordnungspunkt bekommt eine eigene Seite mit Kurzfassung, "

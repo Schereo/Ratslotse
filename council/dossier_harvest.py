@@ -56,8 +56,9 @@ def form(title: str | None, kind: str | None, doc_types: list[str]) -> str | Non
     return None
 
 
-def candidates(text: str, offsets: list[int] | None) -> dict[str, list[dict]]:
-    """Beträge, Daten und Paragrafen mit Seite — ohne Dubletten, in Textfolge."""
+def candidates(text: str, offsets: list[int] | None, grenze: int = 25) -> dict[str, list[dict]]:
+    """Beträge, Daten und Paragrafen mit Seite — ohne Dubletten, in Textfolge,
+    je Art höchstens ``grenze``."""
     out: dict[str, list[dict]] = {"amounts": [], "dates": [], "paragraphs": []}
     for key, muster in (("amounts", _BETRAG_RE), ("dates", _DATUM_RE), ("paragraphs", _PARAGRAF_RE)):
         gesehen = set()
@@ -67,6 +68,6 @@ def candidates(text: str, offsets: list[int] | None) -> dict[str, list[dict]]:
                 continue
             gesehen.add(wert)
             out[key].append({"value": wert, "page": unterlagen_seiten.page_of(offsets, m.start())})
-            if len(out[key]) >= 25:
+            if len(out[key]) >= grenze:
                 break
     return out

@@ -140,6 +140,9 @@ const config: Config = {
         signal: {
           DEFAULT: "hsl(var(--signal))",
           foreground: "hsl(var(--signal-foreground))",
+          // Signalfarbe als SCHRIFT (globals.css `--signal-ink`): Das Orange
+          // der Flächen stand auf getönten Gründen bei 3,6 : 1 (axe, 11/2026).
+          ink: "hsl(var(--signal-ink))",
         },
       },
       boxShadow: {

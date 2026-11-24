@@ -513,8 +513,11 @@ function RahmenBlock({ row, herkunft, beschlossen, herkunftBeschlossen }: {
 
       <dl className="mt-3 flex flex-col gap-2.5">
         {posten.map((p) => (
-          <div key={p.label} className="border-t border-border pt-2.5">
-            <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-0.5">
+          // Eine `dl` darf je Gruppe nur `dt`/`dd` tragen — der Erklärsatz ist
+          // deshalb selbst ein `dd` und keine zweite Zeile in einem Innen-`div`
+          // (sonst liest der Screenreader die Liste nicht als Liste, axe 11/2026).
+          <div key={p.label}
+            className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-0.5 border-t border-border pt-2.5">
               <dt className="text-[13px] font-semibold">{p.label}</dt>
               <dd className="font-display text-[15px] font-bold tabular-nums">
                 {p.value == null
@@ -526,8 +529,7 @@ function RahmenBlock({ row, herkunft, beschlossen, herkunftBeschlossen }: {
                     ? <span className="text-[13px]">nicht veranschlagt</span>
                     : <>{deMio(p.value / 1e6)}&#8239;Mio.&nbsp;€</>}
               </dd>
-            </div>
-            <p className="mt-0.5 max-w-[62ch] text-[12px] leading-relaxed text-muted-foreground">
+            <dd className="basis-full max-w-[62ch] text-[12px] leading-relaxed text-muted-foreground">
               {p.erklaerung}
               {/* Was der Rat gegenüber dem Entwurf geändert hat — genannt, nicht
                   bewertet (keine Farbe, kein Pfeil). */}
@@ -535,7 +537,7 @@ function RahmenBlock({ row, herkunft, beschlossen, herkunftBeschlossen }: {
                 && Math.abs(p.entwurf - p.value) > 0.5 && (
                 <> Im Entwurf der Verwaltung standen {deMio(p.entwurf / 1e6)}&#8239;Mio.&nbsp;€.</>
               )}
-            </p>
+            </dd>
           </div>
         ))}
       </dl>
@@ -595,6 +597,7 @@ export default function SchuldenPage() {
   if (!data || series.length < 2) {
     return (
       <div className="rounded-2xl border border-border bg-card p-5 text-sm leading-relaxed text-muted-foreground">
+        <h1 className="sr-only">Schulden der Stadt</h1>
         Für diese Seite ist die Schuldenzeitreihe noch nicht eingelesen.{" "}
         <Link href="/haushalt" className="font-semibold text-primary">Zurück zum Haushalt</Link>
       </div>
@@ -962,17 +965,21 @@ export default function SchuldenPage() {
             </div>
             <dl className="mt-2.5 flex flex-wrap gap-x-6 gap-y-1 text-[12.5px]">
               <div className="flex items-center gap-2">
-                <span className="h-2.5 w-2.5 flex-none rounded-sm"
-                  style={{ background: "var(--hh-aus-0)" }} />
-                <dt className="text-muted-foreground">Verwaltung</dt>
+                <dt className="flex items-center gap-2 text-muted-foreground">
+                  <span aria-hidden className="h-2.5 w-2.5 flex-none rounded-sm"
+                    style={{ background: "var(--hh-aus-0)" }} />
+                  Verwaltung
+                </dt>
                 <dd className="font-semibold tabular-nums">
                   {deMio(jTeilung.kern / 1e6)}&#8239;Mio.&nbsp;€
                 </dd>
               </div>
               <div className="flex items-center gap-2">
-                <span className="h-2.5 w-2.5 flex-none rounded-sm"
-                  style={{ background: "var(--hh-aus-2)" }} />
-                <dt className="text-muted-foreground">Eigenbetriebe</dt>
+                <dt className="flex items-center gap-2 text-muted-foreground">
+                  <span aria-hidden className="h-2.5 w-2.5 flex-none rounded-sm"
+                    style={{ background: "var(--hh-aus-2)" }} />
+                  Eigenbetriebe
+                </dt>
                 <dd className="font-semibold tabular-nums">
                   {deMio(jTeilung.municipal_enterprises / 1e6)}&#8239;Mio.&nbsp;€
                 </dd>
@@ -1020,7 +1027,7 @@ export default function SchuldenPage() {
 
         {/* Die Grenzen — eigener Block, nicht Kleingedrucktes. */}
         <section className="@container rounded-2xl border border-border border-l-[3px] border-l-signal bg-card p-4 shadow-sm">
-          <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-signal">
+          <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-signal-ink">
             Was diese Zahl nicht sagt
           </p>
           <ul className="mt-2 grid list-disc grid-cols-1 gap-x-8 gap-y-1.5 pl-4 text-[13px] leading-relaxed text-foreground/90 @3xl:grid-cols-2">

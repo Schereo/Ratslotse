@@ -3283,6 +3283,70 @@ class ProgramStance(TypedDict):
     program_url: str | None
 
 
+class BudgetFindingSeries(TypedDict):
+    name: str
+    values: list[float | None]
+
+
+class BudgetFindingStep(TypedDict):
+    label: str
+    value: float
+
+
+class BudgetFindingRow(TypedDict):
+    label: str
+    value: float
+    change: NotRequired[float | None]
+
+
+class BudgetFindingVisual(TypedDict):
+    """Wie die Seite einen Befund zeichnet. ``type``: ``columns`` (Säulen je
+    Kategorie, ``kinds`` vom Code gesetzt: actual · forecast · plan ·
+    financial_plan · null), ``bridge`` (von ``start`` über ``steps`` zu
+    ``end``) oder ``bars`` (Rangfolge)."""
+    type: str
+    unit: str
+    categories: NotRequired[list[str]]
+    kinds: NotRequired[list[str | None]]
+    series: NotRequired[list[BudgetFindingSeries]]
+    stacked: NotRequired[bool]
+    highlight: NotRequired[list[int]]
+    start: NotRequired[BudgetFindingStep]
+    steps: NotRequired[list[BudgetFindingStep]]
+    end: NotRequired[BudgetFindingStep]
+    rows: NotRequired[list[BudgetFindingRow]]
+
+
+class BudgetFindingKeyFigure(TypedDict):
+    value: float
+    unit: str
+    label: str
+
+
+class BudgetFinding(TypedDict):
+    title: str
+    text: str
+    key_figure: BudgetFindingKeyFigure
+    #: Nummer der Grafik im Vorbericht („2.1.1-1“); ``None`` bei einem Befund nur aus dem Text.
+    chart: str | None
+    #: Seite der Grafik im Vorbericht (aus dem PDF gelesen).
+    page: int | None
+    quote: str | None
+    #: Seite des Zitats — oft eine andere als die der Grafik.
+    quote_page: NotRequired[int | None]
+    visual: BudgetFindingVisual
+
+
+class ItemBudgetFindings(TypedDict):
+    """„Was der Haushaltsentwurf zeigt“ (``council/budget_findings.py``)."""
+    document_id: int
+    label: str
+    url: str | None
+    budget_year: int | None
+    findings: list[BudgetFinding]
+    created_at: str
+
+
 class ItemProgramStances(TypedDict):
     #: Das Anliegen des Punkts, auf das sich „dafür“ und „dagegen“ beziehen.
     concern: str | None
@@ -3391,6 +3455,9 @@ class SessionItemDetail(TypedDict):
     surroundings: NotRequired[ItemSurroundings]
     #: Nur hinter dem Schalter ``wahlprogramm-am-punkt`` und nur, wenn ein Programm etwas sagt.
     program_stances: NotRequired[ItemProgramStances]
+    #: Nur hinter dem Schalter ``haushaltsentwurf-befunde`` und nur am Punkt mit einem
+    #: Vorbericht, zu dem es geprüfte Befunde gibt.
+    budget_findings: NotRequired[ItemBudgetFindings]
 
 
 class ImportanceBreakdown(TypedDict):
@@ -4390,9 +4457,80 @@ class BudgetGroup(TypedDict):
     entity: list[Any]
 
 
+class HoldingsHandbookRule(TypedDict):
+    """Eine Regel des Handbuchs Beteiligungen als Kurzfassung für die Seite."""
+    key: str
+    title: str
+    summary: str
+    #: Seiten der Broschüre, z. B. „S. 14–16".
+    pages: str
+
+
+class HoldingsHandbook(TypedDict):
+    """Das Handbuch Beteiligungen der Stadt (``council/shareholding_handbook.py``):
+    Fundstelle samt Ratsbeschluss und die Regeln, die die Seite zeigt."""
+    title: str
+    version: str
+    adopted_date: str
+    adopted_template: str
+    adopted_decision_id: int
+    url: str
+    rules: list[HoldingsHandbookRule]
+
+
+class HoldingForecastStation(TypedDict):
+    """Ein Quartalsbericht: Plan und Hochrechnung zu einem Stichtag.
+
+    Beträge in Euro (auch wo der Bericht in TEUR rechnet, ``rounded``).
+    ``plan_kind`` sagt, welcher Plan es ist: ``original`` (nicht als geändert
+    bezeichnet) oder ``adjusted``; ``None``, wo der Bericht es nicht nennt.
+    ``plan_other`` ist der zweite Planwert des Seitentexts (VWG). Nie
+    verrechnet — die Seite stellt Plan und Hochrechnung nebeneinander."""
+    as_of: str
+    quarter: int
+    plan: float
+    plan_kind: str | None
+    forecast: float
+    plan_other: float | None
+    plan_other_kind: str | None
+    rounded: bool
+    conflict_note: str | None
+    statement: str | None
+    template_number: str
+    herkunft_id: int | None
+
+
+class HoldingForecastActual(TypedDict):
+    """Das Ist laut Abschluss. ``source``: ``annual_accounts`` oder
+    ``holdings_report`` (Beteiligungsbericht)."""
+    value: float
+    source: str
+    herkunft_id: int | None
+
+
+class HoldingForecastYear(TypedDict):
+    """Ein Unternehmen im jüngsten Jahr mit Quartalsbericht: drei getrennte
+    Stationen — Plan und Hochrechnungen (``stations``, je Stichtag eine), das
+    Ist (``actual``, nur aus dem Abschluss). ``basis`` ist ``result``
+    (Jahresergebnis) oder ``subsidy_need`` (Gesamtzuschussbedarf der VWG,
+    dort ohne ``actual`` und mit ``actual_note``)."""
+    company: str
+    year: int
+    basis: str
+    stations: list[HoldingForecastStation]
+    actual: HoldingForecastActual | None
+    actual_note: str | None
+
+
 class BudgetHoldings(TypedDict):
+    #: Plan und Hochrechnungen aus den Quartalsberichten, je Unternehmen das
+    #: jüngste Jahr (Gesellschaften und Eigenbetriebe).
+    forecasts: list[HoldingForecastYear]
     report_years: Any
     owners: Any
+    #: Je Gesellschaft zusätzlich ``board_term`` (aus welcher Ratsperiode die
+    #: Besetzung im Bericht stammt, mit ``note``, wenn sie abgelaufen ist) und
+    #: ``handbook_scope`` (gilt das Handbuch Beteiligungen, und wie — S. 10).
     companies: list[Any]
     provenance: Provenance
     years: list[Any]
@@ -4400,6 +4538,7 @@ class BudgetHoldings(TypedDict):
     group_comparison: Any
     people: list[Any]
     texts: Any
+    handbook: HoldingsHandbook
 
 
 class FinanceBudgetRow(TypedDict):

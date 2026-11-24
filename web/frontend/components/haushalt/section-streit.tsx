@@ -189,7 +189,7 @@ function Rede({ b }: { b: StreitWortbeitrag }) {
           {b.role === "council" && (
             <Fraktion label={b.fraktion} unklar={b.fraktion_unklar} />
           )}
-          <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground/80">
+          <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground">
             {b.anrede}
           </span>
         </div>

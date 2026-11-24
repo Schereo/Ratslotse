@@ -66,7 +66,9 @@ export function Pagination({
     <nav
       ref={gruppeRef}
       className={cn("gleit-gruppe relative flex flex-wrap items-center gap-1", compact ? "justify-end gap-0.5" : "justify-center", className)}
-      aria-label="Seitennavigation"
+      // Oben und unten steht dieselbe Leiste; zwei Landmarken mit gleichem
+      // Namen kann ein Screenreader nicht auseinanderhalten (axe 11/2026).
+      aria-label={compact ? "Seiten der Liste, oben" : "Seiten der Liste"}
     >
       {/* Rastet ein, statt nur anzukommen (`--ease-back-out` schwingt kurz
           über). Bei einem Feld von 36 px sind das gut drei Pixel — genug, dass

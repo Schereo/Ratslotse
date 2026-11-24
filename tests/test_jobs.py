@@ -130,6 +130,7 @@ UNTERSCHRITTE = {
     # von check_finanzdaten, sobald ein neues Dokument da ist
     "ingest_haushaltsvollzug", "ingest_haushaltssatzung", "ingest_gebuehren",
     "ingest_eigenbetriebe_abschluss", "ingest_nachbewilligungen",
+    "ingest_holding_quarterly",
     # Einmal-/Ops-Läufe von Hand, kein Takt
     "backfill_anlagen_ocr", "backfill_protokoll_seiten", "extract_wortbeitraege",
     "bereinige_kontaktdaten",

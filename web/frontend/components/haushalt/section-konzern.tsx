@@ -258,7 +258,7 @@ export function KonzernAbschnitt({ onBestand }: {
             iPad nicht — dieselbe Fensterbreite meint zwei verschiedene
             Platzangebote. Deshalb misst die Schwelle die KARTE. */}
         <section className="@container rounded-2xl border border-border border-l-[3px] border-l-signal bg-card p-4 shadow-sm">
-          <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-signal">
+          <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-signal-ink">
             Was dieser Vergleich nicht kann
           </p>
           <ul className="mt-2 grid list-disc grid-cols-1 gap-x-8 gap-y-1.5 pl-4 text-[13px] leading-relaxed text-foreground/90 @3xl:grid-cols-2">

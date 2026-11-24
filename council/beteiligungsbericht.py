@@ -649,6 +649,29 @@ _KONTAKT = re.compile(
 _ADRESSE = re.compile(r"[\w.+-]+@[\w-]+\.[\w.-]+")
 
 
+#: Ein Seitenwechsel mitten in einem Abschnitt. ``abschnitte`` setzt ihn dort,
+#: wo der laufende Seitenkopf stand; ``aufsichtsorgane`` paart die Spalten JE
+#: SEITE (pypdf liest die Tabelle seitenweise spaltenweise aus), und
+#: gespeichert wird der Text ohne ihn (``ohne_seitenwechsel``).
+SEITENWECHSEL = "\f"
+
+#: Der laufende Seitenkopf als Block: Titelzeile, Unterstrich-Linie,
+#: Seitenzahl („- 119/215 -"). Linie und Zahl sind freiwillig — nicht jede
+#: Seite des Extrakts trägt beide —, und zwischen ihnen dürfen Leerzeilen
+#: stehen (Bericht 2023, S. 180: sonst stand „- 180/210 -" als Name in der
+#: Gesellschafterversammlung der VWG).
+_SEITENKOPF_BLOCK = re.compile(
+    r"Stadt Oldenburg\s*[–-]\s*Beteiligungsbericht[^\n]*"
+    r"(?:\s*\n[ \t]*_{3,}[ \t]*)?(?:\s*\n[ \t]*-\s*\d+\s*/\s*\d+\s*-[ \t]*)?")
+#: Eine verirrte Seitenzahl als eigene Zeile — sie ist nie ein Name.
+_SEITENZAHL = re.compile(r"^-\s*\d+\s*/\s*\d+\s*-$")
+
+
+def ohne_seitenwechsel(text: str) -> str:
+    """Der Abschnitt als Fließtext — ohne die Marke des Seitenwechsels."""
+    return re.sub(r"\n{3,}", "\n\n", (text or "").replace(SEITENWECHSEL, "")).strip()
+
+
 def _ohne_kontakt(text: str) -> str:
     """Kontaktzeilen und E-Mail-Adressen aus einem Abschnitt entfernen."""
     return _ADRESSE.sub("", _KONTAKT.sub("", text)).strip()
@@ -684,9 +707,21 @@ def abschnitte(text: str) -> dict[str, str]:
         if nr not in nach_nr:
             continue
         _, ab = nach_nr[nr]
-        bis = next((g for g in grenzen if g > ab), len(text))
-        rumpf = _SEITENKOPF.split(text[ab:bis])[0]
+        naechster = next((g for g in grenzen[:-1] if g > ab), None)
+        if naechster is None:
+            # Der letzte Abschnitt der Gesellschaft: Hinter dem nächsten
+            # Seitenkopf kann schon die nächste beginnen — dort bleibt es beim
+            # Schnitt am Seitenkopf.
+            rumpf = _SEITENKOPF.split(text[ab:])[0]
+        else:
+            # Bis zur nächsten Überschrift gehört alles zum Abschnitt, auch über
+            # einen Seitenwechsel hinweg. Bis 11/2026 schnitt der Leser JEDEN
+            # Abschnitt am ersten Seitenkopf ab: Bei der Bäderbetriebsgesellschaft
+            # läuft die Gesellschafterversammlung im Bericht 2024 von S. 119 auf
+            # S. 120 weiter, und sieben von zwölf Mitgliedern fehlten.
+            rumpf = _SEITENKOPF_BLOCK.sub(f"\n{SEITENWECHSEL}\n", text[ab:naechster])
         rumpf = _ohne_kontakt(re.sub(r"\n{3,}", "\n\n", rumpf))
+        rumpf = rumpf.strip(f"\n {SEITENWECHSEL}")
         if rumpf:
             aus[key] = rumpf
     return aus
@@ -916,41 +951,51 @@ def aufsichtsorgane(text: str) -> tuple[list[Aufsichtsperson], bool]:
     for i, kopf in enumerate(koepfe):
         committee = _gremiumsname(kopf.group(1))
         bis = koepfe[i + 1].start() if i + 1 < len(koepfe) else len(text)
-        zeilen = _zeilen_fuegen(text[kopf.end():bis])
+        # JE SEITE paaren: Läuft eine Liste über einen Seitenwechsel, liest
+        # pypdf erst Namen und Funktionen der einen Seite, dann die der
+        # nächsten. Über beide Seiten gezählt stünden die Namen der zweiten
+        # Seite zwischen den Funktionen der ersten, und die Probe risse für
+        # eine Liste, die in Ordnung ist (BBGO, Bericht 2024, S. 119–120).
+        for seite in text[kopf.end():bis].split(SEITENWECHSEL):
+            zeilen = [z for z in _zeilen_fuegen(seite) if not _SEITENZAHL.match(z)]
+            if not zeilen:
+                continue
 
-        # Erst den Steckbrief-Kasten abschneiden, dann die Spalten trennen:
-        # Sonst stünde „Betriebsleitung: Klaus Büscher" hinter der letzten
-        # Funktionszeile und risse die Probe.
-        for n, z in enumerate(zeilen):
-            if _RANDMUELL.match(z):
-                zeilen = zeilen[:n]
+            # Erst den Steckbrief-Kasten abschneiden, dann die Spalten trennen:
+            # Sonst stünde „Betriebsleitung: Klaus Büscher" hinter der letzten
+            # Funktionszeile und risse die Probe. Danach kommt in diesem
+            # Gremium nichts mehr.
+            ende = next((n for n, z in enumerate(zeilen) if _RANDMUELL.match(z)), None)
+            if ende is not None:
+                zeilen = zeilen[:ende]
+
+            stellen = [n for n, z in enumerate(zeilen) if _FUNKTION.match(z)]
+            if stellen:
+                erste, letzte = stellen[0], stellen[-1]
+                # Zwischen der ersten und der letzten Funktionszeile darf nichts
+                # anderes stehen. Steht dort doch etwas, sind die Spalten nicht
+                # sauber getrennt — und dann ist die Positionszählung wertlos.
+                geschlossen = len(stellen) == letzte - erste + 1
+                funktionen = zeilen[erste:letzte + 1] if geschlossen else []
+                namenszeilen = zeilen[:erste]
+            else:
+                funktionen = []
+                namenszeilen = zeilen
+            namenszeilen = [z for z in namenszeilen if not _GRUPPENKOPF.match(z)]
+
+            block = [_person_zerlegen(z, committee, len(personen) + n)
+                     for n, z in enumerate(namenszeilen)]
+            haelt = len(block) == len(funktionen)
+            if haelt:
+                for p, f in zip(block, funktionen):
+                    p.position = f
+            elif funktionen or kopf.group(2):
+                # Nur wo der Bericht eine Funktionsspalte führt, ist eine
+                # gerissene Probe ein Befund. Ohne Spalte gibt es nichts zu paaren.
+                zuordenbar = False
+            personen += block
+            if ende is not None:
                 break
-
-        stellen = [n for n, z in enumerate(zeilen) if _FUNKTION.match(z)]
-        if stellen:
-            erste, letzte = stellen[0], stellen[-1]
-            # Zwischen der ersten und der letzten Funktionszeile darf nichts
-            # anderes stehen. Steht dort doch etwas, sind die Spalten nicht
-            # sauber getrennt — und dann ist die Positionszählung wertlos.
-            geschlossen = len(stellen) == letzte - erste + 1
-            funktionen = zeilen[erste:letzte + 1] if geschlossen else []
-            namenszeilen = zeilen[:erste]
-        else:
-            funktionen = []
-            namenszeilen = zeilen
-        namenszeilen = [z for z in namenszeilen if not _GRUPPENKOPF.match(z)]
-
-        block = [_person_zerlegen(z, committee, len(personen) + n)
-                 for n, z in enumerate(namenszeilen)]
-        haelt = len(block) == len(funktionen)
-        if haelt:
-            for p, f in zip(block, funktionen):
-                p.position = f
-        elif funktionen or kopf.group(2):
-            # Nur wo der Bericht eine Funktionsspalte führt, ist eine
-            # gerissene Probe ein Befund. Ohne Spalte gibt es nichts zu paaren.
-            zuordenbar = False
-        personen += block
 
     if not zuordenbar:
         # Und dann wirklich **alle**, auch die Gremien, die für sich in
@@ -1243,6 +1288,14 @@ def _nachweis(delta: float | None, n_reports: int) -> str:
     return "; ".join(teile)
 
 
+def fehlende_jahrgaenge(bestand: list[int], gelesen) -> list[int]:
+    """Berichtsjahrgänge, die gespeichert sind, aber in diesem Lauf fehlen.
+
+    Nur ab ``ERSTER_JAHRGANG``: Ältere Berichte liest dieser Parser nicht, sie
+    können also gar nicht fehlen."""
+    return sorted(j for j in bestand if j >= ERSTER_JAHRGANG and j not in gelesen)
+
+
 def einlesen(store, dokumente: dict[int, dict], p, schuetzen: bool = True) -> dict:
     """Alle vorliegenden Berichte lesen, prüfen und den Bestand ersetzen.
 
@@ -1289,6 +1342,21 @@ def einlesen(store, dokumente: dict[int, dict], p, schuetzen: bool = True) -> di
         p.warnen("  Kein lesbarer Jahrgang — Bestand bleibt unangetastet")
         return {"gesellschaften": 0, "texte": 0, "indicators": 0, "verworfen": 0,
                 "widersprueche": 0, "bestand_geschuetzt": 0, "jahrgaenge": []}
+
+    # Ein Jahrgang, der im Bestand steht, aber in diesem Lauf fehlt (Download
+    # gescheitert, Link verschwunden, Datei unlesbar), hält den GANZEN Bestand
+    # fest. Gespeichert wird je Lauf alles neu; ohne diese Sperre verschwände
+    # der fehlende Jahrgang still. Gemessen 11/2026: Ohne den Bericht 2024
+    # fielen alle 26 Werte für 2024 weg, ohne 2022 schrumpfte 2019 von 38 auf 3
+    # Zeilen — und die Zeilenschwelle unten (80 %) merkt beides nicht.
+    luecke = fehlende_jahrgaenge(store.beteiligungsbericht_jahre(), gelesen)
+    if luecke and schuetzen:
+        p.warnen(f"  Jahrgang {', '.join(map(str, luecke))} steht im Bestand, fehlt "
+                 f"aber in diesem Lauf — Bestand bleibt unangetastet")
+        return {"gesellschaften": 0, "texte": 0, "indicators": 0, "personen": 0,
+                "eigentuemer": 0, "ohne_zuordnung": 0, "verworfen": 0,
+                "widersprueche": 0, "bestand_geschuetzt": 1,
+                "jahrgaenge": sorted(gelesen), "fehlende_jahrgaenge": luecke}
 
     # Welche (Gesellschaft, Kennzahl, Bezugsjahr) hat im Dokument eine
     # bestandene Probe — und wie groß war die gemessene Abweichung?
@@ -1342,7 +1410,7 @@ def einlesen(store, dokumente: dict[int, dict], p, schuetzen: bool = True) -> di
                     continue
                 texte.append({
                     "report_year": year, "company": g.key, "section": key,
-                    "text": g.abschnitte[key],
+                    "text": ohne_seitenwechsel(g.abschnitte[key]),
                     # Fließtext trägt keine Rechenprobe, und eine zu behaupten
                     # wäre gelogen. Woher er stammt, steht trotzdem da.
                     "herkunft": _h.Herkunft(
@@ -1378,7 +1446,7 @@ def einlesen(store, dokumente: dict[int, dict], p, schuetzen: bool = True) -> di
                         **gemeinsam)})
 
             eigner, anteilsprobe = beteiligungsverhaeltnisse(
-                g.abschnitte.get("ownership_structure", ""))
+                ohne_seitenwechsel(g.abschnitte.get("ownership_structure", "")))
             for e_ in eigner:
                 eigentuemer.append({
                     "report_year": year, "company": g.key,

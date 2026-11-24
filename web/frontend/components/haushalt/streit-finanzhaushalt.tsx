@@ -71,7 +71,7 @@ function ListenKarte({ liste, year }: { liste: FhhListeImJahr; year: number }) {
         </span>
         {liste.balance && (
           <span className={cn("ml-auto whitespace-nowrap font-mono text-[11.5px] font-medium tabular-nums",
-            liste.balance.balance < 0 ? "text-signal" : "text-foreground")}>
+            liste.balance.balance < 0 ? "text-signal-ink" : "text-foreground")}>
             Saldo {deltaBetrag(liste.balance.balance)}
           </span>
         )}
@@ -90,7 +90,7 @@ function ListenKarte({ liste, year }: { liste: FhhListeImJahr; year: number }) {
               <TextZelle className="border-t-border/60 py-2">
                 <span className="text-[11.5px] font-semibold text-foreground">Summe der Liste</span>
                 <span className={cn("ml-2 whitespace-nowrap font-mono text-[11px] font-medium tabular-nums",
-                  liste.balance.balance < 0 ? "text-signal" : "text-muted-foreground")}>
+                  liste.balance.balance < 0 ? "text-signal-ink" : "text-muted-foreground")}>
                   Saldo {deltaBetrag(liste.balance.balance)}
                 </span>
                 <Beleg q="aenderungsliste" h={liste.herkunft} />

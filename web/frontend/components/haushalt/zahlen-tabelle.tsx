@@ -168,9 +168,9 @@ export function BetragZelle({ euro, text, label, className, schlicht = false }: 
         schlicht
           ? "text-foreground"
           : euro == null
-            ? "text-muted-foreground/60"
+            ? "text-muted-foreground"
             : euro < 0
-              ? "text-signal"
+              ? "text-signal-ink"
               : "text-emerald-700 dark:text-emerald-400",
         className,
       )}

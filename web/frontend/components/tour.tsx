@@ -207,7 +207,7 @@ function TourQaDemo() {
         Beispiel
       </p>
       <div className="mt-1.5 flex items-start gap-1.5 rounded-lg border border-input bg-background px-2 py-1.5">
-        <Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0 text-signal" aria-hidden />
+        <Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0 text-signal-ink" aria-hidden />
         {/* Nicht abschneiden: Im 360-px-Fenster passt die Frage sonst nur bis
             „…zum Radverkehr be…" — ausgerechnet die Frage soll man lesen. */}
         <span className="text-xs leading-snug text-foreground">
@@ -594,7 +594,7 @@ export function GuidedTour() {
               type="button"
               onClick={end}
               aria-label="Tour beenden"
-              className="absolute right-2 top-2 rounded-md p-1 text-muted-foreground/70 transition-colors hover:bg-muted hover:text-foreground"
+              className="absolute right-2 top-2 rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
             >
               <X className="h-4 w-4" />
             </button>

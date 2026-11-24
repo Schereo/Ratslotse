@@ -44,7 +44,7 @@ export default function BarrierefreiheitPage() {
         <h1 className="text-3xl font-bold tracking-tight text-foreground">Erklärung zur Barrierefreiheit</h1>
         <p className="mt-3 leading-relaxed text-muted-foreground">
           Ratslotse soll für alle nutzbar sein, die wissen wollen, was der Stadtrat beschließt. Diese Erklärung gilt
-          für die Website ratslotse.de und die Apps für iOS und Android. Sie ist eine Selbsteinschätzung des
+          für die Website ratslotse.de und die App für iPhone und iPad. Sie ist eine Selbsteinschätzung des
           Betreibers — eine externe Prüfung hat es bisher nicht gegeben.
         </p>
 
@@ -54,7 +54,18 @@ export default function BarrierefreiheitPage() {
               Angestrebt wird der Standard WCAG 2.2 Stufe AA. Nach eigener Einschätzung ist Ratslotse{" "}
               <strong className="text-foreground">weitgehend konform</strong>: Die im nächsten Abschnitt genannten
               Einschränkungen sind bekannt und nicht behoben. Diese Erklärung wurde am 13. August 2026 erstellt und
-              beruht auf einer Selbstbewertung.
+              zuletzt am 17. November 2026 überprüft.
+            </p>
+          </Section>
+
+          <Section title="Wie geprüft wurde">
+            <p>
+              Geprüft wurden rund 30 Seiten der Website (öffentliche und angemeldete), jeweils im hellen und im dunklen Modus:
+              automatisch mit dem Prüfwerkzeug axe-core gegen WCAG 2.2 AA, dazu von Hand ein Durchlauf nur mit der
+              Tastatur, eine Darstellung bei 320 Pixel Breite und bei 200 % Textgröße. Die gefundenen Mängel bei
+              Kontrasten, Link-Kennzeichnung, Tippflächen, Seitenstruktur und verdecktem Tastatur-Fokus sind
+              behoben. Seitdem läuft dieselbe automatische Prüfung bei jeder Änderung am Code mit. Ein Test mit
+              Screenreadern durch Betroffene steht noch aus.
             </p>
           </Section>
 
@@ -62,7 +73,8 @@ export default function BarrierefreiheitPage() {
             <ul className="list-disc space-y-1 pl-5">
               <li>Bedienung vollständig per Tastatur, mit sichtbarem Fokusring auf jedem interaktiven Element und einem „Zum Inhalt springen“-Link.</li>
               <li>Sprache der Seite ausgezeichnet (<code className="rounded bg-muted px-1 py-0.5 text-[13px]">lang=&quot;de&quot;</code>), Überschriften in einer sinnvollen Reihenfolge, Bedienelemente mit Namen für Screenreader.</li>
-              <li>Heller und dunkler Modus mit geprüften Kontrasten; Farbe ist nie der einzige Träger einer Information (Ergebnisse tragen zusätzlich Text, Parteien zusätzlich ein Label).</li>
+              <li>Heller und dunkler Modus mit geprüften Kontrasten; Farbe ist nie der einzige Träger einer Information (Ergebnisse tragen zusätzlich Text, Parteien zusätzlich ein Label, Links im Fließtext sind unterstrichen).</li>
+              <li>Klick- und Tippflächen sind mindestens 24 × 24 Pixel groß (Ausnahmen unten).</li>
               <li>Bewegungen und Animationen richten sich nach der Systemeinstellung „Bewegung reduzieren“ — die Lotti-Szenen, Aufbau-Animationen und das automatische Scrollen halten dann still.</li>
               <li>Text lässt sich per Browser- bzw. Systemeinstellung vergrößern, ohne dass Inhalte verloren gehen; die Layouts sind auf 320 px Breite ausgelegt.</li>
               <li>Keine Zeitbegrenzung, kein automatisches Abspielen von Ton oder Video, kein Blinken.</li>
@@ -79,6 +91,12 @@ export default function BarrierefreiheitPage() {
               <li>
                 <strong>Diagramme in der Analyse:</strong> Balken- und Verlaufsgrafiken haben eine Textzusammenfassung,
                 aber noch keine vollständige Tabellenalternative für jeden Wert.
+              </li>
+              <li>
+                <strong>Grafiken im Haushaltsbereich:</strong> Sehr kleine Abschnitte der Balkengrafiken und die
+                Punkte der Schritt-Navigation sind schmaler als 24 Pixel, weil ihre Breite den Betrag abbildet. Jeder
+                Abschnitt hat einen Namen für Screenreader und ist per Tastatur erreichbar; die Schritte stehen
+                zusätzlich als Liste im Wegweiser.
               </li>
               <li>
                 <strong>Amtliche Originaldokumente:</strong> Die verlinkten PDFs stammen aus dem Ratsinformationssystem
@@ -100,9 +118,9 @@ export default function BarrierefreiheitPage() {
               mir am schnellsten, Barrieren zu beseitigen.
             </p>
             <p>
-              <a href={KONTAKT_MAILTO} className="text-primary hover:underline">{KONTAKT_EMAIL}</a>
+              <a href={KONTAKT_MAILTO} className="textlink">{KONTAKT_EMAIL}</a>
               {" · "}
-              <Link href="/hilfe" className="text-primary hover:underline">Kontaktformular (ohne Anmeldung)</Link>
+              <Link href="/hilfe" className="textlink">Kontaktformular (ohne Anmeldung)</Link>
               {" · "}
               in der App: Konto → Feedback
             </p>
@@ -121,9 +139,9 @@ export default function BarrierefreiheitPage() {
         </div>
 
         <footer className="mt-12 border-t border-border pt-6 text-sm text-muted-foreground">
-          <Link href="/impressum" className="text-primary hover:underline">Impressum</Link>
+          <Link href="/impressum" className="textlink">Impressum</Link>
           {" · "}
-          <Link href="/datenschutz" className="text-primary hover:underline">Datenschutz</Link>
+          <Link href="/datenschutz" className="textlink">Datenschutz</Link>
           {" · "}
           <Link href="/" className="hover:text-foreground">Startseite</Link>
         </footer>

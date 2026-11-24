@@ -234,6 +234,9 @@ class HaushaltMixin(StoreBasis):
         # Die Jahresabschlüsse der Gesellschaften: dieselbe Form — je
         # Gesellschaft eine Vorlage mit Bilanz und GuV.
         "company_accounts": ("council_company_accounts", "year", None, None),
+        # Die Quartalsberichte der Beteiligungen: je Jahrgang bis zu vier
+        # Sammelvorlagen (ein Stichtag, ein Papier).
+        "holding_quarterly": ("council_holding_forecasts", "fiscal_year", None, None),
         # Die Änderungslisten zum Haushalt. Wie `wirtschaftsplan` stehen je
         # Jahrgang MEHRERE Papiere dahinter (Verw. I–III und die
         # Beschluss-Datei des AFB) — die Summen-Tabelle trägt je Dokument
@@ -3037,6 +3040,105 @@ class HaushaltMixin(StoreBasis):
                 "FROM council_budget_execution")}
         except sqlite3.OperationalError:
             return set()
+
+    def save_holding_forecasts(self, bericht, herkunft) -> int:
+        """Einen Quartalsbericht der Beteiligungen ersetzen.
+
+        Ersetzt wird nach ``(fiscal_year, as_of)`` — der Einheit, die EIN
+        Bericht liefert. Zeilen anderer Stichtage desselben Jahres bleiben
+        stehen: Jede Hochrechnung eines Jahres ist eine eigene Aussage und
+        wird nicht von der nächsten überschrieben. Übergeben wird nur, was
+        seine Proben bestanden hat; diese Methode schreibt nur."""
+        probes = herkunft.probe
+        if not isinstance(probes, str):
+            probes = ",".join(probes)
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self.transaktion():
+            hid = self.merke_herkunft(herkunft, fetched_at=now)
+            self._conn.execute(
+                "DELETE FROM council_holding_forecasts WHERE fiscal_year = ? AND as_of = ?",
+                (bericht.fiscal_year, bericht.as_of))
+            self._conn.executemany(
+                "INSERT INTO council_holding_forecasts ("
+                " company, fiscal_year, as_of, quarter, plan, plan_kind, plan_text,"
+                " plan_other, plan_other_kind, forecast, deviation_printed,"
+                " deviation_gap, conflict, basis, printed_unit, rounded_to, sign_rule,"
+                " prior_reported, statement, template_number, document_id, probes,"
+                " herkunft_id, fetched_at) "
+                "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                [(z.company, bericht.fiscal_year, bericht.as_of, bericht.quarter,
+                  z.plan, z.plan_kind, z.plan_text, z.plan_other, z.plan_other_kind,
+                  z.forecast, z.deviation_printed, z.deviation_gap,
+                  1 if z.conflict else 0, z.basis, bericht.unit, bericht.rounded_to,
+                  bericht.sign_rule, z.prior_reported, z.statement,
+                  bericht.template_number, bericht.document_id,
+                  ",".join(z.probes), hid, now)
+                 for z in bericht.zeilen])
+        return len(bericht.zeilen)
+
+    def holding_forecast_einheiten(self) -> set[tuple]:
+        """Welche ``(Jahr, Stichtag)`` im Bestand stehen — die Einheit ist der
+        Bericht, nicht der Jahrgang: Ein Jahr trägt bis zu drei Hochrechnungen
+        (30.06., 30.09., 31.12.), und mit der ersten ist es nicht erledigt."""
+        try:
+            return {(r[0], r[1]) for r in self._conn.execute(
+                "SELECT DISTINCT fiscal_year, as_of FROM council_holding_forecasts")}
+        except sqlite3.OperationalError as fehler:
+            if not tabelle_fehlt(fehler):
+                raise
+            return set()
+
+    def holding_forecasts(self, company: str | None = None) -> list[dict]:
+        """Plan und Hochrechnungen je Unternehmen — mit Herkunft, älteste zuerst.
+
+        Eine Zeile je (Unternehmen, Jahr, Stichtag). Keine Verrechnung: Plan
+        und Hochrechnung stehen nebeneinander, so wie der Bericht sie
+        druckt."""
+        satz = " WHERE f.company = ?" if company else ""
+        try:
+            rows = self._conn.execute(
+                "SELECT f.*, h.label AS source_label, h.url AS source_url, "
+                "h.citation AS source_citation "
+                "FROM council_holding_forecasts f "
+                "LEFT JOIN council_provenance h ON h.id = f.herkunft_id"
+                + satz + " ORDER BY f.company, f.fiscal_year, f.as_of",
+                (company,) if company else ()).fetchall()
+        except sqlite3.OperationalError as fehler:
+            if not tabelle_fehlt(fehler):
+                raise
+            return []
+        return [dict(r) for r in rows]
+
+    def holding_actual(self, company: str, year: int) -> dict | None:
+        """Das Ist eines Jahres aus dem ABSCHLUSS — nie aus dem Quartalsbericht.
+
+        Reihenfolge: Jahresabschluss der Gesellschaft, Jahresabschluss des
+        Eigenbetriebs, Beteiligungsbericht. ``None``, solange keiner von
+        ihnen das Jahr nennt: Der Abschluss kommt ein bis zwei Jahre nach dem
+        Stichtag, und bis dahin gibt es kein Ist, an dem sich die Hochrechnung
+        messen ließe."""
+        abfragen = (
+            ("SELECT value, herkunft_id FROM council_company_accounts "
+             "WHERE company = ? AND year = ? AND indicator = 'jahresergebnis'",
+             "annual_accounts"),
+            ("SELECT value, herkunft_id FROM council_enterprise_accounts "
+             "WHERE enterprise = ? AND year = ? AND metric = 'result'",
+             "annual_accounts"),
+            ("SELECT value, herkunft_id FROM council_company_indicators "
+             "WHERE company = ? AND year = ? AND indicator = 'jahresergebnis' "
+             "AND unit = 'eur' ORDER BY report_year DESC",
+             "holdings_report"),
+        )
+        for sql, quelle in abfragen:
+            try:
+                r = self._conn.execute(sql, (company, year)).fetchone()
+            except sqlite3.OperationalError as fehler:
+                if not tabelle_fehlt(fehler):
+                    raise
+                continue
+            if r is not None:
+                return {"value": r["value"], "source": quelle, "herkunft_id": r["herkunft_id"]}
+        return None
 
     def save_buergschaften(self, zeilen: list[dict], herkunft) -> int:
         """Bürgschafts-Jahrgänge ersetzen — je Jahr eine Zeile.

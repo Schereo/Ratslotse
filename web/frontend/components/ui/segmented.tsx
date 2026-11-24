@@ -45,7 +45,11 @@ export function Segmented<T extends string>({
   return (
     <div
       ref={gruppeRef}
-      className={cn("gleit-gruppe relative flex gap-1 rounded-md bg-muted p-1", className)}
+      // `flex-wrap`: Bei großer Systemschrift (200 %) passen drei Wörter nicht
+      // mehr nebeneinander, und der Umschalter schob die Seite seitwärts. Er
+      // bricht jetzt in eine zweite Zeile um; die Gleitfläche misst x UND y
+      // (gleit-marker.tsx) und fährt mit. Bei normaler Schrift ändert sich nichts.
+      className={cn("gleit-gruppe relative flex flex-wrap gap-1 rounded-md bg-muted p-1", className)}
       role="group"
     >
       {/* `rounded-sm` wie die Segmente, und die Fläche trägt hier den Schatten,
@@ -82,7 +86,7 @@ export function Segmented<T extends string>({
               twinkle && "qa-glint",
             )}
           >
-            {Icon && <Icon className={cn("h-4 w-4", twinkle && "qa-sparkle text-signal")} />}
+            {Icon && <Icon className={cn("h-4 w-4", twinkle && "qa-sparkle text-signal-ink")} />}
             {o.label}
           </button>
         );

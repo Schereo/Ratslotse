@@ -258,6 +258,8 @@ class Store(StoreBasis):
             "SELECT text FROM council_company_texts WHERE report_year = ? "
             "AND company = ? AND section = 'budget_impact'",
             (bericht, r["company"])).fetchone()
+        from council import shareholding_handbook
+
         return {
             "company": r["company"], "name": r["name"],
             "legal_form": _form(r["classification"]),
@@ -265,29 +267,41 @@ class Store(StoreBasis):
             "purpose": r["purpose"],
             "budget_impact": haushalt["text"] if haushalt else None,
             "indicators": kennzahlen, "owners": eigner,
-            "body": self._gremium(personen),
+            "bodies": self._gremien(personen),
+            # Aus welcher Ratsperiode die Besetzung stammt — und ob sie
+            # seither abgelaufen ist (s. shareholding_handbook.board_term_note).
+            "board_term": shareholding_handbook.board_term_note(bericht) if personen else None,
         }
 
     @staticmethod
-    def _gremium(personen) -> dict | None:
-        """Das Aufsichtsorgan: Name, Größe, Vorsitz — und wie viele aus dem Rat.
+    def _gremien(personen) -> list[dict]:
+        """Je Gremium: Name, Größe, Vorsitz — und wie viele aus dem Rat.
+
+        JE GREMIUM, nicht zusammen. Die GSG führt einen Aufsichtsrat (18) und
+        eine Gesellschafterversammlung (6); zusammengezählt stand im Baustein
+        „Aufsichtsorgan: 24 Mitglieder, davon 6 Ratsmitglieder" (gemessen
+        23.11.2026) — eine Zahl, die es in keinem Gremium gibt. Gezählt wird
+        je Name, damit eine doppelte Zeile im Bericht niemanden zweimal zählt.
 
         NICHT die ganze Liste. Zwölf Namen je Gesellschaft wären die Hälfte
         des Zeichenbudgets für eine Auskunft, die der Steckbrief der Seite
         vollständig und verlinkt zeigt; hier zählt, wer dem Gremium vorsitzt
         und wie stark der Rat darin vertreten ist."""
-        if not personen:
-            return None
-        vorsitz = next((p for p in personen if p["chair_role"] == "chair"), None)
-        namen = {p["committee"] for p in personen}
-        return {
-            "committee": namen.pop() if len(namen) == 1 else "Aufsichtsorgan",
-            "count": len(personen),
-            "chair": dict(vorsitz) if vorsitz else None,
-            "council_members": sum(1 for p in personen
-                                   if (p["position"] or "").startswith("Ratsmitglied")),
-            "roles_assignable": all(p["roles_assignable"] for p in personen),
-        }
+        reihen: dict[str, list] = {}
+        for p in personen:
+            reihen.setdefault(p["committee"] or "Aufsichtsorgan", []).append(p)
+        aus = []
+        for name, ps in reihen.items():
+            vorsitz = next((p for p in ps if p["chair_role"] == "chair"), None)
+            aus.append({
+                "committee": name,
+                "count": len({p["name"] for p in ps}),
+                "chair": dict(vorsitz) if vorsitz else None,
+                "council_members": len({p["name"] for p in ps
+                                        if (p["position"] or "").startswith("Ratsmitglied")}),
+                "roles_assignable": all(p["roles_assignable"] for p in ps),
+            })
+        return aus
 
     def _ueberblick(self, reihen, bericht: int, jahr: int | None) -> dict:
         """Ohne Begriffstreffer: wie viele, welche Form, welche die größten.
@@ -367,16 +381,30 @@ def _gesellschaft_zeilen(g: dict, voll: bool) -> list[str]:
         return zeilen
     if g.get("budget_impact"):
         zeilen.append(f"  - Für den Stadthaushalt: {_kurz(g['budget_impact'], 200)}")
-    k = g.get("body")
-    if k:
+    for k in g.get("bodies") or []:
         satz = f"  - {k['committee']}: {k['count']} Mitglieder"
         if k.get("chair"):
             amt = (f" ({k['chair']['position']})"
                    if k["roles_assignable"] and k["chair"].get("position") else "")
             satz += f", Vorsitz {k['chair']['name']}{amt}"
         if k.get("council_members"):
-            satz += f", davon {k['council_members']} Ratsmitglieder"
-        zeilen.append(satz + ". Weitere Namen stehen nur im Bericht — nenne keine.")
+            n = k["council_members"]
+            satz += f", davon {n} {'Ratsmitglied' if n == 1 else 'Ratsmitglieder'}"
+        zeilen.append(satz + ".")
+    if g.get("bodies"):
+        zeilen.append("  - Weitere Namen stehen nur im Bericht — nenne keine.")
+    termin = g.get("board_term")
+    if g.get("bodies") and termin:
+        if termin["term_ended"]:
+            ende = ".".join(reversed(termin["term_end"].split("-")))
+            zeilen.append(
+                f"  - ACHTUNG: Besetzung aus der Ratsperiode {termin['term_label']} (endete "
+                f"{ende}). Städtische Aufsichtsratsmandate enden mit der Periode, Sitze "
+                "in der Gesellschafterversammlung mit dem Ausscheiden aus dem Rat "
+                "(Handbuch Beteiligungen S. 16–17, 22). Nicht als heutige ausgeben, "
+                "das dazusagen.")
+        else:
+            zeilen.append(f"  - Besetzung laut Bericht, Ratsperiode {termin['term_label']}.")
     return zeilen
 
 
@@ -441,5 +469,9 @@ FACETTE = geld.Facette(
     # Jahrgang, also mit jedem optionalen Satz); die Grenze liegt knapp
     # darüber. Zwei Gesellschaften nebeneinander bleiben darunter, weil die
     # zweite nur ihre Zahlen trägt (s. `_gesellschaft_zeilen`).
-    mixin=Store, rang=40, grenze=1900,
+    # 11/2026: + Hinweis auf die abgelaufene Ratsperiode (~200 Zeichen) und
+    # die Gremien einzeln. Gemessen über ALLE 16 Einheiten des Berichts 2024,
+    # je mit und ohne abweichendes Jahr: höchstens 2.298 (TGO Besitz mit der
+    # TGO daneben, Jahr 2005 erfragt).
+    mixin=Store, rang=40, grenze=2400,
     probefrage="Wem gehört die GSG Oldenburg?")

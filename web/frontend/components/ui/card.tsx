@@ -41,9 +41,13 @@ export function EmptyState({
   icon: Icon,
   mascot,
   action,
+  titleAs: Titel = "p",
 }: {
   title: string;
   hint?: string;
+  /** Steht der Zustand allein auf der Seite (404), ist der Titel ihre
+   *  Hauptüberschrift — sonst fehlt der Seite das `h1` (axe 11/2026). */
+  titleAs?: "p" | "h1";
   icon?: React.ComponentType<{ className?: string }>;
   /** Lotti statt Icon zeigen — Pose passend zum Kontext (search/sleep/confused/…). */
   mascot?: MascotPose;
@@ -60,7 +64,7 @@ export function EmptyState({
           </span>
         )
       )}
-      <p className="font-medium text-foreground">{title}</p>
+      <Titel className="font-medium text-foreground">{title}</Titel>
       {hint && <p className="mt-1 max-w-sm text-sm text-muted-foreground">{hint}</p>}
       {action && <div className="mt-4">{action}</div>}
     </div>

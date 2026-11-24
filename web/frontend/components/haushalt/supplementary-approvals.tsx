@@ -214,7 +214,7 @@ export function NachbewilligungsBlock({ daten, year }: {
                   damals bei{" "}
                   {ratsAnteil(erstes)!.toLocaleString("de-DE", { maximumFractionDigits: 0 })}
                   &nbsp;% und liegt {year} bei{" "}
-                  <span className="font-semibold text-signal">
+                  <span className="font-semibold text-signal-ink">
                     {anteil.toLocaleString("de-DE", { maximumFractionDigits: 0 })}&nbsp;%
                   </span>.
                 </>

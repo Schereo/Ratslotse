@@ -10064,6 +10064,84 @@ export interface components {
                 [key: string]: components["schemas"]["Herkunft"];
             };
         };
+        /** BudgetFinding */
+        BudgetFinding: {
+            /** Chart */
+            chart: string | null;
+            key_figure: components["schemas"]["BudgetFindingKeyFigure"];
+            /** Page */
+            page: number | null;
+            /** Quote */
+            quote: string | null;
+            /** Quote Page */
+            quote_page?: number | null;
+            /** Text */
+            text: string;
+            /** Title */
+            title: string;
+            visual: components["schemas"]["BudgetFindingVisual"];
+        };
+        /** BudgetFindingKeyFigure */
+        BudgetFindingKeyFigure: {
+            /** Label */
+            label: string;
+            /** Unit */
+            unit: string;
+            /** Value */
+            value: number;
+        };
+        /** BudgetFindingRow */
+        BudgetFindingRow: {
+            /** Change */
+            change?: number | null;
+            /** Label */
+            label: string;
+            /** Value */
+            value: number;
+        };
+        /** BudgetFindingSeries */
+        BudgetFindingSeries: {
+            /** Name */
+            name: string;
+            /** Values */
+            values: (number | null)[];
+        };
+        /** BudgetFindingStep */
+        BudgetFindingStep: {
+            /** Label */
+            label: string;
+            /** Value */
+            value: number;
+        };
+        /**
+         * BudgetFindingVisual
+         * @description Wie die Seite einen Befund zeichnet. ``type``: ``columns`` (Säulen je
+         *     Kategorie, ``kinds`` vom Code gesetzt: actual · forecast · plan ·
+         *     financial_plan · null), ``bridge`` (von ``start`` über ``steps`` zu
+         *     ``end``) oder ``bars`` (Rangfolge).
+         */
+        BudgetFindingVisual: {
+            /** Categories */
+            categories?: string[];
+            end?: components["schemas"]["BudgetFindingStep"];
+            /** Highlight */
+            highlight?: number[];
+            /** Kinds */
+            kinds?: (string | null)[];
+            /** Rows */
+            rows?: components["schemas"]["BudgetFindingRow"][];
+            /** Series */
+            series?: components["schemas"]["BudgetFindingSeries"][];
+            /** Stacked */
+            stacked?: boolean;
+            start?: components["schemas"]["BudgetFindingStep"];
+            /** Steps */
+            steps?: components["schemas"]["BudgetFindingStep"][];
+            /** Type */
+            type: string;
+            /** Unit */
+            unit: string;
+        };
         /** BudgetFixedAssets */
         BudgetFixedAssets: {
             /** Accounting Systems */
@@ -10137,8 +10215,11 @@ export interface components {
         BudgetHoldings: {
             /** Companies */
             companies: unknown[];
+            /** Forecasts */
+            forecasts: components["schemas"]["HoldingForecastYear"][];
             /** Group Comparison */
             group_comparison: unknown;
+            handbook: components["schemas"]["HoldingsHandbook"];
             /** Indicators */
             indicators: unknown;
             /** Owners */
@@ -14155,6 +14236,123 @@ export interface components {
             highest_id: number;
         };
         /**
+         * HoldingForecastActual
+         * @description Das Ist laut Abschluss. ``source``: ``annual_accounts`` oder
+         *     ``holdings_report`` (Beteiligungsbericht).
+         */
+        HoldingForecastActual: {
+            /** Herkunft Id */
+            herkunft_id: number | null;
+            /** Source */
+            source: string;
+            /** Value */
+            value: number;
+        };
+        /**
+         * HoldingForecastStation
+         * @description Ein Quartalsbericht: Plan und Hochrechnung zu einem Stichtag.
+         *
+         *     Beträge in Euro (auch wo der Bericht in TEUR rechnet, ``rounded``).
+         *     ``plan_kind`` sagt, welcher Plan es ist: ``original`` (nicht als geändert
+         *     bezeichnet) oder ``adjusted``; ``None``, wo der Bericht es nicht nennt.
+         *     ``plan_other`` ist der zweite Planwert des Seitentexts (VWG). Nie
+         *     verrechnet — die Seite stellt Plan und Hochrechnung nebeneinander.
+         */
+        HoldingForecastStation: {
+            /** As Of */
+            as_of: string;
+            /** Conflict Note */
+            conflict_note: string | null;
+            /** Forecast */
+            forecast: number;
+            /** Herkunft Id */
+            herkunft_id: number | null;
+            /** Plan */
+            plan: number;
+            /** Plan Kind */
+            plan_kind: string | null;
+            /** Plan Other */
+            plan_other: number | null;
+            /** Plan Other Kind */
+            plan_other_kind: string | null;
+            /** Quarter */
+            quarter: number;
+            /** Rounded */
+            rounded: boolean;
+            /** Statement */
+            statement: string | null;
+            /** Template Number */
+            template_number: string;
+        };
+        /**
+         * HoldingForecastYear
+         * @description Ein Unternehmen im jüngsten Jahr mit Quartalsbericht: drei getrennte
+         *     Stationen — Plan und Hochrechnungen (``stations``, je Stichtag eine), das
+         *     Ist (``actual``, nur aus dem Abschluss). ``basis`` ist ``result``
+         *     (Jahresergebnis) oder ``subsidy_need`` (Gesamtzuschussbedarf der VWG,
+         *     dort ohne ``actual`` und mit ``actual_note``).
+         */
+        HoldingForecastYear: {
+            /**
+             * HoldingForecastActual
+             * @description Das Ist laut Abschluss. ``source``: ``annual_accounts`` oder
+             *     ``holdings_report`` (Beteiligungsbericht).
+             */
+            actual: {
+                /** Herkunft Id */
+                herkunft_id: number | null;
+                /** Source */
+                source: string;
+                /** Value */
+                value: number;
+            } | null;
+            /** Actual Note */
+            actual_note: string | null;
+            /** Basis */
+            basis: string;
+            /** Company */
+            company: string;
+            /** Stations */
+            stations: components["schemas"]["HoldingForecastStation"][];
+            /** Year */
+            year: number;
+        };
+        /**
+         * HoldingsHandbook
+         * @description Das Handbuch Beteiligungen der Stadt (``council/shareholding_handbook.py``):
+         *     Fundstelle samt Ratsbeschluss und die Regeln, die die Seite zeigt.
+         */
+        HoldingsHandbook: {
+            /** Adopted Date */
+            adopted_date: string;
+            /** Adopted Decision Id */
+            adopted_decision_id: number;
+            /** Adopted Template */
+            adopted_template: string;
+            /** Rules */
+            rules: components["schemas"]["HoldingsHandbookRule"][];
+            /** Title */
+            title: string;
+            /** Url */
+            url: string;
+            /** Version */
+            version: string;
+        };
+        /**
+         * HoldingsHandbookRule
+         * @description Eine Regel des Handbuchs Beteiligungen als Kurzfassung für die Seite.
+         */
+        HoldingsHandbookRule: {
+            /** Key */
+            key: string;
+            /** Pages */
+            pages: string;
+            /** Summary */
+            summary: string;
+            /** Title */
+            title: string;
+        };
+        /**
          * Idea
          * @description Eine fremde IDEE samt Urteil, ob Oldenburg sie schon hat.
          *
@@ -14585,6 +14783,24 @@ export interface components {
         ItemBudgetContext: {
             /** Blocks */
             blocks: components["schemas"]["BudgetContextBlock"][];
+        };
+        /**
+         * ItemBudgetFindings
+         * @description „Was der Haushaltsentwurf zeigt“ (``council/budget_findings.py``).
+         */
+        ItemBudgetFindings: {
+            /** Budget Year */
+            budget_year: number | null;
+            /** Created At */
+            created_at: string;
+            /** Document Id */
+            document_id: number;
+            /** Findings */
+            findings: components["schemas"]["BudgetFinding"][];
+            /** Label */
+            label: string;
+            /** Url */
+            url: string | null;
         };
         /**
          * ItemDossier
@@ -21293,6 +21509,7 @@ export interface components {
             amendments?: components["schemas"]["ItemAmendment"][];
             arguments?: components["schemas"]["ItemArguments"];
             budget_context?: components["schemas"]["ItemBudgetContext"];
+            budget_findings?: components["schemas"]["ItemBudgetFindings"];
             /** Committee */
             committee: string;
             /** Count */
@@ -32621,4 +32838,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 41aa96fc1b72b7c1c4ed08694967a883470d7c1c3b9f5241b74e3c4cba0aba72
+// vertrag-sha256: b9291a3931a05294548dba97c3b4e6cd5a314fe161122e25dd008b1570a3d8af

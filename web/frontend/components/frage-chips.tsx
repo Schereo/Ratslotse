@@ -52,7 +52,7 @@ export function FrageChips({ fragen, titel = "Frag Lotti", className }: {
     <div className={cn("flex flex-wrap items-center gap-x-3 gap-y-2", className)}
       role="group" aria-label="Fragen an Lotti">
       <span className="inline-flex items-center gap-1.5 font-mono text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
-        <Sparkles className="h-3.5 w-3.5 text-signal" aria-hidden />
+        <Sparkles className="h-3.5 w-3.5 text-signal-ink" aria-hidden />
         {titel}
       </span>
       <div className="flex flex-wrap gap-1.5">

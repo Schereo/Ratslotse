@@ -3796,6 +3796,62 @@
    }
   ]
  ],
+ "handbook": [
+  {
+   "rules": [
+    {
+     "key": "supervisory_board",
+     "title": "Was ein Aufsichtsrat tut",
+     "text": "Der Aufsichtsrat berät und überwacht die Geschäftsführung — ob ihre Entscheidungen ordnungsgemäß, zweckmäßig und wirtschaftlich sind. Welche Geschäfte seine vorherige Zustimmung brauchen, legt der Gesellschaftsvertrag fest; die grundlegenden Entscheidungen bleiben der Gesellschafterversammlung. Seine Mitglieder sind dem Wohl des Unternehmens verpflichtet und haften persönlich: Empfehlungen aus Rat und Ausschüssen müssen sie selbst prüfen, und sie folgen ihnen nicht, wenn sie dem Unternehmenswohl widersprechen. Er tagt mindestens zweimal im Jahr und nicht öffentlich; die Ratsmitglieder darin müssen den Rat aber über Angelegenheiten von besonderer Bedeutung frühzeitig unterrichten (§ 138 Abs. 4 NKomVG). Ohne Aufsichtsrat übernimmt die Gesellschafterversammlung seine Aufgaben.",
+     "pages": "S. 15, 18–19, 23"
+    }
+   ],
+   "beleg": {
+    "label": "Handbuch Beteiligungen der Stadt Oldenburg",
+    "citation": "Ratsbeschluss 23/0599/1 vom 27.11.2023",
+    "as_of": "Januar 2025",
+    "url": "https://www.oldenburg.de/fileadmin/oldenburg/Benutzer/Dateien/20_Controlling_und_Finanzen/Handbuch_Beteiligungen_DIN_A5_b.pdf"
+   }
+  },
+  {
+   "rules": [
+    {
+     "key": "appointment",
+     "title": "Wer die Stadt in den Gremien vertritt",
+     "text": "Die städtischen Mitglieder von Gesellschafterversammlung und Aufsichtsrat bestellt der Rat. Im Aufsichtsrat endet ihr Mandat mit Ablauf der Ratsperiode, in der Gesellschafterversammlung mit dem Ausscheiden aus dem Rat oder der Abberufung; die Nachfolge ist jeweils unverzüglich zu regeln. Sind mehrere Vertreter in einen Aufsichtsrat zu wählen, ist die Oberbürgermeisterin oder der Oberbürgermeister zu berücksichtigen, außer bei Verzicht; auf deren Vorschlag kann stattdessen eine andere Beschäftigte oder ein anderer Beschäftigter der Stadt benannt werden. In der Regel sollen nicht mehr als fünf Mandate gleichzeitig wahrgenommen werden.",
+     "pages": "S. 16–17, 22"
+    },
+    {
+     "key": "supervisory_board",
+     "title": "Was ein Aufsichtsrat tut",
+     "text": "Der Aufsichtsrat berät und überwacht die Geschäftsführung — ob ihre Entscheidungen ordnungsgemäß, zweckmäßig und wirtschaftlich sind. Welche Geschäfte seine vorherige Zustimmung brauchen, legt der Gesellschaftsvertrag fest; die grundlegenden Entscheidungen bleiben der Gesellschafterversammlung. Seine Mitglieder sind dem Wohl des Unternehmens verpflichtet und haften persönlich: Empfehlungen aus Rat und Ausschüssen müssen sie selbst prüfen, und sie folgen ihnen nicht, wenn sie dem Unternehmenswohl widersprechen. Er tagt mindestens zweimal im Jahr und nicht öffentlich; die Ratsmitglieder darin müssen den Rat aber über Angelegenheiten von besonderer Bedeutung frühzeitig unterrichten (§ 138 Abs. 4 NKomVG). Ohne Aufsichtsrat übernimmt die Gesellschafterversammlung seine Aufgaben.",
+     "pages": "S. 15, 18–19, 23"
+    }
+   ],
+   "beleg": {
+    "label": "Handbuch Beteiligungen der Stadt Oldenburg",
+    "citation": "Ratsbeschluss 23/0599/1 vom 27.11.2023",
+    "as_of": "Januar 2025",
+    "url": "https://www.oldenburg.de/fileadmin/oldenburg/Benutzer/Dateien/20_Controlling_und_Finanzen/Handbuch_Beteiligungen_DIN_A5_b.pdf"
+   }
+  },
+  {
+   "rules": [
+    {
+     "key": "reporting",
+     "title": "Welche Berichte wann fällig sind",
+     "text": "Den Wirtschaftsplan — eine Planung über fünf Jahre für Erfolg, Vermögen, Investitionen und Liquidität samt Risikoeinschätzung — beschließt das Unternehmen spätestens einen Monat vor Ende des Geschäftsjahres. Zum 30. Juni, 30. September und 31. Dezember berichtet die Geschäftsführung mit einem Soll-Ist-Vergleich (bisheriges Ist, Hochrechnung fürs Jahr, Plan, Abweichung), in der Regel spätestens drei Wochen danach an die Gremien und das Beteiligungsmanagement. Den Jahresabschluss stellt sie binnen drei Monaten auf, damit die Gesellschafterversammlung ihn binnen sechs Monaten feststellen kann. Die Zuarbeit für Beteiligungsbericht (§ 151 NKomVG) und Gesamtabschluss soll so rechtzeitig kommen, dass beide binnen sechs Monaten nach Ende des Haushaltsjahres entstehen können; der Beteiligungsbericht steht mindestens fünf Jahre auf oldenburg.de.",
+     "pages": "S. 31–32, 34–35"
+    }
+   ],
+   "beleg": {
+    "label": "Handbuch Beteiligungen der Stadt Oldenburg",
+    "citation": "Ratsbeschluss 23/0599/1 vom 27.11.2023",
+    "as_of": "Januar 2025",
+    "url": "https://www.oldenburg.de/fileadmin/oldenburg/Benutzer/Dateien/20_Controlling_und_Finanzen/Handbuch_Beteiligungen_DIN_A5_b.pdf"
+   }
+  }
+ ],
  "haushalt": [
   [
    {
@@ -4000,6 +4056,186 @@
     "year_before": 2020
    }
   ]
+ ],
+ "holding_forecasts": [
+  {
+   "companies": [
+    {
+     "company": "klinikum",
+     "name": "Klinikum Oldenburg AöR (KOL)",
+     "year": 2026,
+     "stations": [
+      {
+       "as_of": "2026-06-30",
+       "quarter": 2,
+       "plan": -21356491.0,
+       "plan_kind": "original",
+       "plan_text": -21356491.0,
+       "plan_other": null,
+       "plan_other_kind": null,
+       "forecast": -21324618.0,
+       "conflict": 0,
+       "deviation_gap": 0.0,
+       "basis": "result",
+       "statement": "Der Wirtschaftsplan wird eingehalten.",
+       "template_number": "26/0552",
+       "herkunft_id": 2054
+      },
+      {
+       "as_of": "2026-09-30",
+       "quarter": 3,
+       "plan": -21356491.0,
+       "plan_kind": "original",
+       "plan_text": -21356491.0,
+       "plan_other": null,
+       "plan_other_kind": null,
+       "forecast": -21350263.0,
+       "conflict": 0,
+       "deviation_gap": 0.0,
+       "basis": "result",
+       "statement": "Der Wirtschaftsplan wird eingehalten.",
+       "template_number": "26/0818",
+       "herkunft_id": 2055
+      }
+     ],
+     "beleg": {
+      "label": "Quartalsbericht 30.09.2026",
+      "citation": "Bericht zum 3. Quartal 2026, Vorlage 26/0818",
+      "page": null,
+      "as_of": "2026-09-30",
+      "url": "https://ratsinfo.oldenburg.de/bi/getfile.asp?id=316197&type=do"
+     }
+    }
+   ]
+  },
+  {
+   "companies": [
+    {
+     "company": "klinikum",
+     "name": "Klinikum Oldenburg AöR (KOL)",
+     "year": 2025,
+     "stations": [
+      {
+       "as_of": "2025-06-30",
+       "quarter": 2,
+       "plan": -25429193.0,
+       "plan_kind": "original",
+       "plan_text": -25429193.0,
+       "plan_other": null,
+       "plan_other_kind": null,
+       "forecast": -24344275.0,
+       "conflict": 0,
+       "deviation_gap": 0.0,
+       "basis": "result",
+       "statement": "Der Wirtschaftsplan wird eingehalten.",
+       "template_number": "25/0490",
+       "herkunft_id": 2051
+      },
+      {
+       "as_of": "2025-09-30",
+       "quarter": 3,
+       "plan": -25429193.0,
+       "plan_kind": "original",
+       "plan_text": -25429270.0,
+       "plan_other": null,
+       "plan_other_kind": null,
+       "forecast": -24238874.0,
+       "conflict": 1,
+       "deviation_gap": 0.0,
+       "basis": "result",
+       "statement": "Der Wirtschaftsplan wird eingehalten.",
+       "template_number": "25/0802",
+       "herkunft_id": 2052
+      },
+      {
+       "as_of": "2025-12-31",
+       "quarter": 4,
+       "plan": -25429193.0,
+       "plan_kind": "original",
+       "plan_text": -25429270.0,
+       "plan_other": null,
+       "plan_other_kind": null,
+       "forecast": -23865033.0,
+       "conflict": 1,
+       "deviation_gap": 0.0,
+       "basis": "result",
+       "statement": "Der Wirtschaftsplan wird eingehalten.",
+       "template_number": "26/0124",
+       "herkunft_id": 2053
+      }
+     ],
+     "beleg": {
+      "label": "Quartalsbericht 31.12.2025",
+      "citation": "Bericht zum 4. Quartal 2025, Vorlage 26/0124",
+      "page": null,
+      "as_of": "2025-12-31",
+      "url": "https://ratsinfo.oldenburg.de/bi/getfile.asp?id=304363&type=do"
+     }
+    },
+    {
+     "company": "vwg",
+     "name": "Verkehr und Wasser GmbH (VWG)",
+     "year": 2025,
+     "stations": [
+      {
+       "as_of": "2025-06-30",
+       "quarter": 2,
+       "plan": -14659040.0,
+       "plan_kind": "original",
+       "plan_text": -14659040.0,
+       "plan_other": null,
+       "plan_other_kind": null,
+       "forecast": -14659040.0,
+       "conflict": 0,
+       "deviation_gap": 0.0,
+       "basis": "subsidy_need",
+       "statement": "Der Wirtschaftsplan wird eingehalten.",
+       "template_number": "25/0490",
+       "herkunft_id": 2051
+      },
+      {
+       "as_of": "2025-09-30",
+       "quarter": 3,
+       "plan": -14659040.0,
+       "plan_kind": "original",
+       "plan_text": -14659040.0,
+       "plan_other": null,
+       "plan_other_kind": null,
+       "forecast": -14922040.0,
+       "conflict": 0,
+       "deviation_gap": 0.0,
+       "basis": "subsidy_need",
+       "statement": null,
+       "template_number": "25/0802",
+       "herkunft_id": 2052
+      },
+      {
+       "as_of": "2025-12-31",
+       "quarter": 4,
+       "plan": -14972040.0,
+       "plan_kind": "adjusted",
+       "plan_text": -14972040.0,
+       "plan_other": -14659040.0,
+       "plan_other_kind": "original",
+       "forecast": -14959040.0,
+       "conflict": 0,
+       "deviation_gap": 0.0,
+       "basis": "subsidy_need",
+       "statement": "Der Wirtschaftsplan wird eingehalten.",
+       "template_number": "26/0124",
+       "herkunft_id": 2053
+      }
+     ],
+     "beleg": {
+      "label": "Quartalsbericht 31.12.2025",
+      "citation": "Bericht zum 4. Quartal 2025, Vorlage 26/0124",
+      "page": null,
+      "as_of": "2025-12-31",
+      "url": "https://ratsinfo.oldenburg.de/bi/getfile.asp?id=304363&type=do"
+     }
+    }
+   ]
+  }
  ],
  "indicators": [
   {
