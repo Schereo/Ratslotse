@@ -9,14 +9,20 @@
    4. The invitee opens it with their private key, wraps it with their own
       data key and joins (`joinInvitation`).
 
-   Safety codes: every browser remembers the public key it first saw (or
-   sealed for) per account. If the server later shows another one, the
-   member list says so — trust on first use, like a messenger. */
+   Why the token: the list of who waits comes from the server. Granting to
+   whatever it lists would let a dishonest server invent an invitee and
+   collect the note key. So the inviting browser writes a random token into
+   the note itself (a Y.Map in the encrypted document, which the server can
+   neither read nor forge) and sends the same token along. A member grants
+   only to waiting entries whose token is in the note — and removes it
+   afterwards, so it works once. */
 
+import type * as Y from "yjs";
 import { api } from "@/lib/api";
 import {
   grantFor, newIdentity, openGrant, openIdentity, wrapForMe, type Identity, type NoteKey,
 } from "@/lib/shared-note-crypto";
+import { toB64 } from "@/lib/notiz-krypto";
 import type { ApiAntwort } from "@/lib/vertrag";
 
 type IdentityState = ApiAntwort<"/shared-notes/identity">;
@@ -56,45 +62,45 @@ export async function joinInvitation(inv: Invitation, dk: CryptoKey, keyVersion:
     { key_iv: w.iv, key_ct: w.ct, key_version: keyVersion });
 }
 
-/** Seal the note key for everyone who accepted and is waiting. Returns how
- *  many went through (a 409 means another member was faster). */
-export async function grantPending(note: Pick<Note, "id" | "pending">, nk: NoteKey, skip: Set<string>): Promise<number> {
+/** Where the tokens live inside the shared document. */
+export const INVITES_MAP = "invites";
+const TOKEN_TAGE = 14;
+
+interface Vermerk { by: number; at: number }
+
+/** A fresh token for one invitation, recorded in the note. */
+export function recordInvite(doc: Y.Doc, by: number): string {
+  const token = toB64(crypto.getRandomValues(new Uint8Array(16)));
+  doc.getMap<Vermerk>(INVITES_MAP).set(token, { by, at: Date.now() });
+  return token;
+}
+
+export function forgetInvite(doc: Y.Doc, token: string): void {
+  doc.getMap<Vermerk>(INVITES_MAP).delete(token);
+}
+
+/** Is this token one a member of the note put there — and not too old? */
+export function isRecorded(doc: Y.Doc, token: string, now = Date.now()): boolean {
+  const v = token ? doc.getMap<Vermerk>(INVITES_MAP).get(token) : undefined;
+  return Boolean(v && typeof v.at === "number" && now - v.at <= TOKEN_TAGE * 86_400_000);
+}
+
+/** Seal the note key for everyone who accepted, is waiting AND was invited
+ *  from inside the note (token found in the document). Returns how many
+ *  went through (a 409 means another member was faster). */
+export async function grantPending(note: Pick<Note, "id" | "pending">, nk: NoteKey, doc: Y.Doc,
+  skip: Set<string>): Promise<number> {
   let n = 0;
   for (const p of note.pending) {
-    if (skip.has(p.invite_id)) continue;
+    if (skip.has(p.invite_id) || !isRecorded(doc, p.token)) continue;
     skip.add(p.invite_id);
-    const pinned = pinnedKey(p.user_id);
-    // Kennt dieser Browser schon einen anderen Schlüssel für das Konto, nicht
-    // still verpacken: Das Mitglied soll erst die Codes vergleichen.
-    if (pinned && pinned !== p.public_key) continue;
     try {
       const g = await grantFor(nk, p.public_key, note.id, p.user_id);
       await api.post(`/shared-notes/${encodeURIComponent(note.id)}/grants/${encodeURIComponent(p.invite_id)}`,
         { ...g, for_key: p.public_key });
-      pinKey(p.user_id, p.public_key);
+      forgetInvite(doc, p.token);
       n += 1;
     } catch { /* jemand anderes war schneller, oder der Schlüssel hat sich geändert */ }
   }
   return n;
-}
-
-const PINS = "ratslotse:notiz-schluessel";
-
-function pins(): Record<string, string> {
-  try {
-    const v = JSON.parse(localStorage.getItem(PINS) ?? "{}");
-    return v && typeof v === "object" ? v : {};
-  } catch {
-    return {};
-  }
-}
-
-export function pinnedKey(userId: number): string | null {
-  return pins()[String(userId)] ?? null;
-}
-
-export function pinKey(userId: number, publicKey: string): void {
-  try {
-    localStorage.setItem(PINS, JSON.stringify({ ...pins(), [String(userId)]: publicKey }));
-  } catch { /* privat: dann eben ohne Gedächtnis */ }
 }

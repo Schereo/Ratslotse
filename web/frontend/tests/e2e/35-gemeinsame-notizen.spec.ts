@@ -78,7 +78,7 @@ test.describe("Gemeinsame Notizen", () => {
       // Kein Dialog: Der Bereich klappt in der Karte auf, die Notiz bleibt bedienbar.
       await ka.getByRole("button", { name: "Einladen" }).click();
       await expect(anna.page.getByRole("dialog")).toHaveCount(0);
-      const bereich = ka.getByRole("region", { name: "Zum Mitschreiben einladen" });
+      const bereich = ka.getByRole("region", { name: "Einladen" });
       await bereich.getByRole("button", { name: "Link erstellen" }).click();
       const link = await bereich.getByRole("textbox", { name: "Einladungslink" }).inputValue();
       expect(link).toMatch(/\/notiz-einladung\?i=[\w-]+#[\w-]{43}$/);
@@ -129,7 +129,7 @@ test.describe("Gemeinsame Notizen", () => {
     }
   });
 
-  test("per Adresse einladen: annehmen, Schlüssel kommt von selbst, Sicherheitscodes stimmen", async ({ browser }) => {
+  test("per Adresse einladen: annehmen, der Schlüssel kommt von selbst", async ({ browser }) => {
     const anna = await person(browser, "Anna");
     const ben = await person(browser, "Ben");
     try {
@@ -150,17 +150,17 @@ test.describe("Gemeinsame Notizen", () => {
       await anna.page.keyboard.type("Nur für uns zwei");
 
       await ka.getByRole("button", { name: "Einladen" }).click();
-      const bereich = ka.getByRole("region", { name: "Zum Mitschreiben einladen" });
-      await bereich.getByRole("textbox", { name: "An ein Ratslotse-Konto" }).fill(ben.email);
+      const bereich = ka.getByRole("region", { name: "Einladen" });
+      await bereich.getByRole("textbox", { name: "E-Mail-Adresse" }).fill(ben.email);
       await bereich.getByRole("button", { name: "Einladen", exact: true }).click();
-      await expect(bereich.getByRole("status")).toContainText("Gibt es zu");
+      await expect(bereich.getByRole("status", { name: "Eingeladen" })).toContainText(ben.email);
 
       // Ben sieht die Einladung an der Notiz des Punkts (ohne Zustellweg kommt keine Mail).
       await ben.page.reload();
       const kb = karte(ben.page);
       const entsperren = kb.getByRole("button", { name: "Mit Passkey entsperren" });
       if (await entsperren.isVisible({ timeout: 5_000 }).catch(() => false)) await entsperren.click();
-      await expect(kb.getByText("Anna lädt dich ein, hier gemeinsam eine Notiz zu schreiben.")).toBeVisible({ timeout: 15_000 });
+      await expect(kb.getByText("Anna lädt dich zu dieser Notiz ein.")).toBeVisible({ timeout: 15_000 });
       await kb.getByRole("button", { name: "Annehmen" }).click();
 
       // Anna hat die Notiz offen: Ihr Browser übergibt den Schlüssel, Ben ist drin.
@@ -172,20 +172,6 @@ test.describe("Gemeinsame Notizen", () => {
       await ben.page.keyboard.type(", sagt Ben");
       await expect.poll(() => ohneCursor(feldA), { timeout: 10_000 }).toBe("Nur für uns zwei, sagt Ben");
 
-      // Sicherheitscodes: Was Anna bei Ben sieht, sieht Ben bei sich selbst.
-      const codes = async (page: Page, k: Locator) => {
-        await k.getByRole("button", { name: "Mitglieder verwalten" }).click();
-        const m = k.getByRole("region", { name: "Mitglieder" });
-        await m.getByRole("button", { name: "Sicherheitscodes vergleichen" }).click();
-        await expect(m.locator(".font-mono")).toHaveCount(2, { timeout: 10_000 });
-        const zeilen = await m.locator("li").allInnerTexts();
-        return Object.fromEntries(zeilen.map((z) => [z.includes("(du)") ? "ich" : "andere", z.match(/\d{5}( \d{5}){4}/)?.[0]]));
-      };
-      const beiAnna = await codes(anna.page, ka);
-      const beiBen = await codes(ben.page, kb);
-      expect(beiAnna.andere).toMatch(/^\d{5}( \d{5}){4}$/);
-      expect(beiAnna.andere).toBe(beiBen.ich);
-      expect(beiBen.andere).toBe(beiAnna.ich);
     } finally {
       await anna.ctx.close();
       await ben.ctx.close();
@@ -203,9 +189,12 @@ test.describe("Gemeinsame Notizen", () => {
       await ka.getByRole("button", { name: "+ Gemeinsam" }).click();
       await ka.getByRole("button", { name: "Gemeinsame Notiz anlegen" }).click();
       await expect(ka.getByText("Live", { exact: true })).toBeVisible({ timeout: 15_000 });
-      const r = await anna.page.request.get("/api/shared-notes");
-      const noteId = (await r.json()).notes[0].id;
-      await anna.page.request.post(`/api/shared-notes/${noteId}/address-invites`, { data: { email: ben.email } });
+      // Über die Oberfläche: Nur sie legt die Kennung verschlüsselt in die Notiz.
+      await ka.getByRole("button", { name: "Einladen" }).click();
+      const bereich = ka.getByRole("region", { name: "Einladen" });
+      await bereich.getByRole("textbox", { name: "E-Mail-Adresse" }).fill(ben.email);
+      await bereich.getByRole("button", { name: "Einladen", exact: true }).click();
+      await expect(bereich.getByRole("status", { name: "Eingeladen" })).toContainText(ben.email);
 
       // Die Kennung stünde im Link der Mail; hier holt Ben sie sich selbst.
       const inv = (await (await ben.page.request.get("/api/shared-notes")).json()).invitations[0];

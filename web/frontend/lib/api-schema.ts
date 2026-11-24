@@ -7642,6 +7642,8 @@ export interface components {
         AddressInviteIn: {
             /** Email */
             email: string;
+            /** Token */
+            token: string;
         };
         /** AddressJoinIn */
         AddressJoinIn: {
@@ -17019,7 +17021,8 @@ export interface components {
         /**
          * PendingGrant
          * @description Hat eine Einladung per Adresse angenommen und wartet auf den
-         *     Notizschlüssel — den verpackt der Browser eines Mitglieds für ``public_key``.
+         *     Notizschlüssel — den verpackt der Browser eines Mitglieds für ``public_key``,
+         *     aber nur, wenn er ``token`` verschlüsselt in der Notiz findet.
          */
         PendingGrant: {
             /** Display Name */
@@ -17028,6 +17031,8 @@ export interface components {
             invite_id: string;
             /** Public Key */
             public_key: string;
+            /** Token */
+            token: string;
             /** User Id */
             user_id: number;
         };
@@ -22128,15 +22133,11 @@ export interface components {
         };
         /**
          * SharedNoteMember
-         * @description Ein Mitglied einer gemeinsamen Notiz — Anzeigename, keine Adresse. Der
-         *     öffentliche Schlüssel ergibt den Sicherheitscode, den Mitglieder
-         *     miteinander vergleichen können (``null``: noch kein Schlüsselpaar).
+         * @description Ein Mitglied einer gemeinsamen Notiz — Anzeigename, keine Adresse.
          */
         SharedNoteMember: {
             /** Display Name */
             display_name: string;
-            /** Public Key */
-            public_key: string | null;
             /**
              * Role
              * @enum {string}
@@ -33388,4 +33389,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 8c937c14b45f04b28eadd9313563516d85d74d128ef31222f0aeebfbc35c61e8
+// vertrag-sha256: 506998af1f9d12e8746bb3d0689ee35df39fd889ff8880e1ae06a7a35575aa88

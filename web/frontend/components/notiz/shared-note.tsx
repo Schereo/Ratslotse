@@ -17,13 +17,13 @@
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import * as Y from "yjs";
 import { Awareness } from "y-protocols/awareness";
-import { Check, Copy, Loader2, LogOut, Share2, ShieldCheck, Trash2, UserPlus, Users, X } from "lucide-react";
+import { Check, Copy, Link2, Loader2, LogOut, Share2, Trash2, UserPlus, Users, X } from "lucide-react";
 import { Aufklapp } from "@/components/aufklapp";
 import { NoteField } from "@/components/notiz/note-field";
 import { api, ApiError } from "@/lib/api";
 import type { NoteDocument } from "@/lib/doc-ref";
-import { makeInvite, safetyCode, unwrapForMe, type Identity, type NoteKey } from "@/lib/shared-note-crypto";
-import { ensureIdentity, grantPending, pinKey, pinnedKey } from "@/lib/shared-note-invite";
+import { makeInvite, unwrapForMe, type NoteKey } from "@/lib/shared-note-crypto";
+import { ensureIdentity, forgetInvite, grantPending, recordInvite } from "@/lib/shared-note-invite";
 import { SharedNoteLive, TicketRefused, type LiveStatus } from "@/lib/shared-note-live";
 import type { ApiAntwort } from "@/lib/vertrag";
 import { cn } from "@/lib/utils";
@@ -82,8 +82,6 @@ function Live({ note, nk, dk, keyVersion, meId, meName, rows, documents, seed, o
   const [synced, setSynced] = useState(false);
   const [online, setOnline] = useState<number[]>([]);
   const [bereich, setBereich] = useState<"invite" | "members" | null>(null);
-  const [ich, setIch] = useState<Identity | null>(null);
-  const [freigabe, setFreigabe] = useState(0);
   const einladenRef = useRef<HTMLButtonElement>(null);
   const mitgliederRef = useRef<HTMLButtonElement>(null);
   const versucht = useRef(new Set<string>());
@@ -121,29 +119,23 @@ function Live({ note, nk, dk, keyVersion, meId, meName, rows, documents, seed, o
     };
   }, [note.id, nk]);
 
-  // Das eigene Schlüsselpaar: für den eigenen Sicherheitscode — und damit
-  // andere einen per Adresse einladen können, ohne dass man erst etwas tut.
-  useEffect(() => {
-    let gone = false;
-    ensureIdentity(dk, keyVersion).then((i) => { if (!gone) setIch(i); }).catch(() => {});
-    return () => { gone = true; };
-  }, [dk, keyVersion]);
+  // Das eigene Schlüsselpaar gleich anlegen: Dann kann einen jemand per
+  // Adresse einladen, ohne dass man vorher etwas tun muss.
+  useEffect(() => { ensureIdentity(dk, keyVersion).catch(() => {}); }, [dk, keyVersion]);
 
   // Wer eine Einladung per Adresse angenommen hat, bekommt den Schlüssel von
-  // dem Mitglied, das die Notiz gerade offen hat — von selbst.
-  const wartend = note.pending.map((p) => `${p.invite_id}:${p.public_key}`).join(",");
+  // dem Mitglied, das die Notiz gerade offen hat — von selbst, aber nur mit
+  // einer Kennung, die in der Notiz steht (lib/shared-note-invite.ts). Erst
+  // nach dem Abgleich: Vorher kennt das Dokument die Kennungen noch nicht.
+  const wartend = note.pending.map((p) => p.invite_id).join(",");
   useEffect(() => {
-    if (!wartend) return;
+    if (!wartend || !synced || !sitzung) return;
     let gone = false;
-    grantPending(note, nk, versucht.current).then((n) => { if (n && !gone) onChangedRef.current(); });
+    grantPending(note, nk, sitzung.doc, versucht.current).then((n) => { if (n && !gone) onChangedRef.current(); });
     return () => { gone = true; };
     // `note` ändert sich mit jedem Neuladen; entscheidend ist, wer wartet.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [wartend, nk, freigabe]);
-  const gesperrt = note.pending.filter((p) => {
-    const alt = pinnedKey(p.user_id);
-    return alt && alt !== p.public_key;
-  });
+  }, [wartend, synced, sitzung, nk]);
 
   // Taucht jemand auf, den die Liste noch nicht kennt (eben beigetreten),
   // die Liste neu holen — sonst stünde neben „Du“ niemand.
@@ -189,26 +181,16 @@ function Live({ note, nk, dk, keyVersion, meId, meName, rows, documents, seed, o
           </button>
         </div>
       </div>
-      {gesperrt.map((p) => (
-        <p key={p.invite_id} className="mb-2 rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
-          {p.display_name} möchte beitreten, aber mit einem anderen Schlüssel, als dieser Browser von {p.display_name} kennt
-          (etwa nach einem Neuanfang der Notizen). Vergleicht eure Sicherheitscodes, bevor du freigibst.{" "}
-          <button type="button" className="font-medium underline underline-offset-2"
-            onClick={() => { pinKey(p.user_id, p.public_key); versucht.current.delete(p.invite_id); setFreigabe((f) => f + 1); }}>
-            Freigeben
-          </button>
-        </p>
-      ))}
       <Aufklapp offen={bereich !== null}>
         <div id={bereichId} className="pb-2">
-          {bereich === "invite" && (
-            <Bereich titel="Zum Mitschreiben einladen" onClose={schliessen}>
-              <EinladenInhalt note={note} nk={nk} onDone={() => schliessen(true)} />
+          {bereich === "invite" && sitzung && (
+            <Bereich titel="Einladen" onClose={schliessen}>
+              <EinladenInhalt note={note} nk={nk} doc={sitzung.doc} meId={meId} onDone={() => schliessen(true)} />
             </Bereich>
           )}
           {bereich === "members" && (
             <Bereich titel="Mitglieder" onClose={schliessen}>
-              <MitgliederInhalt note={note} meId={meId} ich={ich} online={online}
+              <MitgliederInhalt note={note} meId={meId} online={online}
                 onDone={() => { onChanged(); schliessen(true); }} />
             </Bereich>
           )}
@@ -249,28 +231,34 @@ const datum = (iso: string) => new Date(iso.endsWith("Z") ? iso : `${iso}Z`).toL
   { day: "numeric", month: "long" });
 
 const PRIMAER = "inline-flex h-11 shrink-0 items-center justify-center gap-1.5 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-60";
+const FELD = "h-11 min-w-0 flex-1 rounded-lg border border-input bg-background px-3 text-sm";
 
-function EinladenInhalt({ note, nk, onDone }: { note: SharedNote; nk: NoteKey; onDone: () => void }) {
-  const adresseId = useId();
+function EinladenInhalt({ note, nk, doc, meId, onDone }: {
+  note: SharedNote; nk: NoteKey; doc: Y.Doc; meId: number; onDone: () => void;
+}) {
   const [adresse, setAdresse] = useState("");
-  const [gesendet, setGesendet] = useState<string | null>(null);
+  const [gesendet, setGesendet] = useState<string[]>([]);
   const [sendet, setSendet] = useState(false);
   const [fehler, setFehler] = useState<string | null>(null);
   const [link, setLink] = useState<{ url: string; invite: Invite } | null>(null);
   const [entsteht, setEntsteht] = useState(false);
   const [kopiert, setKopiert] = useState(false);
 
+  // Ob es zu der Adresse ein Konto gibt, sagt der Server nicht (keine
+  // Kontensuche) — der Haken heißt „abgeschickt“, nicht „angekommen“.
   const perAdresse = async (e: React.FormEvent) => {
     e.preventDefault();
     const a = adresse.trim();
     if (!a || sendet) return;
     setSendet(true);
     setFehler(null);
+    const token = recordInvite(doc, meId);
     try {
-      await api.post(`/shared-notes/${note.id}/address-invites`, { email: a });
-      setGesendet(a);
+      await api.post(`/shared-notes/${note.id}/address-invites`, { email: a, token });
+      setGesendet((g) => [a, ...g.filter((x) => x !== a)]);
       setAdresse("");
     } catch (err) {
+      forgetInvite(doc, token);
       setFehler(err instanceof Error ? err.message : "Das hat nicht geklappt.");
     } finally {
       setSendet(false);
@@ -307,84 +295,78 @@ function EinladenInhalt({ note, nk, onDone }: { note: SharedNote; nk: NoteKey; o
     setLink(null);
     onDone();
   };
+  const teilen = typeof navigator !== "undefined" && "share" in navigator;
 
   return (
-    <div className="space-y-4">
-      <form onSubmit={perAdresse} className="space-y-1.5">
-        <label htmlFor={adresseId} className="block text-sm font-medium text-foreground">An ein Ratslotse-Konto</label>
-        <div className="flex flex-wrap gap-2">
-          <input id={adresseId} type="email" inputMode="email" autoComplete="off" value={adresse}
-            onChange={(e) => setAdresse(e.target.value)} placeholder="E-Mail-Adresse des Kontos"
-            className="h-11 min-w-0 flex-1 basis-56 rounded-lg border border-input bg-background px-3 text-sm" />
-          <button type="submit" disabled={sendet || !adresse.trim()} className={PRIMAER}>
-            {sendet && <Loader2 className="h-4 w-4 animate-spin" aria-hidden />} Einladen
-          </button>
-        </div>
-        <p className="text-meta text-muted-foreground">
-          Nur dieses Konto kann annehmen. Ob es zu der Adresse ein Konto gibt, zeigt Ratslotse nicht an.
-        </p>
-        {gesendet && (
-          <p className="text-sm text-foreground" role="status">
-            Gibt es zu {gesendet} ein Ratslotse-Konto, findet die Person die Einladung an der Notiz dieses Punkts — und
-            per Mail oder Push, wenn sie Benachrichtigungen bekommt. Nimmt sie an, ist sie dabei.
-          </p>
-        )}
+    <div className="space-y-3">
+      <form onSubmit={perAdresse} className="flex gap-2">
+        <label className="contents">
+          <span className="sr-only">E-Mail-Adresse</span>
+          <input type="email" inputMode="email" autoComplete="off" value={adresse} placeholder="E-Mail-Adresse"
+            onChange={(e) => setAdresse(e.target.value)} className={FELD} />
+        </label>
+        <button type="submit" disabled={sendet || !adresse.trim()} className={PRIMAER}>
+          {sendet && <Loader2 className="h-4 w-4 animate-spin" aria-hidden />} Einladen
+        </button>
       </form>
+      {gesendet.length > 0 && (
+        <ul className="space-y-1" role="status" aria-label="Eingeladen">
+          {gesendet.map((a) => (
+            <li key={a} className="flex min-w-0 items-center gap-1.5 text-meta text-muted-foreground">
+              <Check className="h-3.5 w-3.5 shrink-0 text-primary" aria-hidden />
+              <span className="truncate">{a}</span>
+            </li>
+          ))}
+        </ul>
+      )}
 
-      <div className="space-y-2 border-t border-border pt-3">
-        <p className="text-sm font-medium text-foreground">Per Link</p>
-        {!link ? (
-          <>
-            <p className="text-meta text-muted-foreground">
-              Für Leute ohne Konto. Wer den Link hat, kann sieben Tage lang beitreten.
-            </p>
-            <button type="button" onClick={() => void linkErstellen()} disabled={entsteht}
-              className={cn(KNOPF, "border border-border bg-card")}>
-              {entsteht && <Loader2 className="h-4 w-4 animate-spin" aria-hidden />} Link erstellen
-            </button>
-          </>
-        ) : (
-          <>
-            <p className="text-sm text-foreground">
-              Wer diesen Link hat, kann bis zum {datum(link.invite.expires_at)} beitreten und mitschreiben. Schick ihn nur
-              an Leute, die dabei sein sollen.
-            </p>
-            <label className="block">
-              <span className="sr-only">Einladungslink</span>
-              <input readOnly value={link.url} onFocus={(e) => e.currentTarget.select()}
-                className="h-11 w-full rounded-lg border border-input bg-background px-2 font-mono text-xs" />
-            </label>
-            <div className="flex flex-wrap gap-2">
-              <button type="button" onClick={kopieren} className={PRIMAER}>
-                {kopiert ? <Check className="h-4 w-4" aria-hidden /> : <Copy className="h-4 w-4" aria-hidden />}
-                {kopiert ? "Kopiert" : "Link kopieren"}
-              </button>
-              {typeof navigator !== "undefined" && "share" in navigator && (
-                <button type="button" className={cn(KNOPF, "border border-border bg-card")}
-                  onClick={() => { void navigator.share({ title: "Gemeinsame Notiz", url: link.url }).catch(() => {}); }}>
-                  <Share2 className="h-4 w-4" aria-hidden /> Teilen
-                </button>
-              )}
-              <button type="button" className={cn(KNOPF, "ml-auto text-muted-foreground")} onClick={zurueckziehen}>
-                Link zurückziehen
-              </button>
-            </div>
-          </>
-        )}
+      <div className="flex items-center gap-3 text-meta text-muted-foreground" aria-hidden>
+        <span className="h-px flex-1 bg-border" /> oder <span className="h-px flex-1 bg-border" />
       </div>
+
+      {!link ? (
+        <button type="button" onClick={() => void linkErstellen()} disabled={entsteht}
+          className={cn(KNOPF, "w-full justify-center border border-border bg-card")}>
+          {entsteht ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <Link2 className="h-4 w-4" aria-hidden />}
+          Link erstellen
+        </button>
+      ) : (
+        <div className="space-y-1.5">
+          <div className="flex gap-2">
+            <label className="contents">
+              <span className="sr-only">Einladungslink</span>
+              <input readOnly value={link.url} onFocus={(e) => e.currentTarget.select()} className={cn(FELD, "font-mono text-xs")} />
+            </label>
+            <button type="button" onClick={kopieren} className={PRIMAER} aria-label={kopiert ? "Kopiert" : "Link kopieren"}>
+              {kopiert ? <Check className="h-4 w-4" aria-hidden /> : <Copy className="h-4 w-4" aria-hidden />}
+              <span className="hidden sm:inline">{kopiert ? "Kopiert" : "Kopieren"}</span>
+            </button>
+            {teilen && (
+              <button type="button" aria-label="Teilen" className={cn(KNOPF, "border border-border bg-card")}
+                onClick={() => { void navigator.share({ title: "Gemeinsame Notiz", url: link.url }).catch(() => {}); }}>
+                <Share2 className="h-4 w-4" aria-hidden />
+              </button>
+            )}
+          </div>
+          <p className="text-meta text-muted-foreground">
+            Gilt bis {datum(link.invite.expires_at)} für alle, die den Link haben ·{" "}
+            <button type="button" className="underline underline-offset-2 hover:text-foreground" onClick={zurueckziehen}>
+              zurückziehen
+            </button>
+          </p>
+        </div>
+      )}
       {fehler && <p className="text-sm text-destructive" role="alert">{fehler}</p>}
     </div>
   );
 }
 
-function MitgliederInhalt({ note, meId, ich, online, onDone }: {
-  note: SharedNote; meId: number; ich: Identity | null; online: number[]; onDone: () => void;
+function MitgliederInhalt({ note, meId, online, onDone }: {
+  note: SharedNote; meId: number; online: number[]; onDone: () => void;
 }) {
   const leite = note.role === "owner";
   const [loeschen, setLoeschen] = useState(false);
-  const [codesZeigen, setCodesZeigen] = useState(false);
   const [fehler, setFehler] = useState<string | null>(null);
-  const codes = useCodes(note, meId, ich, codesZeigen);
   const tun = async (fn: () => Promise<unknown>) => {
     try {
       await fn();
@@ -396,74 +378,42 @@ function MitgliederInhalt({ note, meId, ich, online, onDone }: {
   return (
     <>
       <ul className="divide-y divide-border">
-        {note.members.map((m) => {
-          const c = codes[m.user_id];
-          return (
-            <li key={m.user_id} className="flex min-h-11 flex-wrap items-center gap-x-2 gap-y-0.5 py-1.5 text-sm">
-              <span aria-hidden className={cn("h-2.5 w-2.5 rounded-full", online.includes(m.user_id) ? "" : "opacity-30")}
-                style={{ backgroundColor: farbe(m.user_id) }} />
-              <span className="min-w-0 flex-1 truncate text-foreground">
-                {m.user_id === meId ? `${m.display_name} (du)` : m.display_name}
-                {m.role === "owner" && <span className="ml-1.5 text-xs text-muted-foreground">leitet</span>}
-              </span>
-              {m.user_id === meId ? (
-                <button type="button" className={KNOPF}
-                  onClick={() => tun(() => api.del(`/shared-notes/${note.id}/members/${meId}`))}>
-                  <LogOut className="h-4 w-4" aria-hidden /> Verlassen
-                </button>
-              ) : leite ? (
-                <button type="button" className={KNOPF} aria-label={`${m.display_name} entfernen`}
-                  onClick={() => tun(() => api.del(`/shared-notes/${note.id}/members/${m.user_id}`))}>
-                  Entfernen
-                </button>
-              ) : null}
-              {codesZeigen && (
-                <span className="basis-full pl-[1.125rem] text-meta">
-                  {c?.code ? (
-                    <>
-                      <span className="font-mono tracking-wide text-foreground">{c.code}</span>
-                      {c.geaendert && (
-                        <span className="ml-2 text-amber-700 dark:text-amber-300">
-                          anders als zuletzt in diesem Browser
-                        </span>
-                      )}
-                    </>
-                  ) : (
-                    <span className="text-muted-foreground">noch kein Code — kommt, sobald {m.user_id === meId ? "du" : m.display_name} die Notiz öffnet</span>
-                  )}
-                </span>
-              )}
-            </li>
-          );
-        })}
+        {note.members.map((m) => (
+          <li key={m.user_id} className="flex min-h-11 items-center gap-2 py-1 text-sm">
+            <span aria-hidden className={cn("h-2.5 w-2.5 rounded-full", online.includes(m.user_id) ? "" : "opacity-30")}
+              style={{ backgroundColor: farbe(m.user_id) }} />
+            <span className="min-w-0 flex-1 truncate text-foreground">
+              {m.user_id === meId ? `${m.display_name} (du)` : m.display_name}
+              {m.role === "owner" && <span className="ml-1.5 text-xs text-muted-foreground">leitet</span>}
+            </span>
+            {m.user_id === meId ? (
+              <button type="button" className={KNOPF}
+                onClick={() => tun(() => api.del(`/shared-notes/${note.id}/members/${meId}`))}>
+                <LogOut className="h-4 w-4" aria-hidden /> Verlassen
+              </button>
+            ) : leite ? (
+              <button type="button" className={KNOPF} aria-label={`${m.display_name} entfernen`}
+                onClick={() => tun(() => api.del(`/shared-notes/${note.id}/members/${m.user_id}`))}>
+                Entfernen
+              </button>
+            ) : null}
+          </li>
+        ))}
       </ul>
-      <div className="mt-2 border-t border-border pt-2">
-        <button type="button" className={KNOPF} aria-expanded={codesZeigen} onClick={() => setCodesZeigen((z) => !z)}>
-          <ShieldCheck className="h-4 w-4" aria-hidden /> {codesZeigen ? "Sicherheitscodes ausblenden" : "Sicherheitscodes vergleichen"}
-        </button>
-        {codesZeigen && (
-          <p className="mt-1 text-meta text-muted-foreground">
-            Lest euch eure Codes gegenseitig vor, am Telefon oder im Treffen. Stimmt der Code, den du bei jemandem
-            siehst, mit dem überein, den die Person bei sich selbst sieht, liest niemand dazwischen — auch Ratslotse nicht.
-          </p>
-        )}
-      </div>
       {leite && (
-        <div className="mt-2 border-t border-border pt-2">
+        <div className="mt-1 border-t border-border pt-2">
           {!loeschen ? (
             <button type="button" className={cn(KNOPF, "text-destructive")} onClick={() => setLoeschen(true)}>
               <Trash2 className="h-4 w-4" aria-hidden /> Für alle löschen
             </button>
           ) : (
-            <div className="space-y-2">
-              <p className="text-sm text-foreground">Die Notiz verschwindet für alle Mitglieder. Das lässt sich nicht rückgängig machen.</p>
-              <div className="flex gap-2">
-                <button type="button" onClick={() => tun(() => api.del(`/shared-notes/${note.id}`))}
-                  className="inline-flex h-11 items-center rounded-lg bg-destructive px-4 text-sm font-medium text-destructive-foreground hover:bg-destructive/90">
-                  Endgültig löschen
-                </button>
-                <button type="button" className={KNOPF} onClick={() => setLoeschen(false)}>Abbrechen</button>
-              </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-sm text-foreground">Endgültig für alle löschen?</span>
+              <button type="button" onClick={() => tun(() => api.del(`/shared-notes/${note.id}`))}
+                className="inline-flex h-11 items-center rounded-lg bg-destructive px-4 text-sm font-medium text-destructive-foreground hover:bg-destructive/90">
+                Löschen
+              </button>
+              <button type="button" className={KNOPF} onClick={() => setLoeschen(false)}>Abbrechen</button>
             </div>
           )}
         </div>
@@ -471,35 +421,4 @@ function MitgliederInhalt({ note, meId, ich, online, onDone }: {
       {fehler && <p className="mt-2 text-sm text-destructive" role="alert">{fehler}</p>}
     </>
   );
-}
-
-/** Sicherheitscodes je Mitglied. Der eigene kommt aus dem eigenen
- *  Schlüsselpaar im Browser, nicht vom Server; für die anderen merkt sich der
- *  Browser den ersten gesehenen Schlüssel und meldet, wenn der Server später
- *  einen anderen zeigt. */
-function useCodes(note: SharedNote, meId: number, ich: Identity | null, an: boolean) {
-  const [codes, setCodes] = useState<Record<number, { code: string; geaendert: boolean }>>({});
-  const schluessel = note.members.map((m) => `${m.user_id}:${m.user_id === meId ? ich?.publicKey ?? "" : m.public_key ?? ""}`).join(",");
-  useEffect(() => {
-    if (!an) return;
-    let gone = false;
-    (async () => {
-      const out: Record<number, { code: string; geaendert: boolean }> = {};
-      for (const m of note.members) {
-        const key = m.user_id === meId ? ich?.publicKey : m.public_key;
-        if (!key) continue;
-        let geaendert = false;
-        if (m.user_id !== meId) {
-          const alt = pinnedKey(m.user_id);
-          if (!alt) pinKey(m.user_id, key);
-          else geaendert = alt !== key;
-        }
-        out[m.user_id] = { code: await safetyCode(key), geaendert };
-      }
-      if (!gone) setCodes(out);
-    })();
-    return () => { gone = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [an, schluessel]);
-  return codes;
 }

@@ -6822,22 +6822,21 @@ SEITENBILD_JPEG: dict[int | str, dict[str, Any]] = {
 
 
 class SharedNoteMember(TypedDict):
-    """Ein Mitglied einer gemeinsamen Notiz — Anzeigename, keine Adresse. Der
-    öffentliche Schlüssel ergibt den Sicherheitscode, den Mitglieder
-    miteinander vergleichen können (``null``: noch kein Schlüsselpaar)."""
+    """Ein Mitglied einer gemeinsamen Notiz — Anzeigename, keine Adresse."""
     user_id: int
     display_name: str
     role: Literal["owner", "editor"]
-    public_key: str | None
 
 
 class PendingGrant(TypedDict):
     """Hat eine Einladung per Adresse angenommen und wartet auf den
-    Notizschlüssel — den verpackt der Browser eines Mitglieds für ``public_key``."""
+    Notizschlüssel — den verpackt der Browser eines Mitglieds für ``public_key``,
+    aber nur, wenn er ``token`` verschlüsselt in der Notiz findet."""
     invite_id: str
     user_id: int
     display_name: str
     public_key: str
+    token: str
 
 
 class NoteGrant(TypedDict):

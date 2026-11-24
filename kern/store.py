@@ -1123,7 +1123,12 @@ CREATE TABLE IF NOT EXISTS shared_note_address_invites (
     grant_iv    TEXT,
     grant_ct    TEXT,
     granted_by  INTEGER,
-    granted_key TEXT
+    granted_key TEXT,
+    -- Zufallskennung aus dem Browser der einladenden Person. Sie steht auch
+    -- VERSCHLÜSSELT in der Notiz selbst; ein Mitglied übergibt den Schlüssel
+    -- nur an Einladungen, deren Kennung es dort findet. So kann der Server
+    -- keine Einladung erfinden, um an den Notizschlüssel zu kommen.
+    token       TEXT NOT NULL DEFAULT ''
 );
 -- Je Notiz und Konto höchstens eine — das hält `create_address_invite`, kein
 -- UNIQUE: Die Löschprobe legt je Kontospalte eine Zeile mit denselben Werten an.
@@ -7168,9 +7173,8 @@ class Store:
 
     def shared_note_members(self, note_id: str) -> list[dict]:
         return [dict(r) for r in self._conn.execute(
-            "SELECT m.user_id, m.role, m.joined_at, COALESCE(NULLIF(u.display_name, ''), 'Mitglied') AS display_name, "
-            "i.public_key FROM shared_note_members m LEFT JOIN web_users u ON u.id = m.user_id "
-            "LEFT JOIN note_identities i ON i.owner_id = m.user_id "
+            "SELECT m.user_id, m.role, m.joined_at, COALESCE(NULLIF(u.display_name, ''), 'Mitglied') AS display_name "
+            "FROM shared_note_members m LEFT JOIN web_users u ON u.id = m.user_id "
             "WHERE m.note_id = ? ORDER BY m.joined_at, m.user_id", (note_id,))]
 
     def shared_notes_for(self, user_id: int, target_kind: str | None = None,
@@ -7299,6 +7303,11 @@ class Store:
             self._conn.execute(
                 "INSERT INTO shared_note_members (note_id, user_id, role, key_iv, key_ct, key_version, joined_at) "
                 "VALUES (?, ?, 'editor', ?, ?, ?, ?)", (note_id, user_id, key_iv, key_ct, key_version, now))
+            # Dabei, gleich auf welchem Weg: Eine offene Einladung per Adresse
+            # an dieses Konto bliebe sonst liegen — und brächte es nach einem
+            # Entfernen wieder herein.
+            self._conn.execute("DELETE FROM shared_note_address_invites WHERE note_id = ? AND user_id = ?",
+                               (note_id, user_id))
         return "ok"
 
     def leave_shared_note(self, note_id: str, user_id: int) -> None:
@@ -7314,9 +7323,10 @@ class Store:
             # Notizschlüssel. Mit einem Link wäre er sonst gleich wieder drin.
             self._conn.execute("DELETE FROM shared_note_invites WHERE note_id = ?", (note_id,))
             # Einladungen per Adresse gelten nur dem genannten Konto — die der
-            # anderen bleiben stehen, die des Gehenden fallen weg.
-            self._conn.execute("DELETE FROM shared_note_address_invites WHERE note_id = ? AND owner_id = ?",
-                               (note_id, user_id))
+            # anderen bleiben stehen; die des Gehenden fallen weg, und die AN
+            # ihn auch (sonst käme ein Entfernter über sie zurück).
+            self._conn.execute("DELETE FROM shared_note_address_invites WHERE note_id = ? AND (owner_id = ? "
+                               "OR user_id = ?)", (note_id, user_id, user_id))
             if n["owner_id"] != user_id:
                 return
             nach = self._conn.execute("SELECT user_id FROM shared_note_members WHERE note_id = ? "
@@ -7365,22 +7375,24 @@ class Store:
         "FROM shared_note_address_invites a JOIN shared_notes n ON n.id = a.note_id "
         "LEFT JOIN web_users u ON u.id = a.owner_id")
 
-    def create_address_invite(self, note_id: str, owner_id: int, user_id: int, expires_at: str) -> tuple[str, bool]:
+    def create_address_invite(self, note_id: str, owner_id: int, user_id: int, expires_at: str,
+                              token: str) -> tuple[str, bool]:
         """(Kennung, neu?) — eine zweite Einladung an dasselbe Konto verlängert
-        nur die erste, sie schickt keine zweite Meldung."""
+        nur die erste (mit der neuen Kennung aus dem Browser), sie schickt
+        keine zweite Meldung."""
         now = datetime.utcnow().isoformat(timespec="seconds")
         with self._conn:
             self._conn.execute("DELETE FROM shared_note_address_invites WHERE expires_at < ?", (now,))
             alt = self._conn.execute("SELECT id FROM shared_note_address_invites WHERE note_id = ? AND user_id = ?",
                                      (note_id, user_id)).fetchone()
             if alt:
-                self._conn.execute("UPDATE shared_note_address_invites SET expires_at = ? WHERE id = ?",
-                                   (expires_at, alt[0]))
+                self._conn.execute("UPDATE shared_note_address_invites SET expires_at = ?, token = ? WHERE id = ?",
+                                   (expires_at, token, alt[0]))
                 return alt[0], False
             invite_id = secrets.token_urlsafe(16)
             self._conn.execute(
-                "INSERT INTO shared_note_address_invites (id, note_id, owner_id, user_id, created_at, expires_at) "
-                "VALUES (?, ?, ?, ?, ?, ?)", (invite_id, note_id, owner_id, user_id, now, expires_at))
+                "INSERT INTO shared_note_address_invites (id, note_id, owner_id, user_id, created_at, expires_at, "
+                "token) VALUES (?, ?, ?, ?, ?, ?, ?)", (invite_id, note_id, owner_id, user_id, now, expires_at, token))
         return invite_id, True
 
     def get_address_invite(self, invite_id: str) -> dict | None:
@@ -7408,7 +7420,7 @@ class Store:
         Schlüsselpaar, für das sich verpacken lässt."""
         now = datetime.utcnow().isoformat(timespec="seconds")
         return [dict(r) for r in self._conn.execute(
-            "SELECT a.id AS invite_id, a.user_id, i.public_key, "
+            "SELECT a.id AS invite_id, a.user_id, a.token, i.public_key, "
             "COALESCE(NULLIF(u.display_name, ''), 'Jemand') AS display_name "
             "FROM shared_note_address_invites a JOIN note_identities i ON i.owner_id = a.user_id "
             "LEFT JOIN web_users u ON u.id = a.user_id "

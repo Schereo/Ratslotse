@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   fromB64Url, grantFor, inviteVerifier, makeInvite, newIdentity, newNoteKey, openBlob, openGrant, openIdentity,
-  openInvite, safetyCode, sealBlob, toB64Url, unwrapForMe, wrapForMe,
+  openInvite, sealBlob, toB64Url, unwrapForMe, wrapForMe,
 } from "./shared-note-crypto";
 
 const dk = () => crypto.subtle.importKey("raw", crypto.getRandomValues(new Uint8Array(32)), { name: "AES-GCM" }, false,
@@ -86,14 +86,5 @@ describe("Einladen per Adresse", () => {
     expect(await openGrant(ben, g, "notiz-b", 17)).toBeNull();
     expect(await openGrant(ben, g, "notiz-a", 18)).toBeNull();
     expect(await openGrant(ben, { ...g, ct: g.ct.slice(0, -4) + "AAA=" }, "notiz-a", 17)).toBeNull();
-  });
-
-  it("der Sicherheitscode: fünf Fünfergruppen, fest je Schlüssel", async () => {
-    const a = (await newIdentity(await dk())).identity.publicKey;
-    const b = (await newIdentity(await dk())).identity.publicKey;
-    const code = await safetyCode(a);
-    expect(code).toMatch(/^\d{5}( \d{5}){4}$/);
-    expect(await safetyCode(a)).toBe(code);
-    expect(await safetyCode(b)).not.toBe(code);
   });
 });

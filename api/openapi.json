@@ -131,10 +131,16 @@
             "minLength": 3,
             "title": "Email",
             "type": "string"
+          },
+          "token": {
+            "maxLength": 32,
+            "title": "Token",
+            "type": "string"
           }
         },
         "required": [
-          "email"
+          "email",
+          "token"
         ],
         "title": "AddressInviteIn",
         "type": "object"
@@ -22958,7 +22964,7 @@
         "type": "object"
       },
       "PendingGrant": {
-        "description": "Hat eine Einladung per Adresse angenommen und wartet auf den\nNotizschlüssel — den verpackt der Browser eines Mitglieds für ``public_key``.",
+        "description": "Hat eine Einladung per Adresse angenommen und wartet auf den\nNotizschlüssel — den verpackt der Browser eines Mitglieds für ``public_key``,\naber nur, wenn er ``token`` verschlüsselt in der Notiz findet.",
         "properties": {
           "display_name": {
             "title": "Display Name",
@@ -22972,6 +22978,10 @@
             "title": "Public Key",
             "type": "string"
           },
+          "token": {
+            "title": "Token",
+            "type": "string"
+          },
           "user_id": {
             "title": "User Id",
             "type": "integer"
@@ -22981,7 +22991,8 @@
           "invite_id",
           "user_id",
           "display_name",
-          "public_key"
+          "public_key",
+          "token"
         ],
         "title": "PendingGrant",
         "type": "object"
@@ -36036,18 +36047,11 @@
         "type": "object"
       },
       "SharedNoteMember": {
-        "description": "Ein Mitglied einer gemeinsamen Notiz — Anzeigename, keine Adresse. Der\nöffentliche Schlüssel ergibt den Sicherheitscode, den Mitglieder\nmiteinander vergleichen können (``null``: noch kein Schlüsselpaar).",
+        "description": "Ein Mitglied einer gemeinsamen Notiz — Anzeigename, keine Adresse.",
         "properties": {
           "display_name": {
             "title": "Display Name",
             "type": "string"
-          },
-          "public_key": {
-            "title": "Public Key",
-            "type": [
-              "string",
-              "null"
-            ]
           },
           "role": {
             "enum": [
@@ -36065,8 +36069,7 @@
         "required": [
           "user_id",
           "display_name",
-          "role",
-          "public_key"
+          "role"
         ],
         "title": "SharedNoteMember",
         "type": "object"

@@ -26,10 +26,13 @@ eigenen Datenschlüssel verpackt. Nach dem Annehmen verpackt der Browser
 eines Mitglieds den Notizschlüssel per ECDH für den öffentlichen Schlüssel
 des Eingeladenen (``POST /{id}/grants/{invite_id}``); der packt ihn aus und
 tritt bei. Nur dieses Konto kann annehmen — ein weitergeleiteter Link nützt
-niemandem. Dafür muss man dem Server den öffentlichen Schlüssel glauben;
-wer ganz sicher sein will, vergleicht den Sicherheitscode. Die Antwort auf
-eine Einladung ist dieselbe, ob es das Konto gibt oder nicht: keine
-Kontensuche durch die Hintertür.
+niemandem. Übergeben wird nur an Einladungen, deren Zufallskennung der
+Browser der einladenden Person verschlüsselt in die Notiz gelegt hat — der
+Server kann also keine Einladung erfinden, um an den Schlüssel zu kommen.
+Den öffentlichen Schlüssel des Eingeladenen muss man ihm dagegen glauben
+(wie bei jedem Messenger ohne Code-Vergleich). Die Antwort auf eine
+Einladung ist dieselbe, ob es das Konto gibt oder nicht: keine Kontensuche
+durch die Hintertür.
 
 **Was der Server sieht:** wer in welcher gemeinsamen Notiz zu welchem Punkt
 ist, wann geschrieben wird, wie groß die Änderungen sind — und bei
@@ -149,6 +152,9 @@ class IdentityIn(BaseModel):
 
 class AddressInviteIn(BaseModel):
     email: str = Field(min_length=3, max_length=254)
+    #: Zufallskennung (16 Byte, Base64) — dieselbe legt der Browser
+    #: verschlüsselt in die Notiz; nur dann übergibt ein Mitglied den Schlüssel.
+    token: str = Field(max_length=32)
 
 
 class GrantIn(BaseModel):
@@ -187,10 +193,10 @@ def _punkt(wert: str, feld: str) -> None:
 def _note_out(n: dict, store: Store) -> SharedNote:
     return {"id": n["id"], "target_kind": n["target_kind"], "target_key": n["target_key"], "role": n["role"],
             "owner_id": n["owner_id"], "key_iv": n["key_iv"], "key_ct": n["key_ct"], "key_version": n["key_version"],
-            "members": [{"user_id": m["user_id"], "display_name": m["display_name"], "role": m["role"],
-                         "public_key": m.get("public_key")} for m in n["members"]],
+            "members": [{"user_id": m["user_id"], "display_name": m["display_name"], "role": m["role"]}
+                        for m in n["members"]],
             "pending": [{"invite_id": g["invite_id"], "user_id": g["user_id"], "display_name": g["display_name"],
-                         "public_key": g["public_key"]} for g in store.pending_grants(n["id"])],
+                         "public_key": g["public_key"], "token": g["token"]} for g in store.pending_grants(n["id"])],
             "created_at": n["created_at"], "updated_at": n["updated_at"]}
 
 
@@ -361,15 +367,16 @@ def invite_address(note_id: str, body: AddressInviteIn, request: Request, backgr
     email = body.email.strip().lower()
     if "@" not in email or " " in email:
         raise HTTPException(422, "Das sieht nicht nach einer E-Mail-Adresse aus.")
+    _b64(body.token, "token", laenge=16)
     if len(store.shared_note_members(note_id)) >= store.SHARED_MAX_MEMBERS:
         raise HTTPException(status.HTTP_409_CONFLICT, "Diese Notiz hat schon die höchste Zahl an Mitgliedern.")
     ziel = store.get_web_user_by_email(email)
     if ziel and ziel["id"] != user["id"]:
-        background.add_task(_adresse_einladen, note_id, user["id"], ziel["id"])
+        background.add_task(_adresse_einladen, note_id, user["id"], ziel["id"], body.token)
     return {"ok": True}
 
 
-def _adresse_einladen(note_id: str, inviter_id: int, invitee_id: int) -> None:
+def _adresse_einladen(note_id: str, inviter_id: int, invitee_id: int, token: str) -> None:
     """Nach der Antwort, mit eigenen Datenbankverbindungen."""
     settings = get_settings()
     store = Store(settings.ratslotse_db)
@@ -381,7 +388,7 @@ def _adresse_einladen(note_id: str, inviter_id: int, invitee_id: int) -> None:
         if not n or not store.shared_note_member(note_id, inviter_id):
             return
         bis = (datetime.utcnow() + timedelta(days=ADDRESS_INVITE_DAYS)).isoformat(timespec="seconds")
-        invite_id, neu = store.create_address_invite(note_id, inviter_id, invitee_id, bis)
+        invite_id, neu = store.create_address_invite(note_id, inviter_id, invitee_id, bis, token)
         if not neu:
             return
         wer = (store.get_web_user_by_id(inviter_id) or {}).get("display_name") or "Jemand"

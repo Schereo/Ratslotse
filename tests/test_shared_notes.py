@@ -62,7 +62,7 @@ def _konto(email: str, name: str) -> TestClient:
     c = TestClient(app)
     r = c.post("/api/auth/register", json={"display_name": name, "email": email, "password": "password123"})
     assert r.status_code == 201, r.text
-    c.post("/api/auth/login", json={"email": email, "password": "password123"})
+    c.post("/api/auth/login", json={"email": email, "password": "password123", "token": TOKEN})
     return c
 
 
@@ -388,6 +388,10 @@ from cryptography.hazmat.primitives import serialization  # noqa: E402
 from cryptography.hazmat.primitives.asymmetric import ec  # noqa: E402
 
 
+#: Die Zufallskennung, die der Browser auch verschlüsselt in die Notiz legt.
+TOKEN = b64(16, 8)
+
+
 def _oeffentlich() -> str:
     roh = ec.generate_private_key(ec.SECP256R1()).public_key().public_bytes(
         serialization.Encoding.X962, serialization.PublicFormat.UncompressedPoint)
@@ -450,7 +454,7 @@ def test_die_antwort_verraet_nicht_ob_es_das_konto_gibt():
     note = _anlegen(anna)
     _mit_post(anna, ben)
     pfad = f"/api/shared-notes/{note['id']}/address-invites"
-    antworten = [anna.post(pfad, json={"email": e}) for e in
+    antworten = [anna.post(pfad, json={"email": e, "token": TOKEN}) for e in
                  ("ben@example.org", "BEN@Example.org ", "niemand@example.org", "anna@example.org")]
     assert {(r.status_code, r.text) for r in antworten} == {(200, '{"ok":true}')}
     # Nur Ben bekommt Post — und nur einmal, auch bei der zweiten Einladung.
@@ -459,15 +463,15 @@ def test_die_antwort_verraet_nicht_ob_es_das_konto_gibt():
     assert post[0]["url"].startswith("/notiz-einladung?a=") and "Anna" in post[0]["title"]
     assert _post_an(_ich(anna)) == [], "sich selbst lädt niemand ein"
     # Keine Adresse, kein Mitglied: abgewiesen.
-    assert anna.post(pfad, json={"email": "kein at"}).status_code == 422
-    assert ben.post(pfad, json={"email": "anna@example.org"}).status_code == 404
+    assert anna.post(pfad, json={"email": "kein at", "token": TOKEN}).status_code == 422
+    assert ben.post(pfad, json={"email": "anna@example.org", "token": TOKEN}).status_code == 404
 
 
 def test_annehmen_uebergeben_beitreten():
     anna, ben, carla = (_konto("anna@example.org", "Anna"), _konto("ben@example.org", "Ben"),
                         _konto("carla@example.org", "Carla"))
     note = _anlegen(anna)
-    anna.post(f"/api/shared-notes/{note['id']}/address-invites", json={"email": "ben@example.org"})
+    anna.post(f"/api/shared-notes/{note['id']}/address-invites", json={"email": "ben@example.org", "token": TOKEN})
     [inv] = ben.get("/api/shared-notes").json()["invitations"]
     assert (inv["note_id"], inv["inviter_name"], inv["accepted"], inv["grant"]) == (note["id"], "Anna", False, None)
     pfad = f"/api/note-invites/address/{inv['id']}"
@@ -480,7 +484,8 @@ def test_annehmen_uebergeben_beitreten():
     assert ben.post(f"{pfad}/join", json=SCHLUESSEL).status_code == 409, "erst die Übergabe"
 
     [offen] = anna.get("/api/shared-notes").json()["notes"][0]["pending"]
-    assert (offen["user_id"], offen["display_name"], offen["public_key"]) == (_ich(ben), "Ben", pub)
+    assert (offen["user_id"], offen["display_name"], offen["public_key"], offen["token"]) == (
+        _ich(ben), "Ben", pub, TOKEN)
     grants = f"/api/shared-notes/{note['id']}/grants/{inv['id']}"
     assert carla.post(grants, json=_uebergabe(pub)).status_code == 404, "nur Mitglieder übergeben"
     assert anna.post(grants, json=_uebergabe(_oeffentlich())).status_code == 409, "für einen fremden Schlüssel nicht"
@@ -492,9 +497,7 @@ def test_annehmen_uebergeben_beitreten():
     assert r.status_code == 200, r.text
     assert {m["user_id"] for m in r.json()["members"]} == {_ich(anna), _ich(ben)}
     assert ben.get(pfad).status_code == 404, "nach dem Beitreten ist die Einladung weg"
-    bei_anna = anna.get("/api/shared-notes").json()["notes"][0]
-    assert bei_anna["pending"] == []
-    assert {m["user_id"]: m["public_key"] for m in bei_anna["members"]}[_ich(ben)] == pub
+    assert anna.get("/api/shared-notes").json()["notes"][0]["pending"] == []
 
 
 def test_ablehnen_und_wer_geht_nimmt_seine_einladungen_mit():
@@ -504,12 +507,12 @@ def test_ablehnen_und_wer_geht_nimmt_seine_einladungen_mit():
     _einladen_und_beitreten(anna, ben, note["id"])
     _mit_post(carla)
     pfad = f"/api/shared-notes/{note['id']}/address-invites"
-    ben.post(pfad, json={"email": "carla@example.org"})
+    ben.post(pfad, json={"email": "carla@example.org", "token": TOKEN})
     [von_ben] = carla.get("/api/shared-notes").json()["invitations"]
     assert carla.post(f"/api/note-invites/address/{von_ben['id']}/decline").status_code == 204
     assert carla.get("/api/shared-notes").json()["invitations"] == []
     # Noch einmal eingeladen: neue Einladung, neue Meldung.
-    ben.post(pfad, json={"email": "carla@example.org"})
+    ben.post(pfad, json={"email": "carla@example.org", "token": TOKEN})
     assert len(_post_an(_ich(carla))) == 2
     # Geht Ben, fällt seine Einladung weg.
     assert anna.delete(f"/api/shared-notes/{note['id']}/members/{_ich(ben)}").status_code == 204
@@ -519,7 +522,7 @@ def test_ablehnen_und_wer_geht_nimmt_seine_einladungen_mit():
 def test_ein_neues_schluesselpaar_setzt_die_uebergabe_zurueck():
     anna, ben = _konto("anna@example.org", "Anna"), _konto("ben@example.org", "Ben")
     note = _anlegen(anna)
-    anna.post(f"/api/shared-notes/{note['id']}/address-invites", json={"email": "ben@example.org"})
+    anna.post(f"/api/shared-notes/{note['id']}/address-invites", json={"email": "ben@example.org", "token": TOKEN})
     [inv] = ben.get("/api/shared-notes").json()["invitations"]
     pub = _identitaet(ben)
     ben.post(f"/api/note-invites/address/{inv['id']}/accept")
@@ -542,7 +545,7 @@ def test_der_einladungs_schalter_steht_nur_mit_dem_feature_in_den_einstellungen(
 def test_annehmen_sagt_den_mitgliedern_in_der_notiz_bescheid(leitung):
     anna, ben = _konto("anna@example.org", "Anna"), _konto("ben@example.org", "Ben")
     note = _anlegen(anna)
-    anna.post(f"/api/shared-notes/{note['id']}/address-invites", json={"email": "ben@example.org"})
+    anna.post(f"/api/shared-notes/{note['id']}/address-invites", json={"email": "ben@example.org", "token": TOKEN})
     [inv] = ben.get("/api/shared-notes").json()["invitations"]
     _identitaet(ben)
     with _live(anna, leitung, note["id"]) as wa:
@@ -557,7 +560,36 @@ def test_ohne_zustellweg_keine_mail_aber_die_einladung_steht_am_punkt():
     sie wartet an der Notiz des Punkts."""
     anna, ben = _konto("anna@example.org", "Anna"), _konto("ben@example.org", "Ben")
     note = _anlegen(anna)
-    anna.post(f"/api/shared-notes/{note['id']}/address-invites", json={"email": "ben@example.org"})
+    anna.post(f"/api/shared-notes/{note['id']}/address-invites", json={"email": "ben@example.org", "token": TOKEN})
     assert _post_an(_ich(ben)) == []
     an_punkt = ben.get(f"/api/shared-notes?target_kind={ZIEL['target_kind']}&target_key={ZIEL['target_key']}")
     assert [i["note_id"] for i in an_punkt.json()["invitations"]] == [note["id"]]
+
+
+def test_ohne_kennung_keine_einladung_per_adresse():
+    anna = _konto("anna@example.org", "Anna")
+    note = _anlegen(anna)
+    pfad = f"/api/shared-notes/{note['id']}/address-invites"
+    assert anna.post(pfad, json={"email": "ben@example.org"}).status_code == 422
+    assert anna.post(pfad, json={"email": "ben@example.org", "token": b64(8)}).status_code == 422
+
+
+def test_wer_entfernt_wird_kommt_ueber_eine_alte_einladung_nicht_zurueck():
+    """Befund der Sicherheitsprüfung 24.11.2026: Ben ist per Adresse
+    eingeladen, tritt aber per Link bei. Die Einladung per Adresse darf danach
+    nicht liegen bleiben — sonst nähme Ben sie nach dem Entfernen an und
+    bekäme den Schlüssel von einem Mitglied zurück."""
+    anna, ben = _konto("anna@example.org", "Anna"), _konto("ben@example.org", "Ben")
+    note = _anlegen(anna)
+    anna.post(f"/api/shared-notes/{note['id']}/address-invites", json={"email": "ben@example.org", "token": TOKEN})
+    assert len(ben.get("/api/shared-notes").json()["invitations"]) == 1
+    _einladen_und_beitreten(anna, ben, note["id"])
+    assert ben.get("/api/shared-notes").json()["invitations"] == [], "beigetreten: Einladung per Adresse weg"
+    # Und auch eine, die erst während der Mitgliedschaft entstünde, fällt mit dem Entfernen weg.
+    store = Store(RATSLOTSE_DB)
+    try:
+        store.create_address_invite(note["id"], _ich(anna), _ich(ben), "2999-01-01T00:00:00", TOKEN)
+    finally:
+        store.close()
+    assert anna.delete(f"/api/shared-notes/{note['id']}/members/{_ich(ben)}").status_code == 204
+    assert ben.get("/api/shared-notes").json()["invitations"] == []

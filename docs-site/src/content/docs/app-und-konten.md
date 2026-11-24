@@ -750,13 +750,17 @@ Annehmen braucht ein Schlüsselpaar, das der Browser beim ersten Öffnen einer
 gemeinsamen Notiz oder beim Annehmen anlegt. Danach übergibt der Browser eines
 Mitglieds, das die Notiz offen hat, den Notizschlüssel von selbst (die
 Live-Verbindung meldet `pending`); die eingeladene Person packt ihn mit ihrem
-privaten Schlüssel aus und tritt bei. Nur dieses Konto kann annehmen. Den
-öffentlichen Schlüssel muss man dafür dem Server glauben. Deshalb zeigt die
-Mitgliederliste **Sicherheitscodes** (fünf Fünfergruppen aus dem SHA-256 des
-öffentlichen Schlüssels): Der eigene entsteht aus dem Schlüsselpaar im
-Browser, die der anderen merkt sich der Browser beim ersten Sehen. Zeigt der
-Server später einen anderen, steht das an der Person, und eine Übergabe an
-einen geänderten Schlüssel wartet auf eine Freigabe von Hand. Eine Einladung
+privaten Schlüssel aus und tritt bei. Nur dieses Konto kann annehmen.
+**Übergeben wird nur an Einladungen aus der Notiz selbst:** Der einladende
+Browser legt eine Zufallskennung verschlüsselt ins Yjs-Dokument (Map
+`invites`) und schickt dieselbe mit; ein Mitglied verpackt den Schlüssel nur
+für wartende Einträge, deren Kennung es dort findet, und löscht sie danach.
+Ohne das könnte ein unehrlicher Server einen Wartenden erfinden und den
+Notizschlüssel einsammeln. Den öffentlichen Schlüssel des Eingeladenen muss
+man ihm dagegen glauben, wie bei einem Messenger ohne Code-Vergleich; einen
+Sicherheitscode zeigt die Oberfläche bewusst nicht (Tim, 24.11.2026: zu
+kompliziert). Tritt ein Konto auf irgendeinem Weg bei oder endet seine
+Mitgliedschaft, fallen Einladungen per Adresse an dieses Konto weg. Eine Einladung
 per Adresse gilt 14 Tage; geht die einladende Person, fällt sie weg.
 
 **Live.** `web/frontend/lib/shared-note-live.ts` hält das Yjs-Dokument über
@@ -788,7 +792,7 @@ Was ausdrücklich noch fehlt:
 2. **Wer den ganzen Link hat, kann beitreten**, bis er abläuft, zurückgezogen
    ist oder eine Mitgliedschaft endet. Die Leitung sieht, wer dabei ist. Eine
    Einladung per Adresse ist dagegen an ein Konto gebunden — dafür hängt sie
-   am öffentlichen Schlüssel, den der Server liefert (Sicherheitscodes, s. o.).
+   am öffentlichen Schlüssel, den der Server liefert (s. o.).
 3. **Der Server sieht**, wer mit wem eine gemeinsame Notiz zu welchem Punkt
    hat, wann geschrieben wird und wie groß die Änderungen sind.
 4. **Die App** kennt gemeinsame Notizen noch nicht.

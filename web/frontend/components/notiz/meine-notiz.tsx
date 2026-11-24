@@ -11,6 +11,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
+import { Loader2 } from "lucide-react";
 import { Karte, Fuss, LINK, NotizSchloss, SperrenKnopf, type Offen } from "@/components/notiz/notiz-schloss";
 import type { SharedNote } from "@/components/notiz/shared-note";
 import { Segmented } from "@/components/ui/segmented";
@@ -181,29 +182,28 @@ function EinladungHier({ inv, o, onChanged, onJoined }: {
     }
   };
   return (
-    <div className="mb-3 rounded-xl border border-primary/30 bg-primary/[0.06] p-3 text-sm text-foreground">
+    <div className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border border-primary/30 bg-primary/[0.06] px-3 py-2 text-sm text-foreground">
       {!inv.accepted ? (
         <>
-          <p><strong>{inv.inviter_name}</strong> lädt dich ein, hier gemeinsam eine Notiz zu schreiben.</p>
-          <div className="mt-2 flex flex-wrap gap-2">
+          <p className="min-w-0 flex-1"><strong>{inv.inviter_name}</strong> lädt dich zu dieser Notiz ein.</p>
+          <div className="flex gap-1">
             <button type="button" disabled={laeuft} onClick={() => void tun(() => acceptInvitation(inv, o.dk, o.keyVersion))}
-              className="inline-flex h-11 items-center rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-60">
+              className="inline-flex h-11 items-center rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-60 desk:h-9">
               Annehmen
             </button>
             <button type="button" disabled={laeuft} onClick={() => void tun(() => declineInvitation(inv))}
-              className="inline-flex h-11 items-center rounded-lg px-3 text-sm font-medium text-foreground hover:bg-accent disabled:opacity-60">
+              className="inline-flex h-11 items-center rounded-lg px-3 text-sm font-medium text-foreground hover:bg-accent disabled:opacity-60 desk:h-9">
               Ablehnen
             </button>
           </div>
         </>
-      ) : inv.grant ? (
-        <p role="status">Tritt bei …</p>
       ) : (
-        <p role="status">
-          Angenommen. Sobald jemand aus der Notiz sie öffnet, bist du dabei — meist sofort, sonst beim nächsten Mal.
+        <p className="flex min-h-9 items-center gap-2" role="status">
+          <Loader2 className="h-4 w-4 shrink-0 animate-spin text-primary" aria-hidden />
+          {inv.grant ? "Tritt bei …" : "Angenommen. Gleich bist du dabei."}
         </p>
       )}
-      {fehler && <p className="mt-2 text-destructive" role="alert">{fehler}</p>}
+      {fehler && <p className="basis-full text-destructive" role="alert">{fehler}</p>}
     </div>
   );
 }
@@ -214,11 +214,9 @@ function Anlegen({ eigenerText, onAnlegen }: { eigenerText: string; onAnlegen: (
   const [fehler, setFehler] = useState<string | null>(null);
   return (
     <div className="rounded-xl border border-dashed border-border p-4">
-      <p className="text-sm text-foreground">
-        Eine gemeinsame Notiz schreibt ihr zu mehreren, alle sehen Änderungen sofort. Eingeladen wird per Link.
-      </p>
+      <p className="text-sm text-foreground">Schreibt zu mehreren an einer Notiz, live und verschlüsselt.</p>
       {eigenerText.trim() && (
-        <label className="mt-3 flex min-h-11 items-center gap-2 text-sm text-foreground">
+        <label className="mt-2 flex min-h-11 items-center gap-2 text-sm text-foreground">
           <input type="checkbox" checked={mitText} onChange={(e) => setMitText(e.target.checked)} className="h-4 w-4 accent-primary" />
           Mit meiner Notiz beginnen
         </label>

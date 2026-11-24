@@ -19,6 +19,7 @@
 
 import { Suspense, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { Loader2 } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AuthShell } from "@/components/auth-shell";
 import { NotizSchloss, type Offen } from "@/components/notiz/notiz-schloss";
@@ -99,7 +100,7 @@ function AdressEinladung({ id }: { id: string }) {
   if (info === null) {
     return (
       <AuthShell title="Gemeinsame Notiz">
-        <p className="text-sm text-foreground">{fehler ?? "Diese Einladung gilt nicht mehr — sie ist abgelaufen, wurde abgelehnt oder gilt einem anderen Konto."}</p>
+        <p className="text-sm text-foreground">{fehler ?? "Diese Einladung gilt nicht mehr."}</p>
       </AuthShell>
     );
   }
@@ -120,16 +121,12 @@ function AdressEinladung({ id }: { id: string }) {
         </p>
       ) : (
         <div className="mt-4">
-          <NotizSchloss titel="Deine Notizen" id="einladung-notizen"
-            angebot="Um anzunehmen, richte deine Notizen ein. Nur die Mitglieder können die gemeinsame Notiz lesen.">
-            {(o) => <AdressSchritt info={info} o={o} onInfo={setInfo} onJoined={oeffnen} onFehler={setFehler} />}
+          <NotizSchloss titel="Deine Notizen" id="einladung-notizen" angebot="Dafür brauchst du deine Notizen.">
+            {(o) => (
+              <AdressSchritt info={info} o={o} onInfo={setInfo} onJoined={oeffnen} onFehler={setFehler}
+                onAblehnen={() => { declineInvitation(info).then(() => setAbgelehnt(true)).catch((e) => setFehler(String(e?.message ?? e))); }} />
+            )}
           </NotizSchloss>
-          {!info.accepted && (
-            <button type="button" className="mt-3 inline-flex h-11 items-center rounded-lg px-3 text-sm font-medium text-foreground hover:bg-accent"
-              onClick={() => { declineInvitation(info).then(() => setAbgelehnt(true)).catch((e) => setFehler(String(e?.message ?? e))); }}>
-              Ablehnen
-            </button>
-          )}
         </div>
       )}
       {fehler && <p className="mt-3 text-sm text-destructive" role="alert">{fehler}</p>}
@@ -137,9 +134,9 @@ function AdressEinladung({ id }: { id: string }) {
   );
 }
 
-function AdressSchritt({ info, o, onInfo, onJoined, onFehler }: {
+function AdressSchritt({ info, o, onInfo, onJoined, onFehler, onAblehnen }: {
   info: AdressInfo; o: Offen; onInfo: (i: AdressInfo) => void; onJoined: (noteId: string) => void;
-  onFehler: (f: string | null) => void;
+  onFehler: (f: string | null) => void; onAblehnen: () => void;
 }) {
   const [laeuft, setLaeuft] = useState(false);
   const beigetreten = useRef(false);
@@ -161,20 +158,27 @@ function AdressSchritt({ info, o, onInfo, onJoined, onFehler }: {
       setLaeuft(false);
     }
   };
-  return (
-    <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
-      {!info.accepted ? (
+  if (!info.accepted) {
+    return (
+      <div className="flex flex-wrap gap-2">
         <button type="button" disabled={laeuft} onClick={() => void annehmen()} className={KNOPF_PRIMAER}>
           {laeuft ? "Nimmt an …" : "Annehmen"}
         </button>
-      ) : info.grant ? (
-        <p className="text-sm text-foreground" role="status">Tritt bei …</p>
-      ) : (
-        <p className="text-sm text-foreground" role="status">
-          Angenommen. Sobald jemand aus der Notiz sie öffnet, bist du dabei — diese Seite wartet so lange und
-          springt dann von selbst zur Notiz. Du kannst sie auch schließen: Die Notiz erscheint dann beim nächsten
-          Öffnen des Punkts.
-        </p>
+        <button type="button" onClick={onAblehnen}
+          className="inline-flex h-11 items-center rounded-lg px-3 text-sm font-medium text-foreground hover:bg-accent">
+          Ablehnen
+        </button>
+      </div>
+    );
+  }
+  return (
+    <div role="status">
+      <p className="flex items-center gap-2 text-sm font-medium text-foreground">
+        <Loader2 className="h-4 w-4 animate-spin text-primary" aria-hidden />
+        {info.grant ? "Tritt bei …" : "Angenommen. Gleich geht es weiter."}
+      </p>
+      {!info.grant && (
+        <p className="mt-1 text-meta text-muted-foreground">Sobald jemand aus der Notiz online ist. Du kannst die Seite auch schließen.</p>
       )}
     </div>
   );
@@ -250,7 +254,7 @@ function LinkEinladung({ id }: { id: string }) {
   if (!id || geheimnis === null) {
     return (
       <AuthShell title="Gemeinsame Notiz">
-        <p className="text-sm text-foreground">Der Link ist unvollständig. Lass ihn dir noch einmal schicken, am besten zum Kopieren statt abgetippt.</p>
+        <p className="text-sm text-foreground">Der Link ist unvollständig. Lass ihn dir noch einmal schicken.</p>
       </AuthShell>
     );
   }
@@ -258,7 +262,7 @@ function LinkEinladung({ id }: { id: string }) {
   if (info === null) {
     return (
       <AuthShell title="Gemeinsame Notiz">
-        <p className="text-sm text-foreground">{fehler ?? "Diese Einladung gilt nicht mehr — sie ist abgelaufen oder wurde zurückgezogen."}</p>
+        <p className="text-sm text-foreground">{fehler ?? "Diese Einladung gilt nicht mehr."}</p>
       </AuthShell>
     );
   }
@@ -277,15 +281,11 @@ function LinkEinladung({ id }: { id: string }) {
         </p>
       ) : (
         <div className="mt-4">
-          <NotizSchloss titel="Deine Notizen" id="einladung-notizen"
-            angebot="Um beizutreten, richte deine Notizen ein. Nur die Mitglieder können die gemeinsame Notiz lesen.">
+          <NotizSchloss titel="Deine Notizen" id="einladung-notizen" angebot="Dafür brauchst du deine Notizen.">
             {(o) => (
-              <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
-                <button type="button" disabled={laeuft} onClick={() => void beitreten(o)}
-                  className="inline-flex h-11 items-center rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-60">
-                  {laeuft ? "Tritt bei …" : "Beitreten"}
-                </button>
-              </div>
+              <button type="button" disabled={laeuft} onClick={() => void beitreten(o)} className={KNOPF_PRIMAER}>
+                {laeuft ? "Tritt bei …" : "Beitreten"}
+              </button>
             )}
           </NotizSchloss>
         </div>

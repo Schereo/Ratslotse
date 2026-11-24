@@ -13,8 +13,7 @@
    - Inviting a specific account: every account has a key pair (ECDH P-256),
      the private half wrapped with its own data key. A member seals the note
      key for the invitee's public key (ephemeral ECDH + HKDF + AES-GCM, the
-     AAD binds it to the note and to the invitee). The safety code is a short
-     digest of a public key that two people can compare.
+     AAD binds it to the note and to the invitee).
 
    Pure WebCrypto; the tests run the same code under Node. */
 
@@ -226,13 +225,4 @@ export async function openGrant(me: Identity, grant: Grant, noteId: string, myId
   } catch {
     return null;
   }
-}
-
-/** Five groups of five digits from the SHA-256 of a public key — short
- *  enough to read out on the phone, long enough that nobody forges a match. */
-export async function safetyCode(publicKey: string): Promise<string> {
-  const h = new Uint8Array(await crypto.subtle.digest("SHA-256", fromB64(publicKey)));
-  const groups: string[] = [];
-  for (let i = 0; i < 15; i += 3) groups.push(String(((h[i] << 16) | (h[i + 1] << 8) | h[i + 2]) % 100000).padStart(5, "0"));
-  return groups.join(" ");
 }
