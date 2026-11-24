@@ -23,6 +23,7 @@ from fastapi.responses import StreamingResponse
 from council.cities.store import CitiesStore
 from council.store import CouncilStore
 from kern.digest_email import knopf, render_html_email
+from kern.disposable_email import is_disposable
 from kern.email import send_email
 from kern import roles as rollen
 from kern.store import Store
@@ -611,7 +612,8 @@ def delete_reported_qa_share(
 def list_users(_admin: dict = Depends(require_admin), store: Store = Depends(get_store)) -> list[AdminUserRow]:
     """Nutzer-Liste mit Aktivitätssignalen (Design 20a): Themen-/Abo-/Quiz-/
     KI-Frage-Zahl + letzter Aktivitätstag je Konto."""
-    return store.admin_user_rows()
+    return [{**row, "disposable_email": is_disposable(row["email"])}
+            for row in store.admin_user_rows()]
 
 
 @router.get("/users/{user_id}")
@@ -620,7 +622,7 @@ def user_detail(user_id: int, _admin: dict = Depends(require_admin), store: Stor
     detail = store.admin_user_detail(user_id)
     if not detail:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Nutzer*in nicht gefunden.")
-    return detail
+    return {**detail, "disposable_email": is_disposable(detail["email"])}
 
 
 @router.get("/users/{user_id}/emails")

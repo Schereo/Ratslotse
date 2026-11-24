@@ -12,7 +12,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request,
 
 from kern.digest_email import render_html_email
 from kern.email import send_email
-from kern.disposable_email import EMAIL_CHANGE_REJECTED, domain_of, is_disposable
+from kern.disposable_email import domain_of, is_disposable
 from kern.store import Store
 from council.cities.store import CitiesStore
 from council.store import CouncilStore
@@ -294,17 +294,17 @@ def change_email(
         # Validierungsregel hängen soll — er kostet nichts und beschreibt die
         # Absicht an der Stelle, an der sie gilt.
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Diese Adresse ist nicht zulässig.")
-    if is_disposable(neu):
-        # Dieselbe Regel wie bei der Registrierung — sonst wäre der Wechsel
-        # der Umweg um den Riegel: erst mit echter Adresse anmelden, dann auf
-        # die Wegwerf-Adresse umziehen.
-        logger.info("Adresswechsel abgewiesen: Wegwerf-Domain %s (Konto %s)", domain_of(neu), user["id"])
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, EMAIL_CHANGE_REJECTED)
     if store.get_web_user_by_email(neu):
         raise HTTPException(status.HTTP_409_CONFLICT, "E-Mail ist bereits registriert.")
 
+    # Eine Wegwerf-Adresse wird nicht abgewiesen, sondern bekommt den Link
+    # nie (dieselbe Regel wie bei der Registrierung, s.
+    # kern/disposable_email.py) — sonst wäre der Wechsel der Umweg darum
+    # herum: erst mit echter Adresse anmelden, dann umziehen. Der Wechsel
+    # schwebt also, bis er verfällt; „Erneut senden" schickt ebenso nichts.
+    wegwerf = is_disposable(neu)
     settings = get_settings()
-    if not settings.resend_api_key:
+    if not settings.resend_api_key and not wegwerf:
         # Ohne Mail-Versand gibt es keinen Bestätigungslink — dieselbe Regel
         # wie bei der Registrierung (dort: `verified = not can_send_email`).
         # Sonst ließe sich der Wechsel auf dev, auf feature und in den
@@ -322,8 +322,12 @@ def change_email(
     code = _neuer_code()
     store.create_email_verification(int(user["id"]), token_hash, expires, new_email=neu,
                                     code_hash=_code_hash(int(user["id"]), code))
-    background.add_task(_send_email_change_link, neu, raw, user.get("display_name"),
-                        int(user["id"]), code)
+    if wegwerf:
+        logger.info("Adresswechsel auf Wegwerf-Domain %s (Konto %s) — kein Link",
+                    domain_of(neu), user["id"])
+    else:
+        background.add_task(_send_email_change_link, neu, raw, user.get("display_name"),
+                            int(user["id"]), code)
     if alt and not alt.endswith("@local"):
         background.add_task(_send_email_change_notice, alt, neu, user.get("display_name"),
                             int(user["id"]))

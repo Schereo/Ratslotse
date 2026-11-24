@@ -13,7 +13,7 @@ from fastapi.responses import JSONResponse
 from starlette.background import BackgroundTask
 
 from kern import roles as kern_roles
-from kern.disposable_email import REGISTER_REJECTED, domain_of, is_disposable
+from kern.disposable_email import domain_of, is_disposable
 from kern.store import Store
 from kern.digest_email import knopf, render_html_email
 from kern.email import send_email
@@ -285,8 +285,8 @@ def _sitzungskonto(request: Request, store: Store) -> dict | None:
 
 def anmeldedaten_pruefen(request: Request, store: Store, email_roh: str,
                          name_roh: str | None) -> tuple[str, str] | JSONResponse:
-    """Name, Wegwerf-Adresse, Dublette — für die Registrierung mit Passwort
-    und mit Passkey dieselben Prüfungen. Gibt Adresse und Namen zurück, bei
+    """Name und Dublette — für die Registrierung mit Passwort und mit Passkey
+    dieselben Prüfungen. Gibt Adresse und Namen zurück, bei
     einer vorhandenen Adresse die fertige 409-Antwort (samt Hinweis an die
     Besitzerin). Die Bremse ``register_limiter`` zählt der Aufrufer."""
     email = str(email_roh).lower().strip()
@@ -301,13 +301,9 @@ def anmeldedaten_pruefen(request: Request, store: Store, email_roh: str,
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, NAME_FEHLT)
     if not name_zulaessig(display_name):
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, NAME_UNZULAESSIG)
-    # Wegwerf-Anbieter VOR der Dubletten-Prüfung: Die Bestätigungs-Mail hält
-    # sie nicht ab (das Postfach gibt es ja, nur eben für zehn Minuten), und
-    # die Reihenfolge verrät so auch nicht, ob die Adresse schon ein Konto hat.
-    if is_disposable(email):
-        logger.info("Registrierung abgewiesen: Wegwerf-Domain %s", domain_of(email))
-        store.record_signup_rejection("disposable_email")
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, REGISTER_REJECTED)
+    # Wegwerf-Adressen werden hier NICHT abgewiesen (Tim, 24.11.2026): Das
+    # Konto entsteht wie jedes andere, nur bekommt es nie eine Mail und bleibt
+    # damit unbestätigt — s. `konto_anlegen` und kern/disposable_email.py.
     vorhanden = store.get_web_user_by_email(email)
     if vorhanden:
         store.record_signup_rejection("duplicate_email")
@@ -347,7 +343,12 @@ def konto_anlegen(request: Request, background: BackgroundTasks, store: Store, e
     # approval anymore. Only the no-email case skips verification, since we
     # can't send a link then (the account could never be confirmed).
     can_send_email = bool(settings.resend_api_key)
-    verified = not can_send_email
+    # Eine Wegwerf-Adresse bekommt keine Mail (kern.email.send_email lässt sie
+    # fallen), also auch keinen Bestätigungslink — und gilt deshalb auch ohne
+    # Mail-Versand nie als bestätigt. Sonst wäre sie lokal und auf jedem
+    # Server ohne Resend-Schlüssel sofort ein aktives Konto.
+    wegwerf = is_disposable(email)
+    verified = not can_send_email and not wegwerf
     user_status = "active" if verified else "pending"
     if getattr(settings, "signup_requires_approval", False):
         # Manual approval (dev): the account waits as `disabled` until an admin
@@ -376,7 +377,16 @@ def konto_anlegen(request: Request, background: BackgroundTasks, store: Store, e
     store.set_delivery_channel(user_id, "email" if is_app_client(request) else "off")
     created_user = store.get_web_user_by_id(user_id)
     assert created_user is not None
-    if user_status == "pending":
+    if wegwerf:
+        # Still: Die Antwort ist dieselbe wie bei jeder Registrierung. Es gibt
+        # keinen Link, keinen Code und keine Zeile im Mail-Protokoll — eine
+        # Zeile „Bestätigung verschickt" behauptete etwas, das nicht geschah.
+        # Gezählt wird trotzdem, unter demselben Grund wie früher die
+        # Abweisung: Für den Herzschlag ist es dasselbe Signal.
+        logger.info("Registrierung mit Wegwerf-Domain %s — Konto %s bleibt unbestätigt",
+                    domain_of(email), user_id)
+        store.record_signup_rejection("disposable_email")
+    elif user_status == "pending":
         # Send a verification link; confirming it activates the account and
         # pings the admins (FYI) once the address is confirmed real.
         raw = secrets.token_urlsafe(32)
@@ -617,7 +627,11 @@ def forgot_password(
     email = str(body.email).lower().strip()
     user = store.get_web_user_by_email(email)
     # Skip synthetic Telegram-only accounts (tg-…@local have no real inbox).
-    if user and not email.endswith("@local"):
+    # Eine Wegwerf-Adresse bekommt ohnehin nichts (kern.email.send_email) —
+    # hier schon aussortiert, damit kein Token entsteht und keine Zeile
+    # „Reset verschickt" im Mail-Protokoll. Der Reset bestätigt die Adresse
+    # mit; ginge er raus, käme ein still angelegtes Konto darüber herein.
+    if user and not email.endswith("@local") and not is_disposable(email):
         raw = secrets.token_urlsafe(32)
         token_hash = hashlib.sha256(raw.encode()).hexdigest()
         expires = (datetime.utcnow() + timedelta(hours=1)).isoformat(timespec="seconds")
@@ -1039,6 +1053,12 @@ def resend_verification(
     if not settings.resend_api_key or email.endswith("@local"):
         raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE,
                             "E-Mail-Versand ist nicht konfiguriert.")
+    if is_disposable(email):
+        # Dieselbe Antwort wie sonst, nur ohne Mail — s. kern/disposable_email.py.
+        # Ohne neuen Token und ohne Protokollzeile: Es geht ja nichts raus.
+        logger.info("Erneut senden an Wegwerf-Domain %s (Konto %s) — keine Mail",
+                    domain_of(email), user["id"])
+        return {"ok": True}
     raw = secrets.token_urlsafe(32)
     token_hash = hashlib.sha256(raw.encode()).hexdigest()
     expires = (datetime.utcnow() + timedelta(hours=_VERIFY_TTL_HOURS)).isoformat(timespec="seconds")

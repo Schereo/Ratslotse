@@ -163,6 +163,7 @@ export function UsersTab({ currentUserId, route }: { currentUserId: number; rout
                       </span>
                     ))}
                     {u.status !== "active" && <span className="shrink-0 rounded bg-amber-500/15 px-1.5 text-xs font-semibold text-amber-700 dark:text-amber-500">{u.status === "disabled" ? "gesperrt" : "wartet"}</span>}
+                    {u.disposable_email && <span className="shrink-0 rounded bg-amber-500/15 px-1.5 text-xs font-semibold text-amber-700 dark:text-amber-500">Wegwerf-Adresse</span>}
                   </div>
                   <div className="mt-1 flex flex-wrap gap-1">
                     {womit && (
@@ -258,6 +259,14 @@ function UserDetailPanel({ userId, isSelf, rollenKatalog, section }: {
             seit {data.created_at ? formatDate(data.created_at.slice(0, 10)) : "—"} · {sig.label} · {login}
             {woher && <> · über {woher} registriert</>}
           </p>
+          {/* Eine Wegwerf-Adresse bekommt keine Mail (kern/disposable_email.py)
+              und bleibt deshalb unbestätigt — freischalten hieße, genau das
+              Konto hereinzulassen, das die Sperre abhalten soll. */}
+          {data.disposable_email && (
+            <p className="mt-1 text-xs font-semibold text-amber-700 dark:text-amber-500">
+              Wegwerf-Adresse – bekommt keine Mail, nicht freischalten.
+            </p>
+          )}
         </div>
       </div>
       <nav aria-label="Kontodetails" className="mt-5 flex flex-wrap gap-x-4 border-b border-border">

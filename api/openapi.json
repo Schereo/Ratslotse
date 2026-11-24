@@ -3212,6 +3212,10 @@
               "null"
             ]
           },
+          "disposable_email": {
+            "title": "Disposable Email",
+            "type": "boolean"
+          },
           "email": {
             "title": "Email",
             "type": "string"
@@ -3324,6 +3328,7 @@
           "history",
           "history_days",
           "visit_days",
+          "disposable_email",
           "signup_client",
           "clients"
         ],
@@ -3425,6 +3430,10 @@
               "null"
             ]
           },
+          "disposable_email": {
+            "title": "Disposable Email",
+            "type": "boolean"
+          },
           "email": {
             "title": "Email",
             "type": "string"
@@ -3495,6 +3504,7 @@
           "last_seen",
           "active_days_30",
           "active_days_total",
+          "disposable_email",
           "signup_client",
           "clients"
         ],

@@ -146,24 +146,39 @@ sonst ließe sich das Konto nie bestätigen. Solange ein Konto nicht aktiv ist,
 zeigt die Oberfläche einen Hinweis statt der Inhalte und pollt `/auth/me`
 (`app/(app)/layout.tsx`); serverseitig blockt `require_active`.
 
-**Wegwerf-Adressen werden abgewiesen** (seit 09/2026). Die Bestätigung hält
-sie nicht ab — ein Zehn-Minuten-Postfach empfängt den Link genauso. Deshalb
-prüfen Registrierung und Adresswechsel die Domain (samt Eltern-Domains) gegen
+**Wegwerf-Adressen bekommen keine Mail** (seit 09/2026, still seit 11/2026).
+Die Bestätigung hält sie nicht ab — ein Zehn-Minuten-Postfach empfängt den
+Link genauso. Erkannt werden sie an der Domain (samt Eltern-Domains) über
 `kern/disposable_email_domains.txt`, eine öffentlich gepflegte Liste mit rund
-8.800 Anbietern (CC0), und antworten mit 400 und einem Satz **ohne Grund**
-(„Die Registrierung konnte nicht abgeschlossen werden.“) — wer abgewiesen wird,
-soll nicht erfahren, welche Prüfung angeschlagen hat. Die Domain steht im
-Server-Log (`ratslotse.web.auth` bzw. `ratslotse.web.account`). `PROTECTED_DOMAINS` in `kern/disposable_email.py`
-nennt Anbieter, die nie gesperrt werden, darunter Apples
-`privaterelay.appleid.com`. Was Sign in with Apple selbst liefert, ist von Apple
-bestätigt und wird nicht geprüft. Nachziehen der Liste:
+10.000 Anbietern (CC0), die der Herzschlag wöchentlich nachzieht
+([Betrieb](/docs/betrieb/#der-herzschlag)).
+
+Bis 11/2026 antworteten Registrierung und Adresswechsel darauf mit 400 und
+einem Satz ohne Grund. Seitdem weisen sie **gar nicht** ab: Das Konto
+entsteht, die Antwort ist dieselbe wie immer — nur geht an eine
+Wegwerf-Adresse keine Mail raus (`kern.email.send_email` lässt sie fallen,
+egal aus welchem Anlass). Das Konto bleibt damit unbestätigt, auch auf
+Servern ohne Mail-Versand, und wer es angelegt hat, glaubt, die Mail sei nicht
+angekommen. Eine Abweisung war selbst ein Signal: Wer sie sah, probierte die
+nächste Domain. Die Sperre sitzt am Versand und nicht an der Registrierung,
+weil „Passwort vergessen“ die Adresse mitbestätigt — ein still angelegtes
+Konto käme darüber sonst doch noch herein.
+
+Im Admin-Panel trägt ein solches Konto das Abzeichen *Wegwerf-Adresse*
+(`disposable_email` in `GET /api/admin/users`, live berechnet: Zieht die Liste
+einen Anbieter nach, sind auch die älteren Konten markiert). Auf dev, wo jedes
+Konto freigeschaltet werden muss, ist das die Stelle, an der es auffällt.
+`PROTECTED_DOMAINS` in `kern/disposable_email.py` nennt Anbieter, die nie als
+Wegwerf gelten, darunter Apples `privaterelay.appleid.com`. Die Domain steht
+im Server-Log, die Adresse nie. Die Repo-Datei nachziehen:
 `scripts/update_disposable_domains.py --schreiben`.
 
 **Abgewiesene Registrierungen werden gezählt.** Sichtbar war bis 09/2026 nur,
 wer durchkam — wer an der Bremse oder am Wegwerf-Riegel hängenblieb,
 hinterließ nirgends eine Spur. Die Tabelle `signup_rejections` zählt deshalb
 je Tag und Grund (`rate_limit`, `disposable_email`, `duplicate_email` aus
-`kern.store.SIGNUP_REJECTION_REASONS`), und zwar **nur** das: keine Adresse,
+`kern.store.SIGNUP_REJECTION_REASONS`; `disposable_email` zählt seit 11/2026
+die still angenommenen Wegwerf-Konten), und zwar **nur** das: keine Adresse,
 keine Domain, keine Netzadresse, kein Konto — dieselbe Haltung wie bei
 `page_views`. Sichtbar unter `GET /api/admin/stats/signups` und im Admin-Panel
 unter *Statistik → Registrierungen*.
