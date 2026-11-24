@@ -8886,6 +8886,8 @@ export interface components {
             delivery_channel: string;
             /** Display Name */
             display_name: string | null;
+            /** Disposable Email */
+            disposable_email: boolean;
             /** Email */
             email: string;
             features: components["schemas"]["AdminUserFeatures"];
@@ -8968,6 +8970,8 @@ export interface components {
             created_at: string | null;
             /** Display Name */
             display_name: string | null;
+            /** Disposable Email */
+            disposable_email: boolean;
             /** Email */
             email: string;
             /** Id */
@@ -33438,4 +33442,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 29ef3f57b751dfc5dc045dad41d8b6635360122822baa4683b1a91cf5a8e89c3
+// vertrag-sha256: 84865dd6c010d03cb358dece2b69a0e56af9b96fb5d29479f080c28aede60c70

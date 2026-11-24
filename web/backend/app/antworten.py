@@ -1510,6 +1510,12 @@ class AdminUserDetail(TypedDict):
     #: Die Tage mit Aktivität der letzten 30 Tage, neueste zuerst — was das
     #: Panel statt des Balkens zeigt.
     visit_days: list[AdminVisitDay]
+    #: Steht die Adresse auf der Wegwerf-Liste (``kern.disposable_email``)?
+    #: Live berechnet, nicht gespeichert: Zieht die Liste einen Anbieter nach,
+    #: sind auch die Konten markiert, die schon vorher kamen. Solche Konten
+    #: bekommen keine Mail und bleiben unbestätigt — freischalten sollte man
+    #: sie nicht.
+    disposable_email: bool
     #: Womit das Konto angelegt wurde: web | ios | android | app. ``None`` =
     #: vor Einführung der Messung registriert.
     signup_client: str | None
@@ -2581,6 +2587,12 @@ class AdminUserRow(TypedDict):
     #: Unterschiedliche Tage mit mindestens einem Besuch, inklusive App.
     active_days_30: int
     active_days_total: int
+    #: Steht die Adresse auf der Wegwerf-Liste (``kern.disposable_email``)?
+    #: Live berechnet, nicht gespeichert: Zieht die Liste einen Anbieter nach,
+    #: sind auch die Konten markiert, die schon vorher kamen. Solche Konten
+    #: bekommen keine Mail und bleiben unbestätigt — freischalten sollte man
+    #: sie nicht.
+    disposable_email: bool
     #: Womit das Konto angelegt wurde: web | ios | android | app. ``None`` =
     #: vor Einführung der Messung registriert.
     signup_client: str | None
