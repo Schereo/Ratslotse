@@ -13,6 +13,8 @@ import os
 
 import requests
 
+from .disposable_email import domain_of, is_disposable
+
 logger = logging.getLogger("kern.email")
 
 RESEND_API = "https://api.resend.com/emails"
@@ -55,7 +57,8 @@ def send_email(
     sender: str | None = None,
 ) -> str | None:
     """Send a single transactional email. Returns the Resend message id, or
-    ``None`` if email is not configured.
+    ``None`` if email is not configured or every recipient is a disposable
+    address (those are dropped silently, see ``kern/disposable_email.py``).
 
     ``api_key`` / ``sender`` override the ``RESEND_API_KEY`` / ``EMAIL_FROM``
     env vars — the cron jobs rely on the env (via ``load_dotenv``) and omit
@@ -71,9 +74,23 @@ def send_email(
         logger.warning("RESEND_API_KEY not set — skipping email to %s", to)
         return None
 
+    # An Wegwerf-Adressen geht nichts raus — egal aus welchem Anlass. Das ist
+    # die ganze „stille Abweisung" (s. kern/disposable_email.py): Konto und
+    # Antwort sehen aus wie immer, nur kommt keine Mail an. Hier und nicht an
+    # der Registrierung, weil auch „Passwort vergessen" die Adresse bestätigt.
+    # Im Log nur die Domain — dieselbe Haltung wie bei den Abweisungen.
+    empfaenger = [to] if isinstance(to, str) else list(to)
+    wegwerf = [a for a in empfaenger if is_disposable(a)]
+    if wegwerf:
+        logger.info("Wegwerf-Adresse — keine Mail an %s",
+                    ", ".join(sorted({domain_of(a) for a in wegwerf})))
+        empfaenger = [a for a in empfaenger if a not in wegwerf]
+        if not empfaenger:
+            return None
+
     payload: dict = {
         "from": sender or _sender(),
-        "to": [to] if isinstance(to, str) else to,
+        "to": empfaenger,
         "subject": subject,
         "html": html,
     }

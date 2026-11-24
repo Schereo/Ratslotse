@@ -575,12 +575,22 @@ RATSLOTSE_PROXY_HOSTS=gisportal4ol.oldenburg.de,youtube.com         # nur diese 
   gibt es keinen Bestätigungslink — dann nach der Registrierung einmal auf dem
   Server: `.venv/bin/python scripts/grant_admin.py <adresse>` (befördert nur ein
   **vorhandenes** Konto). Beide Fälle stehen als WARNING im Log (`nwz-web-api`).
-- **Wegwerf-Adressen werden abgewiesen** (seit 09/2026). Registrierung und
-  Adresswechsel prüfen die Domain gegen `kern/disposable_email_domains.txt`
-  (öffentliche Liste, CC0, ~8.800 Einträge; Logik in
-  `kern/disposable_email.py`). Anlass: zwei Konten mit Tastatur-Namen auf
-  94an.com und airhemp.com, die den Bestätigungslink brav geklickt hatten —
-  die Bestätigung hält Wegwerf-Postfächer nicht ab. Nachziehen:
+- **Wegwerf-Adressen bekommen keine Mail** (seit 09/2026, still seit
+  11/2026). Erkannt an der Domain über `kern/disposable_email_domains.txt`
+  (öffentliche Liste, CC0, ~10.000 Einträge; Logik in
+  `kern/disposable_email.py`). Anlass: Konten mit Tastatur-Namen auf
+  94an.com, airhemp.com und (23.11.2026) kranove.com, die den
+  Bestätigungslink brav geklickt hatten — die Bestätigung hält
+  Wegwerf-Postfächer nicht ab. **Abgewiesen wird nicht mehr** (Tims
+  Entscheidung 24.11.2026): Das Konto entsteht wie jedes andere, aber
+  `kern.email.send_email` lässt jede Mail an eine Wegwerf-Adresse fallen, das
+  Konto bleibt also unbestätigt — und wer es angelegt hat, erfährt nicht,
+  welche Prüfung griff. Die Sperre sitzt am **Versand**, nicht an der
+  Registrierung, weil „Passwort vergessen“ die Adresse mitbestätigt. Das
+  Admin-Panel markiert solche Konten (*Wegwerf-Adresse*, live berechnet).
+  **Die Liste zieht der Herzschlag wöchentlich selbst nach** (nach
+  `data/`, die neuere Fassung gilt) — sie stand von 09 bis 11/2026 still, und
+  genau darüber kam kranove.com durch. Die Repo-Datei:
   `scripts/update_disposable_domains.py --schreiben`; `PROTECTED_DOMAINS`
   schützt echte Anbieter (und Apples „E-Mail verbergen") vor einem
   Fehleintrag der Liste.

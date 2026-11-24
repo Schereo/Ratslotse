@@ -34,6 +34,16 @@ Prüfungen oben. So blieb der Umzug des Ratsinfos unbemerkt. ``ratsinfo()``
 fragt deshalb täglich von außen: Antwortet es wie gewohnt, und steht jede
 Sitzung, die es verlinkt, auch im Bestand?
 
+**Und hält die Wegwerf-Liste frisch** (seit 11/2026). Die Liste, nach der
+Adressen keine Mail bekommen (``kern/disposable_email.py``), stand zwei Monate
+still, weil sie nur von Hand nachgezogen wurde — das Konto vom 23.11.2026 kam
+über einen Anbieter herein, den sie upstream längst führte. ``wegwerf_liste()``
+zieht sie deshalb nach, sobald sie eine Woche alt ist, in eine Kopie unter
+``data/``. Das ist der einzige Teil dieses Laufs, der etwas schreibt; er
+gehört trotzdem hierher, weil er dieselbe Frage beantwortet („ist etwas still
+veraltet?") und ohne eigene crontab-Zeile auskommt. Gemeldet wird erst, wenn
+das Nachziehen einen Monat lang nicht gelingt.
+
 **Was er NICHT auffängt**, und das gehört dazu: Stirbt der Cron-Dienst als
 GANZES, stirbt dieser Lauf mit. Er merkt, dass EIN Job schweigt, nicht dass
 alle schweigen. Dafür bräuchte es eine Prüfung von außerhalb der Maschine —
@@ -51,6 +61,7 @@ from __future__ import annotations
 
 import shutil
 import sys
+from datetime import date
 from pathlib import Path
 
 WURZEL = Path(__file__).resolve().parents[1]
@@ -106,6 +117,12 @@ KOSTEN_ALARM_VORGABE = 5.0
 #: Im Alltag ist „unknown“ der seltene Fall (Frist 20 s, p50 1,4 s).
 PRUEFER_UNKNOWN_ANTEIL = 0.5
 PRUEFER_MIN_URTEILE = 5
+#: Ab diesem Alter (Tage) zieht der Herzschlag die Wegwerf-Liste nach. Upstream
+#: kommen wöchentlich neue Anbieter dazu; täglich zu fragen brächte nichts.
+WEGWERF_NACHZIEHEN_TAGE = 7
+#: Ab diesem Alter ist es eine Meldung wert: Dann scheitert das Nachziehen seit
+#: Wochen, und neue Anbieter kommen ungehindert durch.
+WEGWERF_ALARM_TAGE = 30
 #: Welche Gründe als Angriff zählen (s. `kern/store.SIGNUP_REJECTION_REASONS`).
 ABWEISUNGSGRUENDE = ("rate_limit", "disposable_email")
 #: Nur für die Mail — die Kennzahlen bleiben englisch.
@@ -314,6 +331,43 @@ def ratsinfo() -> dict:
                             f"{type(exc).__name__}: {exc}"]}
 
 
+def wegwerf_liste(heute: date | None = None) -> dict:
+    """Die Wegwerf-Liste nachziehen, wenn sie eine Woche alt ist.
+
+    ``RATSLOTSE_WEGWERF_NACHZIEHEN=0`` schaltet das Nachziehen ab (Tests,
+    Rechner ohne Netz) — der Stand wird trotzdem berichtet. Wirft nie: Ein
+    gescheiterter Abruf ist erst nach ``WEGWERF_ALARM_TAGE`` ein Befund.
+    """
+    import logging
+    import os
+
+    from kern import disposable_email
+
+    heute = heute or date.today()
+    stand = disposable_email.stand()
+    alter = (heute - stand).days if stand else None
+    aus = {"alter_tage": alter, "nachgezogen": 0, "befund": None}
+    faellig = alter is None or alter >= WEGWERF_NACHZIEHEN_TAGE
+    if not faellig or os.environ.get("RATSLOTSE_WEGWERF_NACHZIEHEN", "1") == "0":
+        return aus
+    try:
+        ergebnis = disposable_email.nachziehen(heute)
+    except (OSError, ValueError) as exc:     # URLError ist ein OSError, Decode ein ValueError
+        logging.getLogger(__name__).warning("Wegwerf-Liste nicht nachgezogen: %s", exc)
+        grund = f"Abruf gescheitert ({type(exc).__name__}: {exc})"
+    else:
+        if "gruende" not in ergebnis:
+            return {**aus, "alter_tage": 0, "nachgezogen": 1, "dazu": ergebnis["dazu"]}
+        grund = "nicht übernommen: " + "; ".join(ergebnis["gruende"])
+    if alter is None or alter >= WEGWERF_ALARM_TAGE:
+        wie_alt = f"{alter} Tage alt" if alter is not None else "ohne lesbaren Stand"
+        aus["befund"] = (
+            f"<b>Die Wegwerf-Liste ist {wie_alt}</b> und lässt sich nicht nachziehen — "
+            f"{grund}. Neue Wegwerf-Anbieter kommen solange durch. Von Hand: "
+            "<code>scripts/update_disposable_domains.py</code>.")
+    return aus
+
+
 def main() -> dict:
     from kern.alerts import notify_admin
     from kern.store import Store
@@ -329,6 +383,7 @@ def main() -> dict:
         store.close()
     pruefung = daten(seit)
     ris_stand = ratsinfo()
+    wegwerf = wegwerf_liste()
     kosten = kosten_gestern()
     schwelle = kostenschwelle()
 
@@ -392,6 +447,9 @@ def main() -> dict:
             "Prüfer-Modell weggefallen oder gedrosselt "
             "(<code>COUNCIL_ASSISTANT_PRUEFER_MODEL</code>, <code>council/self_check.py</code>).")
 
+    if wegwerf["befund"]:
+        meldungen.append(wegwerf["befund"])
+
     if pruefung["befunde"]:
         meldungen.append("Die Datenprüfung hat etwas gefunden:\n"
                          + "\n".join(f"• {b}" for b in pruefung["befunde"]))
@@ -409,6 +467,8 @@ def main() -> dict:
             betreff = "Ratslotse – Selbstprüfung ohne Urteil"
         elif pruefung["befunde"]:
             betreff = "Ratslotse – Datenprüfung"
+        elif wegwerf["befund"]:
+            betreff = "Ratslotse – Wegwerf-Liste veraltet"
         else:
             betreff = "Ratslotse – Platz wird knapp"
         notify_admin(
@@ -425,6 +485,8 @@ def main() -> dict:
         "konten_24h": konten["created"],
         "konten_24h_unbestaetigt": konten["unverified"],
         "registrierungen_abgewiesen": konten["abgewiesen"],
+        "wegwerf_liste_alter_tage": wegwerf["alter_tage"],
+        "wegwerf_liste_nachgezogen": wegwerf["nachgezogen"],
         "llm_kosten_gestern_usd": kosten["usd"],
         "pruefer_urteile_gestern": pruefer["model"],
         "pruefer_unknown_gestern": pruefer["unknown"],
