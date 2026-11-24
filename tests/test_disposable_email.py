@@ -350,6 +350,61 @@ def test_adresswechsel_auf_wegwerf_adresse_schickt_keinen_link(client):
     assert client.get("/api/auth/me").json()["email"] == "echt@example.org"
 
 
+def test_ein_wechsel_auf_wegwerf_traegt_keinen_ratbaren_code(client):
+    """Der Wechsel schwebt, aber ohne Code: Ein nie verschickter sechsstelliger
+    Code wäre trotzdem ratbar (Sicherheitsprüfung des Pushs, 24.11.2026)."""
+    import sqlite3
+
+    postfach: list = []
+    versand, s_auth, s_account = _mit_mailversand(postfach)
+    with versand, s_auth, s_account:
+        assert _register(client, "echt@example.org").status_code == 201
+        from kern.store import Store
+        store = Store(RATSLOTSE_DB)
+        try:
+            konto = store.get_web_user_by_email("echt@example.org")
+            assert konto is not None
+            store.set_email_verified(int(konto["id"]), True)
+            store.set_web_user_status(int(konto["id"]), "active")
+        finally:
+            store.close()
+        r = client.post("/api/account/change-email",
+                        json={"new_email": _adresse("airhemp.com"), "current_password": PASSWORT})
+        assert r.status_code == 200, r.text
+    with sqlite3.connect(RATSLOTSE_DB) as conn:
+        zeilen = conn.execute("SELECT code_hash FROM email_verification_tokens "
+                              "WHERE new_email IS NOT NULL").fetchall()
+    assert zeilen and all(code is None for (code,) in zeilen)
+    assert client.post("/api/auth/verify-code", json={"code": "123456"}).status_code == 400
+    assert client.get("/api/auth/me").json()["email"] == "echt@example.org"
+
+
+def test_eine_wegwerf_adresse_wird_auch_mit_gueltigem_link_nicht_bestaetigt(client):
+    """Der zweite Riegel: Selbst wenn es einen Link gäbe, bleibt das Konto
+    unbestätigt — mit derselben Antwort wie bei einem verfallenen Link."""
+    import hashlib
+    from datetime import datetime, timedelta
+
+    from kern.store import Store
+
+    wegwerf = _adresse("94an.com")
+    assert _register(client, wegwerf).status_code == 201
+    store = Store(RATSLOTSE_DB)
+    try:
+        konto = store.get_web_user_by_email(wegwerf)
+        assert konto is not None
+        ablauf = (datetime.utcnow() + timedelta(hours=1)).isoformat(timespec="seconds")
+        store.create_email_verification(int(konto["id"]),
+                                        hashlib.sha256(b"gefunden").hexdigest(), ablauf)
+    finally:
+        store.close()
+    r = client.post("/api/auth/verify-email", json={"token": "gefunden"})
+    assert r.status_code == 400
+    assert "ungültig oder abgelaufen" in r.json()["detail"]
+    me = client.get("/api/auth/me").json()
+    assert me["status"] == "pending" and not me["email_verified"]
+
+
 def test_ohne_mailversand_gilt_ein_wechsel_auf_wegwerf_nicht_sofort(client):
     assert _register(client, "echt@example.org").status_code == 201
     r = client.post("/api/account/change-email",
