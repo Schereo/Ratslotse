@@ -143,6 +143,22 @@ CREATE TABLE IF NOT EXISTS template_program_stances (
     created_at      TEXT NOT NULL
 );
 
+-- Was der Haushaltsentwurf zeigt (council/budget_findings.py): je Vorbericht
+-- (getfile-Kennung, er hängt oft an mehreren Punkten) die geprüften Befunde aus
+-- seinen Grafiken. sources_hash = gelesene Grafiken + Text + Prompt-Stand.
+-- status: ok | failed | no_charts.
+CREATE TABLE IF NOT EXISTS budget_draft_findings (
+    document_id     INTEGER PRIMARY KEY,
+    sources_hash    TEXT NOT NULL,
+    prompt_version  INTEGER NOT NULL,
+    model           TEXT,
+    verify_model    TEXT,
+    status          TEXT NOT NULL,
+    payload         TEXT,
+    cost_usd        REAL,
+    created_at      TEXT NOT NULL
+);
+
 -- Steckbrief je Dokument (Vorlagen-PDF, Vorlagen-Anlage, Punkt-Anlage — alle
 -- hängen an derselben getfile-Kennung): Art, Antragsteller, Seiten, Scan,
 -- Seitenanfänge im gespeicherten Text samt dessen Prüfsumme. Ein Dokument an

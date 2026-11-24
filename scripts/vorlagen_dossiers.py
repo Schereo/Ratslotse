@@ -21,6 +21,11 @@ Mit dem Schalter ``wahlprogramm-am-punkt`` folgt als dritte Stufe, was die
 Wahlprogramme dazu sagen (``council/programm_bezug.py``, Grenze
 ``PROGRAM_MAX_USD``, Vorgabe 0,25 $). Für den Bestand ``--bestand --programme``.
 
+Mit dem Schalter ``haushaltsentwurf-befunde`` liest er zuletzt die Vorberichte
+an den Punkten im selben Fenster und schreibt, was ihre Grafiken zeigen
+(``council/budget_findings.py``, Grenze ``FINDINGS_MAX_USD``, Vorgabe 0,50 $).
+Für alle Vorberichte im Bestand ``--bestand --haushaltsentwurf``.
+
 crontab: ``0 10,15 * * *``
 """
 from __future__ import annotations
@@ -41,7 +46,7 @@ from dotenv import load_dotenv  # noqa: E402
 
 load_dotenv(ROOT / ".env")
 
-from council import programm_bezug, punkt_texte, template_dossier, vorlage_begriffe  # noqa: E402
+from council import budget_findings, programm_bezug, punkt_texte, template_dossier, vorlage_begriffe  # noqa: E402
 from council.store import CouncilStore  # noqa: E402
 from kern import features  # noqa: E402
 from kern.alerts import run_guarded  # noqa: E402
@@ -204,6 +209,40 @@ def lauf_programme(vorlagen: list[str], *, max_usd: float, schreiben: bool = Tru
             "programme_kosten_usd": round(stopp.kosten, 4)}
 
 
+def lauf_haushaltsentwurf(since: str | None, until: str | None, *, max_usd: float, schreiben: bool = True,
+                          max_minuten: float = 0) -> dict:
+    """Was der Haushaltsentwurf zeigt (``council/budget_findings.py``): je
+    Vorbericht einmal, gespeichert unter seiner Dokumentnummer. Ohne ``since``
+    alle Vorberichte im Bestand."""
+    store = CouncilStore(COUNCIL_DB)
+    stopp = Stopp(daten_dir=ROOT / "data", max_kosten=max_usd, frist_sekunden=max_minuten * 60)
+    neu = vorhanden = ohne = 0
+    berichte = store.budget_reports(since, until)
+    for b in berichte:
+        if (grund := stopp.grund()) is not None:
+            print(grund.text, flush=True)
+            break
+        alt = store.budget_draft_findings(b["document_id"])
+        if alt and alt["prompt_version"] == budget_findings.PROMPT_VERSION and alt["status"] in ("ok", "no_charts"):
+            vorhanden += 1
+            continue
+        if not budget_findings.is_budget_report(b["label"], b["n_pages"]):
+            ohne += 1
+            continue
+        if not schreiben:
+            neu += 1
+            print(f"  würde lesen: {b['label']} ({b['template_number']})", flush=True)
+            continue
+        d = budget_findings.build_for_report(store, b, stopp=stopp)
+        if d:
+            neu += 1
+            print(f"  {b['label']}: {len(d['payload']['findings'])} Befunde, "
+                  f"{len(d['payload']['rejected'])} verworfen", flush=True)
+    print(f"{len(berichte)} Vorberichte: {neu} {'neu' if schreiben else 'würden neu entstehen'}, "
+          f"{vorhanden} aktuell, {ohne} zu kurz, {stopp.kosten:.3f} $", flush=True)
+    return {"haushaltsentwurf_neu": neu, "haushaltsentwurf_kosten_usd": round(stopp.kosten, 4)}
+
+
 #: So viele Tage zurück schaut der Lauf. Eine Vorlage, die erst am Sitzungstag
 #: auf die Tagesordnung kommt, bekommt so noch ihr Dossier — vorher fiel sie am
 #: nächsten Morgen aus dem Fenster (Haushaltsentwurf 2027, 26/0835: am
@@ -256,6 +295,10 @@ def main() -> dict:
         kennzahlen.update(lauf_begriffe(vorlagen, max_usd=float(os.environ.get("TERMS_MAX_USD") or 0.25)))
     if features.an("wahlprogramm-am-punkt"):
         kennzahlen.update(lauf_programme(vorlagen, max_usd=float(os.environ.get("PROGRAM_MAX_USD") or 0.25)))
+    if features.an("haushaltsentwurf-befunde"):
+        kennzahlen.update(lauf_haushaltsentwurf(
+            (heute - timedelta(days=TAGE_ZURUECK)).isoformat(), (heute + timedelta(days=21)).isoformat(),
+            max_usd=float(os.environ.get("FINDINGS_MAX_USD") or 0.5)))
     return kennzahlen
 
 
@@ -270,8 +313,13 @@ if __name__ == "__main__":
                     help="mit --bestand: statt der Dossiers die Fachwörter aus der Vorlage (council/vorlage_begriffe.py)")
     ap.add_argument("--programme", action="store_true",
                     help="mit --bestand: statt der Dossiers die Wahlprogramme zum Punkt (council/programm_bezug.py)")
+    ap.add_argument("--haushaltsentwurf", action="store_true",
+                    help="mit --bestand: statt der Dossiers die Befunde aller Vorberichte (council/budget_findings.py); "
+                         "--seit wirkt hier nicht")
     a = ap.parse_args()
-    if a.bestand:
+    if a.bestand and a.haushaltsentwurf:
+        lauf_haushaltsentwurf(None, None, max_usd=a.max_usd, schreiben=a.schreiben, max_minuten=a.max_minuten)
+    elif a.bestand:
         s = CouncilStore(COUNCIL_DB)
         # Bis drei Wochen voraus: Die kommenden Sitzungen gehören zum Bestand dazu.
         bis = (date.today() + timedelta(days=21)).isoformat()

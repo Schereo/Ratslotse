@@ -9857,6 +9857,84 @@ export interface components {
                 [key: string]: components["schemas"]["Herkunft"];
             };
         };
+        /** BudgetFinding */
+        BudgetFinding: {
+            /** Chart */
+            chart: string | null;
+            key_figure: components["schemas"]["BudgetFindingKeyFigure"];
+            /** Page */
+            page: number | null;
+            /** Quote */
+            quote: string | null;
+            /** Quote Page */
+            quote_page?: number | null;
+            /** Text */
+            text: string;
+            /** Title */
+            title: string;
+            visual: components["schemas"]["BudgetFindingVisual"];
+        };
+        /** BudgetFindingKeyFigure */
+        BudgetFindingKeyFigure: {
+            /** Label */
+            label: string;
+            /** Unit */
+            unit: string;
+            /** Value */
+            value: number;
+        };
+        /** BudgetFindingRow */
+        BudgetFindingRow: {
+            /** Change */
+            change?: number | null;
+            /** Label */
+            label: string;
+            /** Value */
+            value: number;
+        };
+        /** BudgetFindingSeries */
+        BudgetFindingSeries: {
+            /** Name */
+            name: string;
+            /** Values */
+            values: (number | null)[];
+        };
+        /** BudgetFindingStep */
+        BudgetFindingStep: {
+            /** Label */
+            label: string;
+            /** Value */
+            value: number;
+        };
+        /**
+         * BudgetFindingVisual
+         * @description Wie die Seite einen Befund zeichnet. ``type``: ``columns`` (Säulen je
+         *     Kategorie, ``kinds`` vom Code gesetzt: actual · forecast · plan ·
+         *     financial_plan · null), ``bridge`` (von ``start`` über ``steps`` zu
+         *     ``end``) oder ``bars`` (Rangfolge).
+         */
+        BudgetFindingVisual: {
+            /** Categories */
+            categories?: string[];
+            end?: components["schemas"]["BudgetFindingStep"];
+            /** Highlight */
+            highlight?: number[];
+            /** Kinds */
+            kinds?: (string | null)[];
+            /** Rows */
+            rows?: components["schemas"]["BudgetFindingRow"][];
+            /** Series */
+            series?: components["schemas"]["BudgetFindingSeries"][];
+            /** Stacked */
+            stacked?: boolean;
+            start?: components["schemas"]["BudgetFindingStep"];
+            /** Steps */
+            steps?: components["schemas"]["BudgetFindingStep"][];
+            /** Type */
+            type: string;
+            /** Unit */
+            unit: string;
+        };
         /** BudgetFixedAssets */
         BudgetFixedAssets: {
             /** Accounting Systems */
@@ -14470,6 +14548,24 @@ export interface components {
         ItemBudgetContext: {
             /** Blocks */
             blocks: components["schemas"]["BudgetContextBlock"][];
+        };
+        /**
+         * ItemBudgetFindings
+         * @description „Was der Haushaltsentwurf zeigt“ (``council/budget_findings.py``).
+         */
+        ItemBudgetFindings: {
+            /** Budget Year */
+            budget_year: number | null;
+            /** Created At */
+            created_at: string;
+            /** Document Id */
+            document_id: number;
+            /** Findings */
+            findings: components["schemas"]["BudgetFinding"][];
+            /** Label */
+            label: string;
+            /** Url */
+            url: string | null;
         };
         /**
          * ItemDossier
@@ -21138,6 +21234,7 @@ export interface components {
             amendments?: components["schemas"]["ItemAmendment"][];
             arguments?: components["schemas"]["ItemArguments"];
             budget_context?: components["schemas"]["ItemBudgetContext"];
+            budget_findings?: components["schemas"]["ItemBudgetFindings"];
             /** Committee */
             committee: string;
             /** Count */
@@ -31962,4 +32059,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 5739a4e2094d87f3bda8c25da521c9249e2e85ac1daddf1a98d8baa753cd960f
+// vertrag-sha256: 95d64a3a64d6320a8d3724db7d33554305aa36f15ff0b292938abef5d7f39596

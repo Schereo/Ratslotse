@@ -285,6 +285,37 @@ Wohnungen“ fand Stufe 2 bei acht von neun Listen ein „dafür“, weil jedes
 Programm günstigen Wohnraum will. Das ist keine Aussage zu dieser Maßnahme.
 Die Kosten je Cron-Lauf deckelt `PROGRAM_MAX_USD`.
 
+### Was der Haushaltsentwurf zeigt
+
+Am Punkt zum Haushaltsentwurf stehen bis zu zehn Befunde aus den Grafiken des
+Vorberichts: je ein Titel, die eine Zahl, ein Satz, die neu gezeichnete
+Grafik und der Weg zur Seite im PDF. Säulen tragen ihre Art sichtbar (Ist
+voll, Prognose schraffiert, Plan mit Rand, Finanzplanung hell), damit ein
+Planwert für 2030 nicht wie ein Ergebnis aussieht.
+
+Drei Stufen, jede kann einen Befund kippen:
+
+1. **Lesen ohne Modell** (`council/budget_charts.py`): Jede „Grafik n-m“
+   des Vorberichts wird zu Daten. Tabellen liest PyMuPDF zellgenau; bei
+   Diagrammen gehört jeder beschriftete Wert zu der Kategorie, über der er
+   steht — die Textebene führt die Werte nicht in Jahresfolge. Diagramme ohne
+   Wertbeschriftung und Bilder bleiben Lücken.
+2. **Vorschlagen** mit dem kleinen Modell (`COUNCIL_FINDINGS_MODEL`) und
+   **prüfen im Code**: Jede Zahl in Titel, Satz, Kennzahl und Grafik steht in
+   der genannten Grafik (auch in Mio. € umgerechnet), im wörtlichen Zitat,
+   oder ist Summe bzw. Differenz von Werten derselben Grafik. Die Art jeder
+   Säule setzt der Code aus Kopf und Bildunterschrift.
+3. **Prüfen mit dem größeren Modell** (`COUNCIL_FINDINGS_VERIFY_MODEL`):
+   Trägt die Grafik die Deutung? Im Prototyp hielten 20 von 40 Funden nicht
+   stand, fast immer wegen der Deutung, nicht der Zahl — etwa eine Teilzahl,
+   die dem ganzen Haushalt zugeschrieben wurde.
+
+Gespeichert wird je Vorbericht (`budget_draft_findings`, Schlüssel ist die
+Dokumentnummer); er hängt oft an mehreren Punkten. Erzeugt werden die
+Befunde im Lauf `vorlagen_dossiers` für Vorberichte an Punkten im selben
+Fenster wie die Dossiers, gedeckelt von `FINDINGS_MAX_USD`. Für den Bestand:
+`scripts/vorlagen_dossiers.py --bestand --haushaltsentwurf [--schreiben]`.
+
 ### Frag den Rat am Punkt
 
 Auf Punkt- und Beschluss-Seite entsteht die Antwort an Ort und Stelle, mit
