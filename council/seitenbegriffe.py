@@ -38,6 +38,12 @@ def item_texts(punkt: dict) -> list[str]:
     if dossier.get("sections"):
         texte.append(felder.get("proposed_decision"))
     texte.extend((felder.get(k) or {}).get("text") for k in ("cost", "climate"))
+    # „Was der Haushaltsentwurf zeigt“ steht unter „Aus den Unterlagen“.
+    befunde = punkt.get("budget_findings") or {}
+    texte.append(befunde.get("about"))
+    texte.append((befunde.get("notice") or {}).get("text"))
+    texte.extend(s.get("text") for s in (befunde.get("overview") or {}).get("statements") or [])
+    texte.extend(f.get("text") for f in befunde.get("findings") or [])
     # Ohne Randleerraum: Die Seite zeigt manche Texte getrimmt, die Fundstelle
     # (``snippet``) muss in beiden Fassungen wörtlich vorkommen.
     return [t.strip() for t in texte if t and t.strip()]
