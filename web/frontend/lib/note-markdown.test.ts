@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { parseInline, parseNote, serializeInline, serializeNote, type NoteNode } from "./note-markdown";
+import { RIS_FRUEHER } from "./ris";
 
 const t = (text: string, ...marks: ("bold" | "italic")[]): NoteNode =>
   marks.length ? { type: "text", text, marks: marks.map((type) => ({ type })) } : { type: "text", text };
@@ -146,5 +147,43 @@ describe("serializeNote", () => {
     const einmal = serializeNote(parseNote("* a\n\t* b\n_kursiv_"));
     expect(einmal).toBe("- a\n  - b\n*kursiv*");
     rund(einmal);
+  });
+});
+
+describe("Verweise auf Unterlagen", () => {
+  const URL = "https://ratsinfo.oldenburg.de/bi/getfile.asp?id=312295&type=do";
+  const ref = (page: number | null, label = "Anlage 1 VBN Tariferhöhung"): NoteNode =>
+    ({ type: "docRef", attrs: { documentId: 312295, page, label, href: URL } });
+
+  it("eine Seite: lesbarer Link im Text, Chip im Dokument", () => {
+    const text = `Preise: [Anlage 1 VBN Tariferhöhung, S. 14](${URL}#page=14) prüfen`;
+    expect(parseNote(text)).toEqual(doc(p(t("Preise: "), ref(14), t(" prüfen"))));
+    rund(text);
+  });
+
+  it("ohne Seite die ganze Unterlage, auch im Listenpunkt und neben Fett", () => {
+    const text = `- **Kosten** [Vorlage 26/0622](${URL})`;
+    expect(parseNote(text).content![0].content![0].content![0].content).toEqual(
+      [t("Kosten", "bold"), t(" "), ref(null, "Vorlage 26/0622")]);
+    rund(text);
+  });
+
+  it("Klammern und Sternchen im Titel kommen heil zurück", () => {
+    const d = doc(p(ref(3, "Plan [Entwurf] *neu*_2")));
+    expect(parseNote(serializeNote(d))).toEqual(d);
+  });
+
+  it("andere Links bleiben Text, wie sie dastanden", () => {
+    for (const s of ["[NWZ](https://www.nwz-online.de/x)", "[Rat](https://ratsinfo.oldenburg.de/bi/si0057.asp?__ksinr=1)",
+      "[kaputt](getfile.asp?id=1)"]) {
+      expect(parseNote(s)).toEqual(doc(p(t(s))));
+      rund(s);
+    }
+  });
+
+  it("die alte Adresse des Ratsinfos zählt auch", () => {
+    const href = `https://${RIS_FRUEHER[0]}/getfile.php?id=7&type=do`;
+    expect(parseNote(`[A](${href}#page=2)`).content![0].content).toEqual([
+      { type: "docRef", attrs: { documentId: 7, page: 2, label: "A", href } }]);
   });
 });

@@ -3,10 +3,21 @@
    (`lib/note-markdown.ts`), so what you see here is what „übernehmen" gives. */
 
 import type { ReactNode } from "react";
+import { FileText } from "lucide-react";
+import { docRefHref, docRefName, type DocRefAttrs } from "@/lib/doc-ref";
 import { parseNote, type NoteNode } from "@/lib/note-markdown";
 
 function inline(nodes: NoteNode[] | undefined): ReactNode[] {
   return (nodes ?? []).map((n, i) => {
+    if (n.type === "docRef") {
+      const r = n.attrs as unknown as DocRefAttrs;
+      return (
+        <a key={i} href={docRefHref(r)} target="_blank" rel="noreferrer"
+          className="mx-0.5 inline-flex items-center gap-1 rounded-md border border-current/30 px-1 not-italic underline-offset-2 hover:underline">
+          <FileText className="h-3.5 w-3.5" aria-hidden /> {docRefName(r)}
+        </a>
+      );
+    }
     let el: ReactNode = n.text;
     for (const m of n.marks ?? []) el = m.type === "bold" ? <strong key={i}>{el}</strong> : <em key={i}>{el}</em>;
     return <span key={i}>{el}</span>;

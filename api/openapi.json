@@ -11828,6 +11828,25 @@
         "title": "Districts",
         "type": "object"
       },
+      "DocumentPages": {
+        "description": "Wie viele Seiten eine Unterlage hat — für das Blättern in der Vorschau.",
+        "properties": {
+          "document_id": {
+            "title": "Document Id",
+            "type": "integer"
+          },
+          "n_pages": {
+            "title": "N Pages",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "document_id",
+          "n_pages"
+        ],
+        "title": "DocumentPages",
+        "type": "object"
+      },
       "DossierGist": {
         "description": "Inhaltssatz zu einer Unterlage (belegt aus Seite 1–2).",
         "properties": {
@@ -15273,6 +15292,14 @@
               "null"
             ]
           },
+          "document_id": {
+            "minimum": 1.0,
+            "title": "Document Id",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
           "item_number": {
             "maxLength": 20,
             "title": "Item Number",
@@ -15284,6 +15311,15 @@
           "ksinr": {
             "minimum": 1.0,
             "title": "Ksinr",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "page": {
+            "maximum": 5000.0,
+            "minimum": 1.0,
+            "title": "Page",
             "type": [
               "integer",
               "null"
@@ -44597,6 +44633,124 @@
           }
         },
         "summary": "Districts",
+        "tags": [
+          "council"
+        ]
+      }
+    },
+    "/api/council/documents/{document_id}/page/{page}": {
+      "get": {
+        "description": "Eine Seite einer Unterlage als Bild — gerendert einmal, dann aus der Ablage.",
+        "operationId": "document_page_image_api_council_documents__document_id__page__page__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "document_id",
+            "required": true,
+            "schema": {
+              "title": "Document Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "page",
+            "required": true,
+            "schema": {
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "w",
+            "required": false,
+            "schema": {
+              "default": 640,
+              "title": "W",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "image/jpeg": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Eine Seite einer Unterlage als JPEG, für die Vorschau an einem Notiz-Verweis. `w` ist 320, 640 oder 1280 (die Vergrößerung). Eine getfile-Kennung nennt ein festes Dokument, die Antwort ist deshalb lange cachebar."
+          },
+          "404": {
+            "description": "Unbekannte Unterlage oder Seite, die es nicht gibt."
+          },
+          "413": {
+            "description": "Die Unterlage ist für eine Vorschau zu groß."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "502": {
+            "description": "Das Ratsinfo hat das PDF nicht geliefert."
+          },
+          "503": {
+            "description": "Auf diesem Server gibt es keine Vorschau (PyMuPDF fehlt)."
+          }
+        },
+        "summary": "Document Page Image",
+        "tags": [
+          "council"
+        ]
+      }
+    },
+    "/api/council/documents/{document_id}/pages": {
+      "get": {
+        "description": "Wie viele Seiten eine Unterlage hat — aus dem Steckbrief, sonst aus dem PDF.",
+        "operationId": "document_pages_api_council_documents__document_id__pages_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "document_id",
+            "required": true,
+            "schema": {
+              "title": "Document Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentPages"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Document Pages",
         "tags": [
           "council"
         ]

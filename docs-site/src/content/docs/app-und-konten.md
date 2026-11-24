@@ -652,6 +652,35 @@ Zeilenumbrüche mit Umschalt+Enter: Was keine eigene Zeile im Text hat, ginge
 auf dem Rückweg verloren.
 Dasselbe Feld trägt „Mein Mitschrieb“.
 
+**Verweise auf Unterlagen.** Über die Büroklammer in der Leiste verweist eine
+Notiz auf eine Unterlage des Punkts oder auf eine Seite davon (Vorlage,
+Anlage, Protokoll — alles mit getfile-Kennung). Im Text steht ein Link aufs
+Ratsinfo, beschriftet „Anlage 1, S. 14“, mit der Seite als Sprungmarke
+(`getfile.asp?id=…#page=14`); im Editor ein Chip
+(`components/notiz/doc-ref.tsx`). Er öffnet das PDF auf der Seite und bietet
+„Im Chat fragen“: Dann bekommt „Frag den Rat“ daneben Kennung und Seite als
+Bezug (`components/notiz/chat-bridge.tsx`) und schickt sie als
+`screen.refs.document_id` und `page` mit. Den Seitentext holt der Server
+selbst (`document_page` in `council/store_unterlagen.py`, aus den
+Seitenanfängen in `council_documents`). **Nur der Verweis reist, nie der
+Notiztext.**
+
+**Vorschau der Seite.** In der Auswahl steht die gewählte Seite als Bild
+daneben, mit ‹ › zum Blättern; über einem Chip erscheint sie beim Überfahren
+mit der Maus oder beim Fokus mit der Tastatur. Der Browser darf das PDF nicht
+selbst vom Ratsinfo laden (keine CORS-Kopfzeilen), deshalb rendert der Server:
+`GET /api/council/documents/{id}/page/{n}?w=320|640|1280` (1280 für die
+Vergrößerung) und
+`…/documents/{id}/pages` (`council/page_images.py`). Nur mit Konto, nur
+Adressen aus der eigenen Datenbank und nur vom Ratsinfo; PDF und Seitenbilder
+liegen in `data/page-images/` mit Obergrenze (400 MB PDFs, 200 MB Bilder, das
+zuletzt Benutzte bleibt). Das PDF kommt gestreamt: Über 60 MB bricht der
+Abruf ab, schon an der angekündigten Länge oder beim Lesen, und die Absage
+bleibt je Unterlage gemerkt (zu groß oder kein PDF 24 h, Abruffehler 5 min).
+Höchstens zwei Abrufe oder Renderings laufen zugleich. PyMuPDF liegt auf dev und Prod in der venv, ist aber
+bewusst nicht in `requirements.txt` (AGPL); wo es fehlt, antwortet der
+Endpunkt 503 und die Vorschau sagt „Keine Vorschau“.
+
 Zwei Geräte, eine Notiz: Jede Notiz trägt eine Version. Wer eine ältere
 schickt, bekommt 409 und den neuen Stand, und der Client fragt, statt still
 zu überschreiben. Ein Feld speichert dafür nie zweimal zugleich, und die
@@ -664,7 +693,8 @@ Was man dazu sagen muss, steht auf der Seite und nicht im Kleingedruckten:
 1. Wer alle Wege zu den Notizen verliert, verliert die Notizen. Ratslotse
    kann sie nicht zurückholen.
 2. Der Server kann nicht in ihnen suchen. Suche geht nur auf dem Gerät.
-3. „Frag den Rat“ kennt sie nicht. Keine Notiz geht an ein Sprachmodell.
+3. „Frag den Rat“ kennt sie nicht. Keine Notiz geht an ein Sprachmodell; „Im Chat
+   fragen“ an einem Verweis schickt nur Kennung und Seite der Unterlage.
 4. Im Web ist das Versprechen schwächer als in der App: Den Code, der
    verschlüsselt, liefert im Browser derselbe Server, der die Daten
    speichert. Die App bringt ihren Code aus dem Store mit.

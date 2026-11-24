@@ -173,14 +173,17 @@ def get(session: requests.Session, page: str, *, timeout: float = 20,
     return response
 
 
-def fetch(session: requests.Session, url: str, *, timeout: float = 45) -> requests.Response:
+def fetch(session: requests.Session, url: str, *, timeout: float = 45, stream: bool = False) -> requests.Response:
     """Eine gespeicherte Adresse holen (ein PDF, eine Anlage).
 
     Eine frühere Ratsinfo-Adresse wird vorher umgezogen; liegt das Ziel im
     Ratsinfo, gilt dieselbe Prüfung wie für Seiten. Andere Hosts (Stadt-
     Website, Open Data) laufen unverändert durch."""
     url = current(url) or url
-    response = session.get(url, timeout=timeout)
+    # ``stream=True``: Der Inhalt kommt erst beim Lesen — wer eine Obergrenze
+    # hat, liest selbst und hört rechtzeitig auf (``council/page_images.py``).
+    # ``check`` braucht dafür nichts vom Inhalt, nur Hosts und Statuscodes.
+    response = session.get(url, timeout=timeout, stream=stream)
     if is_ris(url):
         check(response)
     response.raise_for_status()

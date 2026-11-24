@@ -3934,6 +3934,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/council/documents/{document_id}/page/{page}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Document Page Image
+         * @description Eine Seite einer Unterlage als Bild — gerendert einmal, dann aus der Ablage.
+         */
+        get: operations["document_page_image_api_council_documents__document_id__page__page__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/council/documents/{document_id}/pages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Document Pages
+         * @description Wie viele Seiten eine Unterlage hat — aus dem Steckbrief, sonst aus dem PDF.
+         */
+        get: operations["document_pages_api_council_documents__document_id__pages_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/council/elected": {
         parameters: {
             query?: never;
@@ -12129,6 +12169,16 @@ export interface components {
             districts: unknown;
         };
         /**
+         * DocumentPages
+         * @description Wie viele Seiten eine Unterlage hat — für das Blättern in der Vorschau.
+         */
+        DocumentPages: {
+            /** Document Id */
+            document_id: number;
+            /** N Pages */
+            n_pages: number;
+        };
+        /**
          * DossierGist
          * @description Inhaltssatz zu einer Unterlage (belegt aus Seite 1–2).
          */
@@ -13471,10 +13521,14 @@ export interface components {
             area?: string | null;
             /** Decision Id */
             decision_id?: number | null;
+            /** Document Id */
+            document_id?: number | null;
             /** Item Number */
             item_number?: string | null;
             /** Ksinr */
             ksinr?: number | null;
+            /** Page */
+            page?: number | null;
             /** Place Id */
             place_id?: string | null;
             /** Slug */
@@ -27158,6 +27212,99 @@ export interface operations {
             };
         };
     };
+    document_page_image_api_council_documents__document_id__page__page__get: {
+        parameters: {
+            query?: {
+                w?: number;
+            };
+            header?: never;
+            path: {
+                document_id: number;
+                page: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Eine Seite einer Unterlage als JPEG, für die Vorschau an einem Notiz-Verweis. `w` ist 320, 640 oder 1280 (die Vergrößerung). Eine getfile-Kennung nennt ein festes Dokument, die Antwort ist deshalb lange cachebar. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "image/jpeg": string;
+                };
+            };
+            /** @description Unbekannte Unterlage oder Seite, die es nicht gibt. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Die Unterlage ist für eine Vorschau zu groß. */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Das Ratsinfo hat das PDF nicht geliefert. */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Auf diesem Server gibt es keine Vorschau (PyMuPDF fehlt). */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    document_pages_api_council_documents__document_id__pages_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                document_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentPages"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     elected_council_api_council_elected_get: {
         parameters: {
             query?: never;
@@ -32108,4 +32255,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: f5627273205ae2c23da10ac8f2bb4d9432625c662a67295beb643f77776b3384
+// vertrag-sha256: 352aee3ce543302ed1f0b36400235c2fd23281ecf450666d717c98027fffe321

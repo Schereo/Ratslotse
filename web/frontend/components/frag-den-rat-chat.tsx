@@ -2,9 +2,11 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { ArrowRight, RotateCcw, Square } from "lucide-react";
+import { ArrowRight, FileText, RotateCcw, Square, X } from "lucide-react";
 
 import { AntwortText } from "@/components/qa-bausteine";
+import { useChatBridge } from "@/components/notiz/chat-bridge";
+import { docRefHref, docRefName, type DocRefAttrs } from "@/lib/doc-ref";
 import { GespraecheEinwilligung } from "@/components/gespraeche-einwilligung";
 import { reportBadgeEvent } from "@/components/badges";
 import { apiUrl } from "@/lib/api";
@@ -24,12 +26,14 @@ import { cn } from "@/lib/utils";
  *  kostet das?" wird zu ihm. */
 export type ChatSeite = {
   route: string;
-  refs: { ksinr?: number; item_number?: string; decision_id?: number };
+  refs: { ksinr?: number; item_number?: string; decision_id?: number; document_id?: number; page?: number };
 };
 
 type Runde = {
   key: number;
   question: string;
+  /** Die Stelle in einer Unterlage, zu der gefragt wurde (Verweis aus der Notiz). */
+  bezug?: DocRefAttrs;
   answer: string;
   sources: QaSource[];
   followups: string[];
@@ -71,7 +75,23 @@ export function FragDenRatChat({ seite, vorschlaege, fallbackHref, platzhalter }
   const abbruch = useRef<AbortController | null>(null);
   const naechster = useRef(1);
   const endeRef = useRef<HTMLDivElement | null>(null);
+  const formRef = useRef<HTMLFormElement | null>(null);
   useEffect(() => () => abbruch.current?.abort(), []);
+  // Ein Verweis aus der Notiz („Im Chat fragen“): Er bleibt als Bezug stehen,
+  // bis man ihn wegnimmt — auch Nachfragen meinen dann diese Stelle.
+  const [bezug, setBezug] = useState<DocRefAttrs | null>(null);
+  const bridge = useChatBridge();
+  const register = bridge?.register;
+  useEffect(() => {
+    if (!register || !user) return;
+    return register((ref) => {
+      setBezug(ref);
+      requestAnimationFrame(() => {
+        formRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+        formRef.current?.querySelector<HTMLInputElement>("input")?.focus({ preventScroll: true });
+      });
+    });
+  }, [register, user]);
 
   const patchLetzte = (fn: (r: Runde) => Partial<Runde>) =>
     setRunden((rs) => rs.map((r, i) => (i === rs.length - 1 ? { ...r, ...fn(r) } : r)));
@@ -94,8 +114,10 @@ export function FragDenRatChat({ seite, vorschlaege, fallbackHref, platzhalter }
     abbruch.current = ctrl;
     setFrage("");
     setLaedt(true);
+    const stelle = bezug;
     setRunden((rs) => [...rs.map((r) => ({ ...r, followups: [] })), {
       key: naechster.current++, question: text, answer: "", sources: [], followups: [], schritt: "expand",
+      ...(stelle ? { bezug: stelle } : {}),
     }]);
     requestAnimationFrame(() => endeRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" }));
     try {
@@ -105,7 +127,10 @@ export function FragDenRatChat({ seite, vorschlaege, fallbackHref, platzhalter }
           question: text, history: verlauf, conversation_id: gespraechId,
           previous_answer: vorherige, from_suggestion: ausVorschlag,
           // `page`: Das Gespräch gehört auf die Fragen-Seite, nicht in Lottis Fenster.
-          screen: { ...seite, surface: "page" },
+          screen: { ...seite, surface: "page",
+            // Nur Kennung und Seite — den Text holt der Server selbst.
+            refs: stelle ? { ...seite.refs, document_id: stelle.documentId, ...(stelle.page ? { page: stelle.page } : {}) }
+              : seite.refs },
         }),
         signal: ctrl.signal,
       });
@@ -215,8 +240,20 @@ export function FragDenRatChat({ seite, vorschlaege, fallbackHref, platzhalter }
           ))}
         </ul>
       )}
-      <form className="flex gap-2 p-4" onSubmit={(e) => { e.preventDefault(); void fragen(frage, false); }}>
-        <Feld wert={frage} setzen={setFrage} platzhalter={runden.length ? "Nachfragen …" : platzhalter} />
+      {bezug && (
+        <div className="flex items-center gap-2 px-4 pt-4 text-sm">
+          <span className="flex-none text-muted-foreground">Zu</span>
+          <span className="flex min-w-0 flex-1"><BezugChip r={bezug} /></span>
+          <button type="button" onClick={() => setBezug(null)} aria-label={`Bezug entfernen: ${docRefName(bezug)}`}
+            className="ml-auto inline-flex h-11 w-11 flex-none items-center justify-center rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground">
+            <X className="h-4 w-4" aria-hidden />
+          </button>
+        </div>
+      )}
+      <form ref={formRef} className="flex gap-2 p-4" onSubmit={(e) => { e.preventDefault(); void fragen(frage, false); }}>
+        <Feld wert={frage} setzen={setFrage}
+          platzhalter={bezug ? `Deine Frage zu ${bezug.page ? `Seite ${bezug.page}` : "dieser Unterlage"} …`
+            : runden.length ? "Nachfragen …" : platzhalter} />
         {laedt ? (
           <button type="button" onClick={stopp} aria-label="Antwort anhalten"
             className="inline-flex h-11 w-11 flex-none items-center justify-center rounded-xl border border-border text-foreground hover:bg-accent">
@@ -246,6 +283,7 @@ function RundeAnsicht({ r, nochmal }: { r: Runde; nochmal: () => void }) {
   }, [idToNum, r.sources]);
   return (
     <div>
+      {r.bezug && <p className="mb-1 flex justify-end"><BezugChip r={r.bezug} /></p>}
       <p className="ml-auto w-fit max-w-[92%] rounded-2xl rounded-br-md bg-primary/[0.08] px-3 py-2 text-sm text-foreground">
         {r.question}
       </p>
@@ -293,6 +331,18 @@ function RundeAnsicht({ r, nochmal }: { r: Runde; nochmal: () => void }) {
         </ol>
       )}
     </div>
+  );
+}
+
+/** Die Stelle als Chip — derselbe wie in der Notiz, hier nur zum Öffnen. */
+function BezugChip({ r }: { r: DocRefAttrs }) {
+  return (
+    <a href={docRefHref(r)} target="_blank" rel="noreferrer" title={`${docRefName(r)} öffnen`}
+      className="inline-flex min-w-0 max-w-full items-center gap-1 rounded-md border border-primary/30 bg-primary/[0.06] px-1.5 text-[13px] leading-6 text-foreground hover:bg-primary/[0.1]">
+      <FileText className="h-3.5 w-3.5 flex-none text-primary" aria-hidden />
+      <span className="truncate">{r.label}</span>
+      {r.page && <span className="flex-none text-muted-foreground">S. {r.page}</span>}
+    </a>
   );
 }
 

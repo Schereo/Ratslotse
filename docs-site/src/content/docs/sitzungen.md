@@ -337,6 +337,14 @@ Vorschlagsfragen darunter schreibt ein Modell passend zu genau diesem
 Gegenstand. Beides steht unter
 [Frag den Rat](/docs/frag-den-rat/#auf-der-seite-eines-beschlusses-oder-punkts).
 
+Fragt jemand aus einem Verweis in der eigenen Notiz („Im Chat fragen“), steht
+über dem Feld ein Bezug auf eine Unterlage und Seite. Die Frage trägt dann
+`refs.document_id` und `page`; der Server schlägt den Text der Seite nach und
+gibt ihn dem Modell als feste Stelle mit (`qa.stelle_block`). Fehlt der Text
+(Scan, noch nicht geladen), sagt die Antwort das, statt ihn zu erraten. Den
+Weg in der Notiz beschreibt
+[Notizen](/docs/app-und-konten/#notizen-auf-dem-gerät-verschlüsselt).
+
 ## Mitlesen
 
 Die Ansicht `/council/sitzung/mitlesen` geht die Sitzung Punkt für Punkt

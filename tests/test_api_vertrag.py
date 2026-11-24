@@ -27,7 +27,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "web" / "backend"))
 # Leer seit 09/2026 — ein neuer Eintrag hier ist eine Entscheidung, kein Rest.
 OFFEN: set[tuple[str, str]] = set()
 
-# Kein JSON-Body: zwei SSE-Ströme, zwei Bilder und der Kalender-Feed. Ihre Medientypen und
+# Kein JSON-Body: SSE-Ströme, Bilder und der Kalender-Feed. Ihre Medientypen und
 # Ereignis-Arten stehen als `responses=` am Dekorator (s. `antworten.py`,
 # Abschnitt „Antworten, die kein JSON sind"); der Test unten prüft, dass sie
 # dort auch wirklich ankommen.
@@ -36,6 +36,7 @@ KEIN_JSON = {
     ("post", "/api/council/explain"),
     ("get", "/api/council/deep-research/{job_id}/events"),
     ("get", "/api/council/plan-bild/{document_id}"),
+    ("get", "/api/council/documents/{document_id}/page/{page}"),
     ("get", "/api/calendar/{token}.ics"),
     ("get", "/api/admin/live-probe"),
     ("get", "/api/wahlabend/bild.png"),
@@ -50,6 +51,7 @@ KEIN_JSON_MEDIENTYP = {
     ("post", "/api/council/explain"): "text/event-stream",
     ("get", "/api/council/deep-research/{job_id}/events"): "text/event-stream",
     ("get", "/api/council/plan-bild/{document_id}"): "image/jpeg",
+    ("get", "/api/council/documents/{document_id}/page/{page}"): "image/jpeg",
     ("get", "/api/calendar/{token}.ics"): "text/calendar",
     ("get", "/api/admin/live-probe"): "text/event-stream",
     ("get", "/api/wahlabend/bild.png"): "image/png",

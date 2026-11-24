@@ -19,6 +19,9 @@ import { ShareButton } from "@/components/share-button";
 import { normalizeParty, partyBrand } from "@/components/decision-ui";
 import { AufEinenBlick, FragDenRat, Unterlagen, Vorgeschichte, type Punkt } from "@/components/session/item-sections";
 import { MeineNotiz } from "@/components/notiz/meine-notiz";
+import { ChatBridgeProvider } from "@/components/notiz/chat-bridge";
+import { noteDocuments } from "@/lib/doc-ref";
+import { istRis } from "@/lib/ris";
 import { Argumente, Fraktionen } from "@/components/session/item-arguments";
 import { kurzfassung } from "@/components/tagesordnung";
 import { KiStern } from "@/components/ki-stern";
@@ -142,6 +145,9 @@ function PunktView({ p }: { p: Punkt }) {
 
   return (
     <SeitenBegriffe begriffe={p.terms}>
+    {/* Notiz (links) und „Frag den Rat“ (rechts) reden über diese Brücke:
+        „Im Chat fragen“ an einem Verweis in der Notiz. */}
+    <ChatBridgeProvider>
     <div className="mx-auto max-w-[1240px]">
       <Link href={sitzungHref(p.ksinr, [it.item_number])}
         className="inline-flex min-h-11 items-center gap-2 rounded-lg text-sm text-muted-foreground transition-colors hover:text-foreground">
@@ -243,7 +249,8 @@ function PunktView({ p }: { p: Punkt }) {
             {panel("history", <Vorgeschichte p={p} titel={mitReitern ? null : "Vorgeschichte"} />)}
             {panel("documents", <Unterlagen p={p} titel={mitReitern ? null : "Unterlagen"} />)}
             {panel("note", (
-              <MeineNotiz targetKind="agenda_item" targetKey={`${p.ksinr}|${it.item_number}`} rows={14} />
+              <MeineNotiz targetKind="agenda_item" targetKey={`${p.ksinr}|${it.item_number}`} rows={14}
+              documents={noteDocuments(p.documents, istRis)} />
             ), "breit:sticky breit:top-[calc(env(safe-area-inset-top)+4.75rem)] desk:top-6")}
             {!current && (
               <p className="rounded-xl border border-dashed border-border p-4 text-hinweis text-muted-foreground">
@@ -277,6 +284,7 @@ function PunktView({ p }: { p: Punkt }) {
         </aside>
       </div>
     </div>
+    </ChatBridgeProvider>
     </SeitenBegriffe>
   );
 }
