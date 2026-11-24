@@ -29,6 +29,7 @@ import { RanglisteSchiene } from "@/components/grafik/rangliste-schiene";
 import { ArtLegende, VorzeichenSaeulen } from "@/components/grafik/vorzeichen-saeulen";
 import { KiStern } from "@/components/ki-stern";
 import { ErklaerBereich, Erklaert } from "@/components/session/begriffe";
+import { Beleg } from "@/components/session/dossier";
 import { ABSCHNITT, KARTENTITEL, META, ZITAT } from "@/components/session/unterlagen-typo";
 import type { ApiAntwort } from "@/lib/vertrag";
 import { cn } from "@/lib/utils";
@@ -168,17 +169,20 @@ function Abriss({ about, gesamt, hinweis, url }: {
       {gesamt && (
         <>
           <h3 className={cn(ABSCHNITT, "mt-5")}>Das Gesamtbild</h3>
-          <ErklaerBereich className="mt-2">
-            <p className="text-lese text-foreground">
-              {gesamt.statements.map((s, i) => (
-                <span key={i}>
-                  {i > 0 && " "}
-                  <Erklaert text={s.text} />{" "}
-                  <Seite url={url} page={s.page} />
-                </span>
-              ))}
-            </p>
-          </ErklaerBereich>
+          {/* Belege wie im Dossier: eine Nummer am Satz, der Tipp zeigt das
+              wörtliche Zitat und springt ins PDF — keine Seitenzahl im Lesetext
+              (Tim, 24.11.2026: „sehen irgendwie komisch aus“). */}
+          <ul className="mt-2 flex list-disc flex-col gap-1.5 pl-5 marker:text-muted-foreground">
+            {gesamt.statements.map((s, i) => (
+              <li key={i} className="text-lese text-foreground">
+                <ErklaerBereich>
+                  <Erklaert text={s.text} />
+                  <Beleg a={{ quote: s.quote, list_no: i + 1, page: s.page, doc_label: "Vorbericht",
+                    url: url ? (s.page ? `${url}#page=${s.page}` : url) : null }} />
+                </ErklaerBereich>
+              </li>
+            ))}
+          </ul>
           {gesamt.facts.length > 0 && (
             // So viele Spalten wie Eckzahlen (zwei bis vier) — vier feste Spalten
             // ließen bei zwei Zahlen die halbe Zeile leer.

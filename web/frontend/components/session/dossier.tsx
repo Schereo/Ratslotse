@@ -16,7 +16,13 @@ import { ErklaerBereich, Erklaert } from "@/components/session/begriffe";
 export type Dossier = NonNullable<ApiAntwort<"/council/session/{ksinr}/item">["dossier"]>;
 type Aussage = Dossier["sections"][number]["statements"][number];
 
-export function Beleg({ a }: { a: Aussage }) {
+/** Was ein Beleg braucht — eine Dossier-Aussage trägt es, ein Satz aus dem
+ *  Gesamtbild des Haushaltsentwurfs auch (`haushaltsentwurf-befunde.tsx`). */
+export type BelegDaten = Pick<Aussage, "quote"> & {
+  list_no?: number | null; doc_label?: string | null; page?: number | null; url?: string | null;
+};
+
+export function Beleg({ a }: { a: BelegDaten }) {
   const [offen, setOffen] = useState(false);
   return (
     <>
