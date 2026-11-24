@@ -62,6 +62,11 @@ N6_WOCHE = "n6_woche"
 #: Der einzige Anlass, der nicht aus dem Rat kommt, sondern von uns; deshalb
 #: geht er auch nur von Hand raus (Admin-Panel), nie aus einem Cron.
 N7_NEWS = "n7_news"
+#: Jemand lädt dich zu einer gemeinsamen Notiz ein (Schalter ``notizen-teilen``).
+#: Kein Ratsvorgang, sondern eine Person, die wartet — deshalb ``wichtig``
+#: (an der Tagesgrenze vorbei, nie in der Nachtruhe) und sofort zugestellt
+#: (``zustellen_an``), nicht erst beim nächsten Cron-Lauf.
+N8_NOTIZ_EINLADUNG = "n8_note_invite"
 
 #: Anlässe, die an einen Termin gebunden sind: Kommen sie einen Tag später, sind
 #: sie nicht verspätet, sondern wertlos — die Sitzung hat dann stattgefunden.
@@ -102,6 +107,7 @@ NOTIFY_DEFAULTS: dict[str, bool] = {
     # neuen Feature zu erfahren, ohne selbst nachzusehen. Ab Werk an; wer sie
     # nicht will, hat hier den Schalter (Tims Entscheidung 07.09.2026).
     N7_NEWS: True,
+    N8_NOTIZ_EINLADUNG: True,
 }
 
 #: Was ein Ratsmandat (Recht ``mandate``, siehe kern/roles.py) an den
@@ -158,6 +164,14 @@ NOTIFY_LABELS: dict[str, tuple[str, str]] = {
     N7_NEWS: ("Neu bei Ratslotse",
               "Was eine neue Version bringt — ein paar Mal im Jahr, per Mail auch dann, "
               "wenn die übrigen Benachrichtigungen aus sind"),
+    N8_NOTIZ_EINLADUNG: ("Einladungen zu gemeinsamen Notizen",
+                         "Wenn dich jemand einlädt, eine Notiz zu einem Punkt gemeinsam zu schreiben"),
+}
+
+#: Anlässe hinter einem Feature-Schalter: Ihr Schalter in den Einstellungen
+#: erscheint erst, wenn das Feature an ist.
+NOTIFY_FEATURE: dict[str, str] = {
+    N8_NOTIZ_EINLADUNG: "notizen-teilen",
 }
 
 
@@ -371,6 +385,16 @@ def zustellen(store, jetzt: datetime | None = None, stats: dict | None = None) -
     if stats is not None:
         stats["Zugestellte Benachrichtigungen"] = verschickt
     return verschickt
+
+
+def zustellen_an(store, owner_id: int, jetzt: datetime | None = None) -> int:
+    """Die fälligen Meldungen EINES Kontos ausliefern — für Anlässe, die eine
+    Person auslöst (eine Einladung), statt bis zum nächsten Cron-Lauf zu
+    warten. Dieselben Grenzen wie ``zustellen``."""
+    n = _jetzt(jetzt)
+    if ist_nachtruhe(n):
+        return 0
+    return _zustellen_fuer(store, owner_id, _tag(n), n.isoformat(timespec="seconds"))
 
 
 def _zustellen_fuer(store, owner_id: int, heute: str, jetzt_iso: str) -> int:

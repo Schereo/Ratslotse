@@ -6822,10 +6822,58 @@ SEITENBILD_JPEG: dict[int | str, dict[str, Any]] = {
 
 
 class SharedNoteMember(TypedDict):
-    """Ein Mitglied einer gemeinsamen Notiz — Anzeigename, keine Adresse."""
+    """Ein Mitglied einer gemeinsamen Notiz — Anzeigename, keine Adresse. Der
+    öffentliche Schlüssel ergibt den Sicherheitscode, den Mitglieder
+    miteinander vergleichen können (``null``: noch kein Schlüsselpaar)."""
     user_id: int
     display_name: str
     role: Literal["owner", "editor"]
+    public_key: str | None
+
+
+class PendingGrant(TypedDict):
+    """Hat eine Einladung per Adresse angenommen und wartet auf den
+    Notizschlüssel — den verpackt der Browser eines Mitglieds für ``public_key``."""
+    invite_id: str
+    user_id: int
+    display_name: str
+    public_key: str
+
+
+class NoteGrant(TypedDict):
+    """Der Notizschlüssel, per ECDH für den öffentlichen Schlüssel des
+    Eingeladenen verpackt: kurzlebiger öffentlicher Schlüssel, IV, Geheimtext."""
+    epk: str
+    iv: str
+    ct: str
+
+
+class NoteInvitation(TypedDict):
+    """Eine Einladung per Adresse aus Sicht des eingeladenen Kontos."""
+    id: str
+    note_id: str
+    target_kind: Literal["agenda_item", "decision"]
+    target_key: str
+    target_title: str | None
+    inviter_name: str
+    created_at: str
+    expires_at: str
+    accepted: bool
+    grant: NoteGrant | None
+    already_member: bool
+
+
+class NoteIdentity(TypedDict):
+    """Das eigene Schlüsselpaar: öffentlich roh (P-256, 65 Byte), privat mit
+    dem eigenen Datenschlüssel verpackt."""
+    public_key: str
+    private_iv: str
+    private_ct: str
+    key_version: int
+
+
+class NoteIdentityState(TypedDict):
+    identity: NoteIdentity | None
 
 
 class SharedNote(TypedDict):
@@ -6841,12 +6889,15 @@ class SharedNote(TypedDict):
     key_ct: str
     key_version: int
     members: list[SharedNoteMember]
+    pending: list[PendingGrant]
     created_at: str
     updated_at: str
 
 
 class SharedNoteList(TypedDict):
     notes: list[SharedNote]
+    #: Offene Einladungen per Adresse AN dieses Konto (zum selben Ziel, wenn gefiltert).
+    invitations: list[NoteInvitation]
 
 
 class SharedNoteInvite(TypedDict):

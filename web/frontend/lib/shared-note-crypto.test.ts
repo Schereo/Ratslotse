@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
-  fromB64Url, inviteVerifier, makeInvite, newNoteKey, openBlob, openInvite, sealBlob, toB64Url, unwrapForMe, wrapForMe,
+  fromB64Url, grantFor, inviteVerifier, makeInvite, newIdentity, newNoteKey, openBlob, openGrant, openIdentity,
+  openInvite, safetyCode, sealBlob, toB64Url, unwrapForMe, wrapForMe,
 } from "./shared-note-crypto";
 
 const dk = () => crypto.subtle.importKey("raw", crypto.getRandomValues(new Uint8Array(32)), { name: "AES-GCM" }, false,
@@ -60,5 +61,39 @@ describe("Schlüssel gemeinsamer Notizen", () => {
     const u = new Uint8Array([251, 255, 0, 62, 63]);
     expect(fromB64Url(toB64Url(u))).toEqual(u);
     expect(toB64Url(u)).not.toMatch(/[+/=]/);
+  });
+});
+
+describe("Einladen per Adresse", () => {
+  it("das Schlüsselpaar öffnet nur der eigene Datenschlüssel, und die Hälften gehören zusammen", async () => {
+    const ben = await dk();
+    const { identity, stored } = await newIdentity(ben);
+    expect(stored.public_key).toBe(identity.publicKey);
+    expect((await openIdentity(ben, stored))?.publicKey).toBe(stored.public_key);
+    expect(await openIdentity(await dk(), stored)).toBeNull();
+    // Ein fremder öffentlicher Schlüssel neben dem eigenen privaten fällt auf.
+    const fremd = (await newIdentity(ben)).stored.public_key;
+    expect(await openIdentity(ben, { ...stored, public_key: fremd })).toBeNull();
+  });
+
+  it("die Übergabe öffnet nur das eingeladene Konto, für diese Notiz", async () => {
+    const nk = await newNoteKey();
+    const ben = (await newIdentity(await dk())).identity;
+    const carla = (await newIdentity(await dk())).identity;
+    const g = await grantFor(nk, ben.publicKey, "notiz-a", 17);
+    expect((await openGrant(ben, g, "notiz-a", 17))?.raw).toEqual(nk.raw);
+    expect(await openGrant(carla, g, "notiz-a", 17)).toBeNull();
+    expect(await openGrant(ben, g, "notiz-b", 17)).toBeNull();
+    expect(await openGrant(ben, g, "notiz-a", 18)).toBeNull();
+    expect(await openGrant(ben, { ...g, ct: g.ct.slice(0, -4) + "AAA=" }, "notiz-a", 17)).toBeNull();
+  });
+
+  it("der Sicherheitscode: fünf Fünfergruppen, fest je Schlüssel", async () => {
+    const a = (await newIdentity(await dk())).identity.publicKey;
+    const b = (await newIdentity(await dk())).identity.publicKey;
+    const code = await safetyCode(a);
+    expect(code).toMatch(/^\d{5}( \d{5}){4}$/);
+    expect(await safetyCode(a)).toBe(code);
+    expect(await safetyCode(b)).not.toBe(code);
   });
 });

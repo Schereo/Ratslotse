@@ -720,6 +720,8 @@ Notizfeld: „Nur ich“, die gemeinsamen Notizen zu diesem Ziel, „+ Gemeinsam
 | Inhalt | ein Yjs-Dokument: verschlüsselter Stand plus verschlüsselte, nummerierte Änderungen | `shared_notes.snapshot`, `shared_note_updates` |
 | Einladung | Notizschlüssel verpackt mit einem Geheimnis, das nur im Link-Anker steht | `shared_note_invites` (das Geheimnis nie) |
 | Nachweis | aus dem Geheimnis abgeleitet (HKDF, eigene Kennung), öffnet nichts | beim Server nur sein SHA-256 (`verifier_hash`) |
+| Schlüsselpaar je Konto | ECDH P-256; privat mit dem eigenen Datenschlüssel verpackt | `note_identities` (öffentlich offen) |
+| Übergabe | Notizschlüssel per ECDH (kurzlebiger Schlüssel, HKDF, AES-GCM) für den öffentlichen Schlüssel des Eingeladenen | `shared_note_address_invites.grant_*` |
 
 **Einladen per Link.** Der Link heißt `/notiz-einladung?i=<Kennung>#<Geheimnis>`.
 Kein Browser schickt den Anker an einen Server; die Seite rettet ihn vor der
@@ -735,6 +737,27 @@ Einladungen sieht und zieht es zurück, die Leitung alle. **Endet eine
 Mitgliedschaft** — entfernt, gegangen, Konto gelöscht —, fallen alle offenen
 Einladungen der Notiz weg: Wer geht, kennt den alten Schlüssel und womöglich
 die Links der anderen und wäre damit sonst gleich wieder drin.
+
+**Einladen per Adresse.** Daneben lässt sich ein bestimmtes Konto einladen
+(`lib/shared-note-invite.ts`, `POST /{id}/address-invites`). Die Antwort ist
+immer dieselbe, ob es zu der Adresse ein Konto gibt oder nicht; Einladung und
+Meldung entstehen erst nach der Antwort, damit auch die Dauer nichts verrät.
+Gibt es das Konto, bekommt es den Anlass `n8_note_invite` über
+`notify.einreihen` (an der Tagesgrenze vorbei, nie in der Nachtruhe, sofort
+zugestellt; wer Benachrichtigungen aus hat, bekommt keine Mail) und sieht die
+Einladung an der Notiz des Punkts sowie unter `/notiz-einladung?a=<Kennung>`.
+Annehmen braucht ein Schlüsselpaar, das der Browser beim ersten Öffnen einer
+gemeinsamen Notiz oder beim Annehmen anlegt. Danach übergibt der Browser eines
+Mitglieds, das die Notiz offen hat, den Notizschlüssel von selbst (die
+Live-Verbindung meldet `pending`); die eingeladene Person packt ihn mit ihrem
+privaten Schlüssel aus und tritt bei. Nur dieses Konto kann annehmen. Den
+öffentlichen Schlüssel muss man dafür dem Server glauben. Deshalb zeigt die
+Mitgliederliste **Sicherheitscodes** (fünf Fünfergruppen aus dem SHA-256 des
+öffentlichen Schlüssels): Der eigene entsteht aus dem Schlüsselpaar im
+Browser, die der anderen merkt sich der Browser beim ersten Sehen. Zeigt der
+Server später einen anderen, steht das an der Person, und eine Übergabe an
+einen geänderten Schlüssel wartet auf eine Freigabe von Hand. Eine Einladung
+per Adresse gilt 14 Tage; geht die einladende Person, fällt sie weg.
 
 **Live.** `web/frontend/lib/shared-note-live.ts` hält das Yjs-Dokument über
 einen WebSocket (`{id}/live` neben den übrigen Pfaden der gemeinsamen Notizen; WebSockets stehen in keinem OpenAPI-Vertrag) mit den anderen im Takt: Tippen
@@ -763,7 +786,9 @@ Was ausdrücklich noch fehlt:
    Notizschlüssel kennt er aber; gegen einen Server, der ihm trotzdem
    Änderungen gäbe, hilft erst ein neuer Schlüssel für alle übrigen.
 2. **Wer den ganzen Link hat, kann beitreten**, bis er abläuft, zurückgezogen
-   ist oder eine Mitgliedschaft endet. Die Leitung sieht, wer dabei ist.
+   ist oder eine Mitgliedschaft endet. Die Leitung sieht, wer dabei ist. Eine
+   Einladung per Adresse ist dagegen an ein Konto gebunden — dafür hängt sie
+   am öffentlichen Schlüssel, den der Server liefert (Sicherheitscodes, s. o.).
 3. **Der Server sieht**, wer mit wem eine gemeinsame Notiz zu welchem Punkt
    hat, wann geschrieben wird und wie groß die Änderungen sind.
 4. **Die App** kennt gemeinsame Notizen noch nicht.

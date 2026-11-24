@@ -5151,6 +5151,87 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/note-invites/address/{invite_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Address Invite Info */
+        get: operations["address_invite_info_api_note_invites_address__invite_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/note-invites/address/{invite_id}/accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Accept Address Invite
+         * @description Annehmen. Das Konto braucht dafür ein Schlüsselpaar (``PUT /identity``),
+         *     sonst kann niemand den Notizschlüssel für es verpacken. Wer gerade in der
+         *     Notiz ist, bekommt Bescheid und übergibt ihn sofort.
+         */
+        post: operations["accept_address_invite_api_note_invites_address__invite_id__accept_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/note-invites/address/{invite_id}/decline": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Decline Address Invite
+         * @description Ablehnen. Die einladende Person erfährt es nicht eigens.
+         */
+        post: operations["decline_address_invite_api_note_invites_address__invite_id__decline_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/note-invites/address/{invite_id}/join": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Join Address Invite
+         * @description Beitreten, sobald die Übergabe da ist: Der Browser hat den Schlüssel mit
+         *     dem eigenen privaten Schlüssel ausgepackt und mit dem Datenschlüssel neu
+         *     verpackt.
+         */
+        post: operations["join_address_invite_api_note_invites_address__invite_id__join_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/note-invites/{invite_id}": {
         parameters: {
             query?: never;
@@ -6054,6 +6135,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/shared-notes/identity": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Identity */
+        get: operations["get_identity_api_shared_notes_identity_get"];
+        /**
+         * Put Identity
+         * @description Das eigene Schlüsselpaar anlegen — oder ersetzen, wenn sich das alte
+         *     nicht mehr öffnen ließ. Prüfen kann der Server die Verpackung nicht: Wer
+         *     Unsinn schickt, kann nur selbst keine Einladung per Adresse annehmen.
+         */
+        put: operations["put_identity_api_shared_notes_identity_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/shared-notes/{note_id}": {
         parameters: {
             query?: never;
@@ -6070,6 +6174,50 @@ export interface paths {
          *     über ``DELETE /{id}/members/{eigene Kennung}``.
          */
         delete: operations["delete_shared_api_shared_notes__note_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/shared-notes/{note_id}/address-invites": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Invite Address
+         * @description Ein bestimmtes Konto einladen. Die Antwort ist IMMER dieselbe — ob es
+         *     zu der Adresse ein Konto gibt, erfährt niemand (auch nicht über die
+         *     Dauer: Einladung, Titel und Meldung entstehen erst nach der Antwort).
+         */
+        post: operations["invite_address_api_shared_notes__note_id__address_invites_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/shared-notes/{note_id}/grants/{invite_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Grant Invite
+         * @description Ein Mitglied übergibt den Notizschlüssel an ein Konto, das eine
+         *     Einladung per Adresse angenommen hat — verpackt für dessen öffentlichen
+         *     Schlüssel, den der Server nicht öffnen kann.
+         */
+        post: operations["grant_invite_api_shared_notes__note_id__grants__invite_id__post"];
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -7489,6 +7637,20 @@ export interface components {
              * @default /
              */
             route: string;
+        };
+        /** AddressInviteIn */
+        AddressInviteIn: {
+            /** Email */
+            email: string;
+        };
+        /** AddressJoinIn */
+        AddressJoinIn: {
+            /** Key Ct */
+            key_ct: string;
+            /** Key Iv */
+            key_iv: string;
+            /** Key Version */
+            key_version: number;
         };
         /** AdminAbweisung */
         AdminAbweisung: {
@@ -13931,6 +14093,17 @@ export interface components {
             /** Goals */
             goals: components["schemas"]["Goal"][];
         };
+        /** GrantIn */
+        GrantIn: {
+            /** Ct */
+            ct: string;
+            /** Epk */
+            epk: string;
+            /** For Key */
+            for_key: string;
+            /** Iv */
+            iv: string;
+        };
         /**
          * GrantReceivedList
          * @description Eine eingelesene Liste: EU je Fonds und Förderperiode, dazu der
@@ -14618,6 +14791,17 @@ export interface components {
             per_page: number;
             /** Total */
             total: number;
+        };
+        /** IdentityIn */
+        IdentityIn: {
+            /** Key Version */
+            key_version: number;
+            /** Private Ct */
+            private_ct: string;
+            /** Private Iv */
+            private_iv: string;
+            /** Public Key */
+            public_key: string;
         };
         /**
          * ImportanceBreakdown
@@ -16089,6 +16273,52 @@ export interface components {
             /** Version */
             version: number;
         };
+        /**
+         * NoteGrant
+         * @description Der Notizschlüssel, per ECDH für den öffentlichen Schlüssel des
+         *     Eingeladenen verpackt: kurzlebiger öffentlicher Schlüssel, IV, Geheimtext.
+         */
+        NoteGrant: {
+            /** Ct */
+            ct: string;
+            /** Epk */
+            epk: string;
+            /** Iv */
+            iv: string;
+        };
+        /**
+         * NoteIdentity
+         * @description Das eigene Schlüsselpaar: öffentlich roh (P-256, 65 Byte), privat mit
+         *     dem eigenen Datenschlüssel verpackt.
+         */
+        NoteIdentity: {
+            /** Key Version */
+            key_version: number;
+            /** Private Ct */
+            private_ct: string;
+            /** Private Iv */
+            private_iv: string;
+            /** Public Key */
+            public_key: string;
+        };
+        /** NoteIdentityState */
+        NoteIdentityState: {
+            /**
+             * NoteIdentity
+             * @description Das eigene Schlüsselpaar: öffentlich roh (P-256, 65 Byte), privat mit
+             *     dem eigenen Datenschlüssel verpackt.
+             */
+            identity: {
+                /** Key Version */
+                key_version: number;
+                /** Private Ct */
+                private_ct: string;
+                /** Private Iv */
+                private_iv: string;
+                /** Public Key */
+                public_key: string;
+            } | null;
+        };
         /** NoteIn */
         NoteIn: {
             /** Ciphertext */
@@ -16099,6 +16329,48 @@ export interface components {
             key_version: number;
             /** Version */
             version: number;
+        };
+        /**
+         * NoteInvitation
+         * @description Eine Einladung per Adresse aus Sicht des eingeladenen Kontos.
+         */
+        NoteInvitation: {
+            /** Accepted */
+            accepted: boolean;
+            /** Already Member */
+            already_member: boolean;
+            /** Created At */
+            created_at: string;
+            /** Expires At */
+            expires_at: string;
+            /**
+             * NoteGrant
+             * @description Der Notizschlüssel, per ECDH für den öffentlichen Schlüssel des
+             *     Eingeladenen verpackt: kurzlebiger öffentlicher Schlüssel, IV, Geheimtext.
+             */
+            grant: {
+                /** Ct */
+                ct: string;
+                /** Epk */
+                epk: string;
+                /** Iv */
+                iv: string;
+            } | null;
+            /** Id */
+            id: string;
+            /** Inviter Name */
+            inviter_name: string;
+            /** Note Id */
+            note_id: string;
+            /** Target Key */
+            target_key: string;
+            /**
+             * Target Kind
+             * @enum {string}
+             */
+            target_kind: "agenda_item" | "decision";
+            /** Target Title */
+            target_title: string | null;
         };
         /**
          * NoteInviteInfo
@@ -16743,6 +17015,21 @@ export interface components {
              * @default
              */
             label: string;
+        };
+        /**
+         * PendingGrant
+         * @description Hat eine Einladung per Adresse angenommen und wartet auf den
+         *     Notizschlüssel — den verpackt der Browser eines Mitglieds für ``public_key``.
+         */
+        PendingGrant: {
+            /** Display Name */
+            display_name: string;
+            /** Invite Id */
+            invite_id: string;
+            /** Public Key */
+            public_key: string;
+            /** User Id */
+            user_id: number;
         };
         /** PeopleDirectory */
         PeopleDirectory: {
@@ -21777,6 +22064,8 @@ export interface components {
             members: components["schemas"]["SharedNoteMember"][];
             /** Owner Id */
             owner_id: number;
+            /** Pending */
+            pending: components["schemas"]["PendingGrant"][];
             /**
              * Role
              * @enum {string}
@@ -21832,16 +22121,22 @@ export interface components {
         };
         /** SharedNoteList */
         SharedNoteList: {
+            /** Invitations */
+            invitations: components["schemas"]["NoteInvitation"][];
             /** Notes */
             notes: components["schemas"]["SharedNote"][];
         };
         /**
          * SharedNoteMember
-         * @description Ein Mitglied einer gemeinsamen Notiz — Anzeigename, keine Adresse.
+         * @description Ein Mitglied einer gemeinsamen Notiz — Anzeigename, keine Adresse. Der
+         *     öffentliche Schlüssel ergibt den Sicherheitscode, den Mitglieder
+         *     miteinander vergleichen können (``null``: noch kein Schlüsselpaar).
          */
         SharedNoteMember: {
             /** Display Name */
             display_name: string;
+            /** Public Key */
+            public_key: string | null;
             /**
              * Role
              * @enum {string}
@@ -29094,6 +29389,132 @@ export interface operations {
             };
         };
     };
+    address_invite_info_api_note_invites_address__invite_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                invite_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NoteInvitation"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    accept_address_invite_api_note_invites_address__invite_id__accept_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                invite_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NoteInvitation"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    decline_address_invite_api_note_invites_address__invite_id__decline_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                invite_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Abgelehnt */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    join_address_invite_api_note_invites_address__invite_id__join_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                invite_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AddressJoinIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SharedNote"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     invite_info_api_note_invites__invite_id__get: {
         parameters: {
             query?: never;
@@ -30677,6 +31098,59 @@ export interface operations {
             };
         };
     };
+    get_identity_api_shared_notes_identity_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NoteIdentityState"];
+                };
+            };
+        };
+    };
+    put_identity_api_shared_notes_identity_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IdentityIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NoteIdentityState"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     delete_shared_api_shared_notes__note_id__delete: {
         parameters: {
             query?: never;
@@ -30690,6 +31164,82 @@ export interface operations {
         responses: {
             /** @description Gelöscht */
             204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    invite_address_api_shared_notes__note_id__address_invites_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                note_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AddressInviteIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Ok"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    grant_invite_api_shared_notes__note_id__grants__invite_id__post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                note_id: string;
+                invite_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GrantIn"];
+            };
+        };
+        responses: {
+            /** @description Übergeben */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Nicht mehr offen */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -32838,4 +33388,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: b9291a3931a05294548dba97c3b4e6cd5a314fe161122e25dd008b1570a3d8af
+// vertrag-sha256: 8c937c14b45f04b28eadd9313563516d85d74d128ef31222f0aeebfbc35c61e8

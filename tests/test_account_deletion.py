@@ -90,7 +90,9 @@ def test_delete_web_user_really_empties_every_table(tmp_path):
         rest = conn.execute(f"SELECT COUNT(*) FROM {table} WHERE {key} = 1").fetchone()[0]
         assert rest == 0, f"{table} trägt nach der Löschung noch Daten des Kontos"
         fremd = conn.execute(f"SELECT COUNT(*) FROM {table} WHERE {key} = 2").fetchone()[0]
-        assert fremd == 1, f"{table}: fremdes Konto wurde mitgelöscht"
+        # Eine Tabelle mit zwei Kontospalten (einladen/eingeladen) bekam je Spalte eine Zeile.
+        erwartet = sum(1 for t, _ in USER_OWNED_TABLES if t == table)
+        assert fremd == erwartet, f"{table}: fremdes Konto wurde mitgelöscht"
 
     assert conn.execute("SELECT COUNT(*) FROM web_users WHERE id = 1").fetchone()[0] == 0
     assert conn.execute("SELECT COUNT(*) FROM web_users WHERE id = 2").fetchone()[0] == 1

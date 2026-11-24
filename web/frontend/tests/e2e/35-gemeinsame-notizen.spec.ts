@@ -1,6 +1,6 @@
 /**
- * Gemeinsame Notizen (Schalter `notizen-teilen`): anlegen, per Link einladen,
- * beitreten, live zusammen schreiben.
+ * Gemeinsame Notizen (Schalter `notizen-teilen`): anlegen, per Link oder per
+ * Adresse einladen, beitreten, live zusammen schreiben.
  *
  * Gegen das ECHTE Backend samt WebSocket (über den Rewrite von Next, wie auf
  * den Servern), mit zwei frischen Konten in zwei Browsern und je einem
@@ -18,7 +18,7 @@ test.use({ storageState: { cookies: [], origins: [] } });
 
 const neueAdresse = (wer: string) => `${wer}-${Date.now()}-${Math.floor(Math.random() * 1e6)}@example.org`;
 
-async function person(browser: Browser, name: string): Promise<{ ctx: BrowserContext; page: Page }> {
+async function person(browser: Browser, name: string): Promise<{ ctx: BrowserContext; page: Page; email: string }> {
   const ctx = await browser.newContext({ storageState: { cookies: [], origins: [] } });
   const page = await ctx.newPage();
   const cdp = await ctx.newCDPSession(page);
@@ -30,12 +30,13 @@ async function person(browser: Browser, name: string): Promise<{ ctx: BrowserCon
   await page.route("**/api/app-config", (r) => r.fulfill({ json: { min_build: 0,
     features: ["punkt-seite", "notizen", "notizen-teilen"] } }));
   await page.route("**/api/council/session/4654/item**", (r) => r.fulfill({ json: PUNKT }));
+  const email = neueAdresse(name.toLowerCase());
   const r = await page.request.post("/api/auth/register",
-    { data: { display_name: name, email: neueAdresse(name.toLowerCase()), password: "password123" } });
+    { data: { display_name: name, email, password: "password123" } });
   expect(r.ok(), await r.text()).toBeTruthy();
   const s = await page.request.post("/api/onboarding/setup", { data: { step: 3, done: true } });
   expect(s.ok(), await s.text()).toBeTruthy();
-  return { ctx, page };
+  return { ctx, page, email };
 }
 
 const karte = (page: Page) => page.locator("section", { has: page.locator("#meine-notiz") });
@@ -78,6 +79,7 @@ test.describe("Gemeinsame Notizen", () => {
       await ka.getByRole("button", { name: "Einladen" }).click();
       await expect(anna.page.getByRole("dialog")).toHaveCount(0);
       const bereich = ka.getByRole("region", { name: "Zum Mitschreiben einladen" });
+      await bereich.getByRole("button", { name: "Link erstellen" }).click();
       const link = await bereich.getByRole("textbox", { name: "Einladungslink" }).inputValue();
       expect(link).toMatch(/\/notiz-einladung\?i=[\w-]+#[\w-]{43}$/);
       await expect(feldA).toBeEditable();
@@ -121,6 +123,100 @@ test.describe("Gemeinsame Notizen", () => {
       const entsperren = nachher.getByRole("button", { name: "Mit Passkey entsperren" });
       if (await entsperren.isVisible({ timeout: 5_000 }).catch(() => false)) await entsperren.click();
       await expect(nachher.getByRole("textbox", { name: "Gemeinsame Notiz" })).toContainText("und Radweg", { timeout: 15_000 });
+    } finally {
+      await anna.ctx.close();
+      await ben.ctx.close();
+    }
+  });
+
+  test("per Adresse einladen: annehmen, Schlüssel kommt von selbst, Sicherheitscodes stimmen", async ({ browser }) => {
+    const anna = await person(browser, "Anna");
+    const ben = await person(browser, "Ben");
+    try {
+      // Ben hat seine Notizen schon — sein Schlüsselpaar entsteht beim Annehmen.
+      await ben.page.goto(URL);
+      await ben.page.getByRole("tab", { name: "Meine Notiz" }).click();
+      await notizenEinrichten(karte(ben.page));
+
+      await anna.page.goto(URL);
+      await anna.page.getByRole("tab", { name: "Meine Notiz" }).click();
+      const ka = karte(anna.page);
+      await notizenEinrichten(ka);
+      await ka.getByRole("button", { name: "+ Gemeinsam" }).click();
+      await ka.getByRole("button", { name: "Gemeinsame Notiz anlegen" }).click();
+      const feldA = ka.getByRole("textbox", { name: "Gemeinsame Notiz" });
+      await expect(ka.getByText("Live", { exact: true })).toBeVisible({ timeout: 15_000 });
+      await feldA.click();
+      await anna.page.keyboard.type("Nur für uns zwei");
+
+      await ka.getByRole("button", { name: "Einladen" }).click();
+      const bereich = ka.getByRole("region", { name: "Zum Mitschreiben einladen" });
+      await bereich.getByRole("textbox", { name: "An ein Ratslotse-Konto" }).fill(ben.email);
+      await bereich.getByRole("button", { name: "Einladen", exact: true }).click();
+      await expect(bereich.getByRole("status")).toContainText("Gibt es zu");
+
+      // Ben sieht die Einladung an der Notiz des Punkts (ohne Zustellweg kommt keine Mail).
+      await ben.page.reload();
+      const kb = karte(ben.page);
+      const entsperren = kb.getByRole("button", { name: "Mit Passkey entsperren" });
+      if (await entsperren.isVisible({ timeout: 5_000 }).catch(() => false)) await entsperren.click();
+      await expect(kb.getByText("Anna lädt dich ein, hier gemeinsam eine Notiz zu schreiben.")).toBeVisible({ timeout: 15_000 });
+      await kb.getByRole("button", { name: "Annehmen" }).click();
+
+      // Anna hat die Notiz offen: Ihr Browser übergibt den Schlüssel, Ben ist drin.
+      const feldB = kb.getByRole("textbox", { name: "Gemeinsame Notiz" });
+      await expect.poll(() => ohneCursor(feldB), { timeout: 20_000 }).toBe("Nur für uns zwei");
+      await expect(kb.getByRole("button", { name: "Mit Anna" })).toHaveAttribute("aria-pressed", "true");
+      await feldB.click();
+      await ben.page.keyboard.press("ControlOrMeta+End");
+      await ben.page.keyboard.type(", sagt Ben");
+      await expect.poll(() => ohneCursor(feldA), { timeout: 10_000 }).toBe("Nur für uns zwei, sagt Ben");
+
+      // Sicherheitscodes: Was Anna bei Ben sieht, sieht Ben bei sich selbst.
+      const codes = async (page: Page, k: Locator) => {
+        await k.getByRole("button", { name: "Mitglieder verwalten" }).click();
+        const m = k.getByRole("region", { name: "Mitglieder" });
+        await m.getByRole("button", { name: "Sicherheitscodes vergleichen" }).click();
+        await expect(m.locator(".font-mono")).toHaveCount(2, { timeout: 10_000 });
+        const zeilen = await m.locator("li").allInnerTexts();
+        return Object.fromEntries(zeilen.map((z) => [z.includes("(du)") ? "ich" : "andere", z.match(/\d{5}( \d{5}){4}/)?.[0]]));
+      };
+      const beiAnna = await codes(anna.page, ka);
+      const beiBen = await codes(ben.page, kb);
+      expect(beiAnna.andere).toMatch(/^\d{5}( \d{5}){4}$/);
+      expect(beiAnna.andere).toBe(beiBen.ich);
+      expect(beiBen.andere).toBe(beiAnna.ich);
+    } finally {
+      await anna.ctx.close();
+      await ben.ctx.close();
+    }
+  });
+
+  test("per Adresse: der Weg über die Einladungsseite aus der Mail", async ({ browser }) => {
+    const anna = await person(browser, "Anna");
+    const ben = await person(browser, "Ben");
+    try {
+      await anna.page.goto(URL);
+      await anna.page.getByRole("tab", { name: "Meine Notiz" }).click();
+      const ka = karte(anna.page);
+      await notizenEinrichten(ka);
+      await ka.getByRole("button", { name: "+ Gemeinsam" }).click();
+      await ka.getByRole("button", { name: "Gemeinsame Notiz anlegen" }).click();
+      await expect(ka.getByText("Live", { exact: true })).toBeVisible({ timeout: 15_000 });
+      const r = await anna.page.request.get("/api/shared-notes");
+      const noteId = (await r.json()).notes[0].id;
+      await anna.page.request.post(`/api/shared-notes/${noteId}/address-invites`, { data: { email: ben.email } });
+
+      // Die Kennung stünde im Link der Mail; hier holt Ben sie sich selbst.
+      const inv = (await (await ben.page.request.get("/api/shared-notes")).json()).invitations[0];
+      await ben.page.goto(`/notiz-einladung?a=${inv.id}`);
+      await expect(ben.page.getByText(/Anna lädt dich ein, gemeinsam eine Notiz zu .+ zu schreiben/)).toBeVisible({ timeout: 15_000 });
+      await notizenEinrichten(ben.page.locator("section", { has: ben.page.locator("#einladung-notizen") }));
+      await ben.page.getByRole("button", { name: "Annehmen" }).click();
+      // Anna ist in der Notiz: Die Seite springt von selbst dorthin.
+      await ben.page.waitForURL(/\/council\/punkt/, { timeout: 20_000 });
+      await expect(karte(ben.page).getByRole("textbox", { name: "Gemeinsame Notiz" })).toBeVisible({ timeout: 15_000 });
+      await expect(karte(ben.page).getByRole("button", { name: "Mit Anna" })).toHaveAttribute("aria-pressed", "true");
     } finally {
       await anna.ctx.close();
       await ben.ctx.close();

@@ -524,11 +524,14 @@ def test_vorgaben_fuer_ein_gewoehnliches_konto():
 
     ``N7_NEWS`` („Neu bei Ratslotse") ist ab Werk an (Tim, 07.09.2026): Er
     kommt ein paar Mal im Jahr und ist die einzige Gelegenheit, von einem
-    neuen Feature zu erfahren, ohne selbst nachzusehen."""
+    neuen Feature zu erfahren, ohne selbst nachzusehen.
+
+    ``N8_NOTIZ_EINLADUNG`` ist an: Eine Person lädt ein und wartet auf die
+    Antwort — wer sie nicht will, schaltet sie ab."""
     an = {k for k, v in notify.NOTIFY_DEFAULTS.items() if v}
     aus = {k for k, v in notify.NOTIFY_DEFAULTS.items() if not v}
     assert an == {notify.N1_AENDERUNG, notify.N2_THEMA, notify.N3_ERGEBNIS,
-                  notify.N4_VORGANG, notify.N6_WOCHE, notify.N7_NEWS}
+                  notify.N4_VORGANG, notify.N6_WOCHE, notify.N7_NEWS, notify.N8_NOTIZ_EINLADUNG}
     assert aus == {notify.N1_TAGESORDNUNG, notify.N5_VORABEND}
     # Jede Art hat eine Beschriftung — sonst fehlte sie stumm in den Einstellungen.
     assert set(notify.NOTIFY_LABELS) == set(notify.NOTIFY_DEFAULTS)
