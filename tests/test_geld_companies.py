@@ -244,3 +244,89 @@ def test_bausteingroesse_am_echten_bestand(frage, begriffe, tmp_path):
         pytest.skip(str(e))
     finally:
         store.close()
+
+
+# ---------------------------------------------------------------------------
+# 4. Welche Gesellschaft meint die Frage? (gemessen 24.11.2026)
+# ---------------------------------------------------------------------------
+
+def _viele(tmp_path) -> CouncilStore:
+    """Fünf Einheiten, deren Zweck-Texte sich überschneiden wie im echten
+    Bestand: „Aufsichtsrat" steht in allen, „Gebäudewirtschaft" auch in einem
+    fremden Text, und zwei Namen beginnen mit denselben sechs Buchstaben."""
+    store = CouncilStore(tmp_path / "v.sqlite")
+    with store._conn:
+        store._conn.execute(
+            "INSERT INTO council_provenance (id, key, kind, label, url, citation, "
+            " page, probe, as_of, fetched_at) VALUES (1, 'b1', 'ris', "
+            "'Beteiligungsbericht 2024', 'https://example.org/bb', 'x', 1, 'p', "
+            "'Beteiligungsbericht 2024', '2026-11-24')")
+        for company, name, zweck in [
+                ("bbo", "Bäderbetrieb der Stadt Oldenburg",
+                 "Betrieb der Bäder; der Aufsichtsrat ist der Betriebsausschuss."),
+                ("bbgo", "Bäderbetriebsgesellschaft Oldenburg mbH",
+                 "Betrieb des Huntebads; Aufsichtsrat und Gesellschafterversammlung."),
+                ("weh", "Weser-Ems Halle Oldenburg GmbH & Co. KG",
+                 "Veranstaltungen in Hallen; ein Aufsichtsrat überwacht."),
+                ("egh", "Eigenbetrieb Gebäudewirtschaft und Hochbau",
+                 "Bau und Unterhaltung der Gebäude; ohne Aufsichtsrat."),
+                ("awb", "Abfallwirtschaftsbetrieb Stadt Oldenburg",
+                 "Abfuhr; arbeitet mit der Gebäudewirtschaft zusammen; kein Aufsichtsrat.")]:
+            store._conn.execute(
+                "INSERT INTO council_companies (report_year, company, name, "
+                " classification, page, herkunft_id, fetched_at) "
+                "VALUES (2024, ?, ?, '2.4.1', 1, 1, '2026-11-24')", (company, name))
+            store._conn.execute(
+                "INSERT INTO council_company_texts (report_year, company, section, "
+                " text, herkunft_id, fetched_at) VALUES (2024, ?, 'business_purpose', "
+                " ?, 1, '2026-11-24')", (company, zweck))
+    return store
+
+
+@pytest.mark.parametrize("frage,erwartet", [
+    # Ein Wort, das auf alle passt, zeigt auf keine — dann der Überblick.
+    ("Was macht ein Aufsichtsrat bei einer städtischen Gesellschaft?", []),
+    # Bindestrich-Namen in Teilen, nicht als Ganzes.
+    ("Wem gehört die Weser-Ems-Halle?", ["weh"]),
+    # Der genaue Name schlägt den gleichen Wortanfang.
+    ("Was macht die Bäderbetriebsgesellschaft?", ["bbgo"]),
+    ("Was kosten die Bäder?", ["bbo", "bbgo"]),
+    # Ein Treffer im Namen trennt, auch wenn das Wort in fremden Texten steht.
+    ("Wie geht es der Gebäudewirtschaft?", ["egh"]),
+])
+def test_auswahl_der_gesellschaft(tmp_path, frage, erwartet):
+    from council import geld
+
+    store = _viele(tmp_path)
+    try:
+        woerter = [w for w in frage.split() if not geld.allerwelt(w)]
+        daten = store.companies_context(woerter)
+        assert sorted(g["company"] for g in daten["companies"]) == sorted(erwartet), frage
+        assert (daten["overview"] is not None) == (not erwartet)
+    finally:
+        store.close()
+
+
+@pytest.mark.parametrize("frage,erwartet", [
+    ("Was macht ein Aufsichtsrat bei einer städtischen Gesellschaft?", []),
+    ("Darf der Rat dem Aufsichtsrat der VWG etwas vorschreiben?", ["vwg"]),
+    ("Wem gehört die Weser-Ems-Halle?", ["weh", "weh_komplementaer"]),
+    ("Was macht die Abfallwirtschaft?", ["awb"]),
+    ("Wie geht es der Gebäudewirtschaft?", ["egh"]),
+    ("Welche Gesellschaften haben einen Aufsichtsrat?", []),
+    ("Was macht die Bäderbetriebsgesellschaft?", ["bbgo"]),
+])
+def test_auswahl_am_echten_bestand(frage, erwartet, tmp_path):
+    from council import geld
+
+    if not ECHTE_DB.exists():
+        pytest.skip("dev-Datenbank nicht vorhanden")
+    kopie = tmp_path / "c.sqlite"
+    kopie.write_bytes(ECHTE_DB.read_bytes())
+    store = CouncilStore(kopie)
+    try:
+        woerter = [w for w in frage.split() if not geld.allerwelt(w)]
+        daten = store.companies_context(woerter)
+        assert sorted(g["company"] for g in daten["companies"]) == sorted(erwartet), frage
+    finally:
+        store.close()
