@@ -210,3 +210,29 @@ def test_satz_zur_besetzung_nur_wenn_abgelaufen():
     assert hb.board_term_note(2024, today=date(2026, 10, 1))["note"] is None
     satz = hb.board_term_note(2024, today=date(2026, 11, 23))["note"]
     assert "Ratsperiode 2021–2026" in satz and "1. November 2026" in satz
+
+
+# ---------------------------------------------------------------------------
+# 5. Der Deckel von MCP und Lottis Werkzeugen
+# ---------------------------------------------------------------------------
+
+def test_handbuch_steht_vor_dem_steckbrief():
+    assert qa.GELD_FACETTEN.index("handbook") < qa.GELD_FACETTEN.index("companies")
+
+
+def test_regel_und_steckbrief_passen_zusammen_unter_den_werkzeug_deckel():
+    """Gemessen 24.11.2026: Mit 3.000 Zeichen kam über MCP nur der Steckbrief
+    durch, die Regel nie. Hier die echten Bausteine aus dem Abzug."""
+    import json
+    from pathlib import Path
+
+    from council import lotti_werkzeuge as lw
+
+    abzug = json.loads((Path(__file__).parent / "fixtures" / "geld_kontext_echt.json")
+                       .read_text(encoding="utf-8"))
+    steckbrief = max(abzug["companies"], key=lambda d: len(json.dumps(d)))
+    geld = {"facets": ["companies", "handbook"], "companies": steckbrief,
+            "handbook": hb.context("Wer sitzt im Aufsichtsrat der GSG?")}
+    text = qa.geld_block(geld, max_chars=lw.BLOCK_MAX)
+    assert "HANDBUCH BETEILIGUNGEN" in text
+    assert "STÄDTISCHE GESELLSCHAFTEN" in text
