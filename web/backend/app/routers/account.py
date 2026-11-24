@@ -322,8 +322,13 @@ def change_email(
     token_hash = hashlib.sha256(raw.encode()).hexdigest()
     expires = (datetime.utcnow() + timedelta(hours=_VERIFY_TTL_HOURS)).isoformat(timespec="seconds")
     code = _neuer_code()
-    store.create_email_verification(int(user["id"]), token_hash, expires, new_email=neu,
-                                    code_hash=_code_hash(int(user["id"]), code))
+    # Für eine Wegwerf-Adresse gibt es keinen Code: Die Zeile hält nur den
+    # schwebenden Wechsel fest (Anzeige, „Verwerfen"), einlösen lässt sie sich
+    # nicht — `consume_email_code` sucht nur Zeilen mit Code. Sonst bliebe ein
+    # sechsstelliger Code liegen, der zwar nie verschickt, aber ratbar wäre.
+    store.create_email_verification(
+        int(user["id"]), token_hash, expires, new_email=neu,
+        code_hash=None if wegwerf else _code_hash(int(user["id"]), code))
     if wegwerf:
         logger.info("Adresswechsel auf Wegwerf-Domain %s (Konto %s) — kein Link",
                     domain_of(neu), user["id"])

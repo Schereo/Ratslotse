@@ -940,6 +940,16 @@ def _bestaetigung_abschliessen(request: Request, background: BackgroundTasks, st
     user_id = treffer["user_id"]
     neue_adresse = treffer["new_email"]
     vorher = store.get_web_user_by_id(user_id)
+    # Zweiter Riegel: Eine Wegwerf-Adresse wird nie bestätigt. Erreichbar ist
+    # das eigentlich nicht — sie bekommt weder Link noch Code (kern.email,
+    # und beim Wechsel entsteht gar kein Code) —, aber eine Bestätigung darf
+    # nicht daran hängen, dass ein 32-Byte-Token nie erraten wird. Dieselbe
+    # Antwort wie bei einem verfallenen Link: Nichts verrät die Sperre.
+    if is_disposable(neue_adresse or str((vorher or {}).get("email", ""))):
+        logger.info("Bestätigung einer Wegwerf-Adresse abgewiesen (Konto %s)", user_id)
+        raise HTTPException(status.HTTP_400_BAD_REQUEST,
+                            "Der Bestätigungslink ist ungültig oder abgelaufen. "
+                            "Bitte fordere einen neuen an.")
     # VOR dem Umschreiben merken. Seit `disabled` ein eigener Status ist,
     # trägt das Modell die Unterscheidung selbst — der Merker ist damit der
     # zweite Riegel, nicht mehr der einzige. Er bleibt für den Alt-Bestand:
