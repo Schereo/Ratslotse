@@ -12414,6 +12414,51 @@ export interface components {
             url: string | null;
         };
         /**
+         * DraftNotice
+         * @description Ein Satz aus dem Vorbericht, der über allem steht (bisher: die
+         *     Haushaltssicherung) — wörtlich, ohne Modell.
+         */
+        DraftNotice: {
+            /** Page */
+            page: number;
+            /** Text */
+            text: string;
+        };
+        /**
+         * DraftOverview
+         * @description Das Gesamtbild über den Befunden: geprüfte Sätze und Eckzahlen.
+         */
+        DraftOverview: {
+            /** Facts */
+            facts: components["schemas"]["DraftOverviewFact"][];
+            /** Statements */
+            statements: components["schemas"]["DraftOverviewStatement"][];
+        };
+        /** DraftOverviewFact */
+        DraftOverviewFact: {
+            /** Chart */
+            chart: string | null;
+            /** Label */
+            label: string;
+            /** Page */
+            page: number | null;
+            /** Quote */
+            quote: string | null;
+            /** Unit */
+            unit: string;
+            /** Value */
+            value: number;
+        };
+        /** DraftOverviewStatement */
+        DraftOverviewStatement: {
+            /** Page */
+            page: number | null;
+            /** Quote */
+            quote: string;
+            /** Text */
+            text: string;
+        };
+        /**
          * ElectedAffiliation
          * @description Die Zugehörigkeit im neuen Rat, wo sie von der Wahlliste abweicht.
          */
@@ -14789,6 +14834,8 @@ export interface components {
          * @description „Was der Haushaltsentwurf zeigt“ (``council/budget_findings.py``).
          */
         ItemBudgetFindings: {
+            /** About */
+            about: string;
             /** Budget Year */
             budget_year: number | null;
             /** Created At */
@@ -14799,6 +14846,8 @@ export interface components {
             findings: components["schemas"]["BudgetFinding"][];
             /** Label */
             label: string;
+            notice?: components["schemas"]["DraftNotice"];
+            overview?: components["schemas"]["DraftOverview"];
             /** Url */
             url: string | null;
         };
@@ -32838,4 +32887,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: b9291a3931a05294548dba97c3b4e6cd5a314fe161122e25dd008b1570a3d8af
+// vertrag-sha256: c554c80639df560823330295c24dd000025d7c5cd5ff48e3002b501610255cd3

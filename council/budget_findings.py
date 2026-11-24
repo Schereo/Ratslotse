@@ -37,8 +37,19 @@ _log = logging.getLogger(__name__)
 
 MODEL = os.environ.get("COUNCIL_FINDINGS_MODEL", "openai/gpt-6-luna")
 VERIFY_MODEL = os.environ.get("COUNCIL_FINDINGS_VERIFY_MODEL", "openai/gpt-6-sol")
-PROMPT_VERSION = 1
+#: 2: dazu der Überblick (Tim, 24.11.2026: „vorher allgemein ein paar Sachen
+#: zum Haushaltsentwurf sagen … dass die Stadt in die Haushaltskonsolidierung
+#: rutscht“).
+PROMPT_VERSION = 2
 MAX_FINDINGS = 10
+MAX_STATEMENTS = 5
+MAX_FACTS = 4
+
+#: Wozu es einen Haushalt gibt — fester Text, kein Modell. Steht über dem
+#: Überblick, weil die Befunde voraussetzen, dass man das weiß.
+ABOUT = ("Mit dem Haushalt legt der Rat fest, mit welchen Einnahmen die Stadt im kommenden Jahr rechnet "
+         "und wofür sie Geld ausgeben darf. Den Entwurf stellt die Verwaltung auf; die Ausschüsse beraten "
+         "ihn, die Fraktionen beantragen Änderungen, beschlossen wird er im Rat.")
 #: Text der ersten Seiten (Überblick, Haushaltslage) für Ursachen und Zitate.
 TEXT_PAGES = 14
 TEXT_CHARS = 30_000
@@ -292,6 +303,122 @@ def check(f: dict, charts: dict[str, bc.Chart], pages: list[str], budget_year: i
             "quote_page": int(quote_page) if quote_page else None, "visual": v}, None
 
 
+# ---- Überblick --------------------------------------------------------------------
+
+#: Was ein Vorbericht sagen kann, das über allem steht — wörtlich übernommen,
+#: ohne Modell. Anlass: Die Haushaltssicherung ab 2027 (Vorbericht S. 5) fehlte
+#: in drei von drei Läufen im Gesamtbild des Modells, obwohl der Auftrag sie
+#: nennt; Tim, 24.11.2026: „das ist ein sehr wichtiger Fakt“.
+NOTICE_RE = re.compile(r"Haushaltssicherung", re.I)
+_SENTENCE_END_RE = re.compile(r"(?<=[^\d\s][.!?])\s+(?=[A-ZÄÖÜ„])")
+
+
+def notice(pages: list[str]) -> dict | None:
+    """Der erste ganze Satz der Überblicksseiten, der die Haushaltssicherung
+    nennt — mit Seite. ``None``, wenn keiner es tut."""
+    for i, page in enumerate(pages[:TEXT_PAGES], 1):
+        text = " ".join(page.split())
+        for sentence in _SENTENCE_END_RE.split(text):
+            # Eine Fußnoten- oder Seitenzahl hinter dem Punkt gehört nicht zum Satz
+            # (Vorbericht 2027, S. 5: „… aufgestellt. 7“).
+            sentence = re.sub(r"(?<=[.!?])\s+\d{1,3}$", "", sentence.strip())
+            if NOTICE_RE.search(sentence) and 40 <= len(sentence) <= 400:
+                return {"text": sentence, "page": i}
+    return None
+
+
+def check_statement(s: dict, pages: list[str]) -> tuple[dict | None, str | None]:
+    """Ein Satz des Gesamtbilds: wörtliches Zitat Pflicht, jede Zahl im Satz
+    steht im Zitat."""
+    text, quote = str(_dict(s).get("text") or "").strip(), str(_dict(s).get("quote") or "").strip()
+    if not text or len(text) > 260:
+        return None, "Satz fehlt oder ist zu lang"
+    if not quote:
+        return None, "Satz ohne Zitat"
+    page = int(s["page"]) if _num(s.get("page")) else None
+    found, at = evidence.locate(quote, {"text": "\n".join(pages), "pages": pages}, page)
+    if not found:
+        return None, "Zitat steht nicht im Text"
+    pool = _candidates(None, quote)
+    for x, limit in text_claims(text):
+        if not (backed(x, pool, exact=False) or (limit and bounded(x, limit, pool))):
+            return None, f"Zahl {x} im Satz steht nicht im Zitat"
+    return {"text": text, "quote": quote, "page": at or page}, None
+
+
+def check_fact(f: dict, charts: dict[str, bc.Chart], pages: list[str]) -> tuple[dict | None, str | None]:
+    """Eine Eckzahl: belegt in ihrer Grafik oder ihrem Zitat."""
+    f = _dict(f)
+    label = str(f.get("label") or "").strip()
+    if not label or len(label) > 60 or not _num(f.get("value")):
+        return None, "Beschriftung oder Wert fehlt"
+    number = str(f.get("chart") or "").replace("Grafik", "").strip() or None
+    chart = charts.get(number) if number else None
+    if number and chart is None:
+        return None, f"Grafik {number} gibt es nicht (oder sie ist nicht lesbar)"
+    quote = str(f.get("quote") or "").strip() or None
+    page = chart.page if chart else (int(f["page"]) if _num(f.get("page")) else None)
+    if quote:
+        found, at = evidence.locate(quote, {"text": "\n".join(pages), "pages": pages}, page)
+        if not found:
+            return None, "Zitat steht nicht im Text"
+        page = page or at
+    if not chart and not quote:
+        return None, "weder Grafik noch Zitat"
+    value = float(f["value"])
+    if not backed(value, _candidates(chart, quote), signed=False):
+        return None, f"Wert {value} nicht belegt"
+    return {"label": label, "value": value, "unit": str(f.get("unit") or ""), "chart": number, "page": page,
+            "quote": quote}, None
+
+
+def _verify_overview(statements: list[dict], facts: list[dict], charts: dict[str, bc.Chart],
+                     pages: list[str]) -> tuple[list[bool], list[bool], dict[str, str], float]:
+    """EIN Aufruf für das ganze Gesamtbild: Jeder Satz und jede Eckzahl gegen
+    die Seiten, auf die sie sich stützen."""
+    items = [{"id": f"s{i}", **s} for i, s in enumerate(statements)] + [{"id": f"f{i}", **f} for i, f in enumerate(facts)]
+    seiten = dict.fromkeys(x["page"] for x in items if x.get("page") and x["page"] <= len(pages))
+    material = "\n\n".join(f"TEXT DER SEITE {p}:\n{pages[p - 1][:6000]}" for p in seiten)
+    genannt = [charts[f["chart"]] for f in facts if f.get("chart") in charts]
+    if genannt:
+        material += "\n\nGRAFIKEN:\n" + bc.compact(genannt)
+    resp = llm.chat_complete(
+        model=VERIFY_MODEL, response_format={"type": "json_object"}, max_tokens=3_000,
+        messages=[{"role": "system", "content": prompts.get("budget_overview_verify_system")},
+                  {"role": "user", "content": f"GESAMTBILD:\n{json.dumps(items, ensure_ascii=False)}\n\nMATERIAL:\n{material}"}],
+        _feature="budget_findings_verify", _geduld=True, _tarif="flex")
+    verdicts = {str(_dict(v).get("id")): _dict(v) for v in _json(resp).get("verdicts") or []}
+    ok_s = [verdicts.get(f"s{i}", {}).get("correct") is True for i in range(len(statements))]
+    ok_f = [verdicts.get(f"f{i}", {}).get("correct") is True for i in range(len(facts))]
+    reasons = {k: str(v.get("reason") or "") for k, v in verdicts.items()}
+    return ok_s, ok_f, reasons, cost_usd(resp, VERIFY_MODEL)
+
+
+def overview(raw: dict, charts: dict[str, bc.Chart], pages: list[str], *, verify: bool = True
+             ) -> tuple[dict | None, list[dict], float]:
+    """Das Gesamtbild: geprüfte Sätze und Eckzahlen — oder ``None``, wenn kein
+    Satz hält. ``(überblick, verworfen, kosten)``."""
+    statements, facts, rejected = [], [], []
+    for s in (_dict(raw).get("statements") or [])[:MAX_STATEMENTS + 2]:
+        c, reason = check_statement(s, pages)
+        (statements.append(c) if c else rejected.append({"finding": s, "reason": reason, "stage": "numbers"}))
+    for f in (_dict(raw).get("facts") or [])[:MAX_FACTS + 2]:
+        c, reason = check_fact(f, charts, pages)
+        (facts.append(c) if c else rejected.append({"finding": f, "reason": reason, "stage": "numbers"}))
+    cost = 0.0
+    if verify and (statements or facts):
+        ok_s, ok_f, reasons, cost = _verify_overview(statements, facts, charts, pages)
+        rejected += [{"finding": x, "reason": reasons.get(f"s{i}") or "ohne Urteil", "stage": "reading"}
+                     for i, (x, ok) in enumerate(zip(statements, ok_s)) if not ok]
+        rejected += [{"finding": x, "reason": reasons.get(f"f{i}") or "ohne Urteil", "stage": "reading"}
+                     for i, (x, ok) in enumerate(zip(facts, ok_f)) if not ok]
+        statements = [x for x, ok in zip(statements, ok_s) if ok]
+        facts = [x for x, ok in zip(facts, ok_f) if ok]
+    if not statements:
+        return None, rejected, cost
+    return {"statements": statements[:MAX_STATEMENTS], "facts": facts[:MAX_FACTS]}, rejected, cost
+
+
 # ---- Aufruf ----------------------------------------------------------------------
 
 def prompt_input(charts: list[bc.Chart], pages: list[str], title: str, budget_year: int | None = None) -> str:
@@ -364,7 +491,9 @@ def generate(charts: list[bc.Chart], pages: list[str], title: str, budget_year: 
             rejected.append({"finding": f, "reason": reason, "stage": "reading"})
         elif len(findings) < MAX_FINDINGS:
             findings.append(f)
-    return {"findings": findings, "rejected": rejected, "charts": len(by_number)}, cost
+    gesamt, weg, c = overview(_json(resp).get("overview") or {}, by_number, pages, verify=verify)
+    return {"findings": findings, "overview": gesamt, "notice": notice(pages), "rejected": rejected + weg,
+            "charts": len(by_number)}, cost + c
 
 
 # ---- Ein Vorbericht --------------------------------------------------------------

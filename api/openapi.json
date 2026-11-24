@@ -12083,6 +12083,123 @@
         "title": "DossierStatement",
         "type": "object"
       },
+      "DraftNotice": {
+        "description": "Ein Satz aus dem Vorbericht, der über allem steht (bisher: die\nHaushaltssicherung) — wörtlich, ohne Modell.",
+        "properties": {
+          "page": {
+            "title": "Page",
+            "type": "integer"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text",
+          "page"
+        ],
+        "title": "DraftNotice",
+        "type": "object"
+      },
+      "DraftOverview": {
+        "description": "Das Gesamtbild über den Befunden: geprüfte Sätze und Eckzahlen.",
+        "properties": {
+          "facts": {
+            "items": {
+              "$ref": "#/components/schemas/DraftOverviewFact"
+            },
+            "title": "Facts",
+            "type": "array"
+          },
+          "statements": {
+            "items": {
+              "$ref": "#/components/schemas/DraftOverviewStatement"
+            },
+            "title": "Statements",
+            "type": "array"
+          }
+        },
+        "required": [
+          "statements",
+          "facts"
+        ],
+        "title": "DraftOverview",
+        "type": "object"
+      },
+      "DraftOverviewFact": {
+        "properties": {
+          "chart": {
+            "title": "Chart",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "page": {
+            "title": "Page",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "quote": {
+            "title": "Quote",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "unit": {
+            "title": "Unit",
+            "type": "string"
+          },
+          "value": {
+            "title": "Value",
+            "type": "number"
+          }
+        },
+        "required": [
+          "label",
+          "value",
+          "unit",
+          "chart",
+          "page",
+          "quote"
+        ],
+        "title": "DraftOverviewFact",
+        "type": "object"
+      },
+      "DraftOverviewStatement": {
+        "properties": {
+          "page": {
+            "title": "Page",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "quote": {
+            "title": "Quote",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text",
+          "quote",
+          "page"
+        ],
+        "title": "DraftOverviewStatement",
+        "type": "object"
+      },
       "ElectedAffiliation": {
         "description": "Die Zugehörigkeit im neuen Rat, wo sie von der Wahlliste abweicht.",
         "properties": {
@@ -17950,6 +18067,10 @@
       "ItemBudgetFindings": {
         "description": "„Was der Haushaltsentwurf zeigt“ (``council/budget_findings.py``).",
         "properties": {
+          "about": {
+            "title": "About",
+            "type": "string"
+          },
           "budget_year": {
             "title": "Budget Year",
             "type": [
@@ -17976,6 +18097,12 @@
             "title": "Label",
             "type": "string"
           },
+          "notice": {
+            "$ref": "#/components/schemas/DraftNotice"
+          },
+          "overview": {
+            "$ref": "#/components/schemas/DraftOverview"
+          },
           "url": {
             "title": "Url",
             "type": [
@@ -17989,6 +18116,7 @@
           "label",
           "url",
           "budget_year",
+          "about",
           "findings",
           "created_at"
         ],

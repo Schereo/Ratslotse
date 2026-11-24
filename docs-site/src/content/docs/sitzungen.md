@@ -295,9 +295,13 @@ Die Kosten je Cron-Lauf deckelt `PROGRAM_MAX_USD`.
 
 ### Was der Haushaltsentwurf zeigt
 
-Am Punkt zum Haushaltsentwurf stehen bis zu zehn Befunde aus den Grafiken des
-Vorberichts: je ein Titel, die eine Zahl, ein Satz, die neu gezeichnete
-Grafik und der Weg zur Seite im PDF. Säulen tragen ihre Art sichtbar (Ist
+Am Punkt zum Haushaltsentwurf steht zuerst ein Abriss: wozu es einen Haushalt
+gibt (fester Text), ein Satz aus dem Vorbericht, der über allem steht —
+bisher die Haushaltssicherung, wörtlich und ohne Modell gesucht
+(`notice`) —, dann das Gesamtbild in drei bis fünf Sätzen, jeder mit
+wörtlichem Zitat, und drei, vier Eckzahlen. Darunter bis zu zehn Befunde aus
+den Grafiken des Vorberichts: je ein Titel, die eine Zahl, ein Satz, die neu
+gezeichnete Grafik und der Weg zur Seite im PDF. Säulen tragen ihre Art sichtbar (Ist
 voll, Prognose schraffiert, Plan mit Rand, Finanzplanung hell), damit ein
 Planwert für 2030 nicht wie ein Ergebnis aussieht.
 
@@ -314,7 +318,8 @@ Drei Stufen, jede kann einen Befund kippen:
    oder ist Summe bzw. Differenz von Werten derselben Grafik. Die Art jeder
    Säule setzt der Code aus Kopf und Bildunterschrift.
 3. **Prüfen mit dem größeren Modell** (`COUNCIL_FINDINGS_VERIFY_MODEL`):
-   Trägt die Grafik die Deutung? Im Prototyp hielten 20 von 40 Funden nicht
+   Trägt die Grafik die Deutung? Das Gesamtbild prüft es in einem Aufruf,
+   Satz für Satz gegen die zitierten Seiten. Im Prototyp hielten 20 von 40 Funden nicht
    stand, fast immer wegen der Deutung, nicht der Zahl — etwa eine Teilzahl,
    die dem ganzen Haushalt zugeschrieben wurde.
 
