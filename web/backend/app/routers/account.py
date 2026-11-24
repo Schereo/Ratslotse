@@ -193,7 +193,8 @@ def get_notifications(
     keine zweite Liste pflegen muss — eine vergessene Art fällt sonst erst auf,
     wenn sich jemand über eine unabschaltbare Meldung ärgert.
     """
-    from kern.notify import (NACHTRUHE_AB, NACHTRUHE_BIS, NOTIFY_DEFAULTS,
+    from kern import features
+    from kern.notify import (NACHTRUHE_AB, NACHTRUHE_BIS, NOTIFY_DEFAULTS, NOTIFY_FEATURE,
                              NOTIFY_LABELS, NOTIFY_PARENT, TAGESGRENZE, vorgaben_fuer)
 
     gesetzt = store.get_notify_prefs(user["id"])
@@ -208,6 +209,7 @@ def get_notifications(
              # Oberfläche rückt sie ein und graut sie entsprechend aus.
              "parent": NOTIFY_PARENT.get(k)}
             for k in NOTIFY_DEFAULTS
+            if k not in NOTIFY_FEATURE or features.an(NOTIFY_FEATURE[k])
         ],
         "limits": {"per_day": TAGESGRENZE, "quiet_from": NACHTRUHE_AB, "quiet_to": NACHTRUHE_BIS},
     }

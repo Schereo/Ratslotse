@@ -10,6 +10,10 @@
    - Content goes as Yjs updates, each encrypted with the note key; the AAD
      binds it to the note and to its kind, so a blob cannot be replayed into
      another note or passed off as a snapshot.
+   - Inviting a specific account: every account has a key pair (ECDH P-256),
+     the private half wrapped with its own data key. A member seals the note
+     key for the invitee's public key (ephemeral ECDH + HKDF + AES-GCM, the
+     AAD binds it to the note and to the invitee).
 
    Pure WebCrypto; the tests run the same code under Node. */
 
@@ -25,6 +29,9 @@ const random = (n: number): Bytes => crypto.getRandomValues(new Uint8Array(n));
 const KEY_AAD = enc.encode("ratslotse-geteilter-schluessel-v1");
 const INVITE_INFO = enc.encode("ratslotse-einladung-v1");
 const VERIFIER_INFO = enc.encode("ratslotse-einladung-nachweis-v1");
+const IDENTITY_AAD = enc.encode("ratslotse-identitaet-v1");
+const GRANT_INFO = enc.encode("ratslotse-uebergabe-v1");
+const ECDH = { name: "ECDH", namedCurve: "P-256" } as const;
 
 async function aes(raw: Bytes, usages: KeyUsage[] = ["encrypt", "decrypt"]): Promise<CryptoKey> {
   return crypto.subtle.importKey("raw", raw, { name: "AES-GCM" }, false, usages);
@@ -136,4 +143,86 @@ export async function sealBlob(nk: NoteKey, noteId: string, kind: BlobKind, data
 
 export async function openBlob(nk: NoteKey, noteId: string, kind: BlobKind, s: Sealed): Promise<Bytes | null> {
   return open(nk.key, s, blobAad(noteId, kind));
+}
+
+/* ---- Inviting a specific account ---------------------------------------- */
+
+/** The own key pair: public raw (65 bytes, base64), private as a
+ *  non-extractable key. */
+export interface Identity { publicKey: string; privateKey: CryptoKey }
+
+/** What the server keeps (`PUT /shared-notes/identity`). */
+export interface StoredIdentity { public_key: string; private_iv: string; private_ct: string }
+
+export async function newIdentity(dk: CryptoKey): Promise<{ identity: Identity; stored: StoredIdentity }> {
+  const pair = await crypto.subtle.generateKey(ECDH, true, ["deriveBits"]);
+  const pub = new Uint8Array(await crypto.subtle.exportKey("raw", pair.publicKey));
+  const pkcs8 = new Uint8Array(await crypto.subtle.exportKey("pkcs8", pair.privateKey));
+  const sealed = await seal(dk, pkcs8, IDENTITY_AAD);
+  const privateKey = await crypto.subtle.importKey("pkcs8", pkcs8, ECDH, false, ["deriveBits"]);
+  pkcs8.fill(0);
+  return {
+    identity: { publicKey: toB64(pub), privateKey },
+    stored: { public_key: toB64(pub), private_iv: sealed.iv, private_ct: sealed.ct },
+  };
+}
+
+/** `null`: not openable with this data key, or the halves do not belong together. */
+export async function openIdentity(dk: CryptoKey, stored: StoredIdentity): Promise<Identity | null> {
+  const pkcs8 = await open(dk, { iv: stored.private_iv, ct: stored.private_ct }, IDENTITY_AAD);
+  if (!pkcs8) return null;
+  try {
+    // Gehört der private Teil zum öffentlichen, der beim Server liegt? Sonst
+    // verpackten andere für einen Schlüssel, den hier niemand öffnen kann.
+    const probe = await crypto.subtle.importKey("pkcs8", pkcs8, ECDH, true, ["deriveBits"]);
+    const jwk = await crypto.subtle.exportKey("jwk", probe);
+    const pub = fromB64(stored.public_key);
+    const xy = toB64Url(pub.slice(1, 33)) + "." + toB64Url(pub.slice(33));
+    if (pub[0] !== 4 || `${jwk.x}.${jwk.y}` !== xy) return null;
+    const privateKey = await crypto.subtle.importKey("pkcs8", pkcs8, ECDH, false, ["deriveBits"]);
+    return { publicKey: stored.public_key, privateKey };
+  } catch {
+    return null;
+  } finally {
+    pkcs8.fill(0);
+  }
+}
+
+export interface Grant { epk: string; iv: string; ct: string }
+
+const grantAad = (noteId: string, userId: number) => enc.encode(`ratslotse-uebergabe|${noteId}|${userId}`);
+
+async function grantKey(shared: Bytes, epk: Bytes, recipient: Bytes): Promise<CryptoKey> {
+  const base = await crypto.subtle.importKey("raw", shared, "HKDF", false, ["deriveKey"]);
+  const salt = new Uint8Array(epk.length + recipient.length);
+  salt.set(epk);
+  salt.set(recipient, epk.length);
+  return crypto.subtle.deriveKey({ name: "HKDF", hash: "SHA-256", salt, info: GRANT_INFO }, base,
+    { name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]);
+}
+
+/** The note key sealed for one account's public key. */
+export async function grantFor(nk: NoteKey, recipientPublic: string, noteId: string, recipientId: number): Promise<Grant> {
+  const rpub = fromB64(recipientPublic);
+  const recipient = await crypto.subtle.importKey("raw", rpub, ECDH, false, []);
+  const eph = await crypto.subtle.generateKey(ECDH, false, ["deriveBits"]);
+  const shared = new Uint8Array(await crypto.subtle.deriveBits({ name: "ECDH", public: recipient }, eph.privateKey, 256));
+  const epk = new Uint8Array(await crypto.subtle.exportKey("raw", eph.publicKey));
+  const s = await seal(await grantKey(shared, epk, rpub), nk.raw, grantAad(noteId, recipientId));
+  shared.fill(0);
+  return { epk: toB64(epk), iv: s.iv, ct: s.ct };
+}
+
+/** `null`: not for this key pair, not for this note or not for this account. */
+export async function openGrant(me: Identity, grant: Grant, noteId: string, myId: number): Promise<NoteKey | null> {
+  try {
+    const epk = fromB64(grant.epk);
+    const pub = await crypto.subtle.importKey("raw", epk, ECDH, false, []);
+    const shared = new Uint8Array(await crypto.subtle.deriveBits({ name: "ECDH", public: pub }, me.privateKey, 256));
+    const raw = await open(await grantKey(shared, epk, fromB64(me.publicKey)), grant, grantAad(noteId, myId));
+    shared.fill(0);
+    return raw && raw.length === 32 ? noteKeyFromRaw(raw) : null;
+  } catch {
+    return null;
+  }
 }

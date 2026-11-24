@@ -10,6 +10,7 @@ import { SETUP_QUERY_KEY, holeSetupStand } from "@/lib/onboarding-setup";
 import {
   ONBOARDING_DONE_EVENT, imAppBereich, isFlowDeciding, isUsable, setFlowDeciding,
 } from "@/lib/onboarding-state";
+import { EINRICHTUNG_SPAETER } from "@/lib/einladung-merken";
 
 /** Der Assistent selbst, erst wenn er dran ist. Solange sein Bündel lädt,
  *  deckt eine leere Fläche die Seite ab — sonst blitzte „Heute" auf, bevor
@@ -46,7 +47,12 @@ export function OnboardingGate() {
     staleTime: 60_000,
     retry: false,
   });
-  const imBereich = imAppBereich(pathname);
+  // Eben über eine Einladung zu einer gemeinsamen Notiz beigetreten: erst die
+  // Notiz, der Assistent beim nächsten Besuch (app/notiz-einladung).
+  const [spaeter] = useState(() => {
+    try { return sessionStorage.getItem(EINRICHTUNG_SPAETER) === "1"; } catch { return false; }
+  });
+  const imBereich = imAppBereich(pathname) && !spaeter;
 
   // Einmal geholt, bleibt er: Er merkt sich selbst, ob er in dieser Sitzung
   // schon fertig ist (die Antwort im Cache sagt dann noch `pending`).

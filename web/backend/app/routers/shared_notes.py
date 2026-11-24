@@ -7,7 +7,7 @@ Datenschlüssel (denselben, der die privaten Notizen schützt). Der Inhalt ist
 ein Yjs-Dokument; über die Live-Verbindung gehen nur verschlüsselte
 Änderungen, der Server nummeriert, speichert und verteilt sie.
 
-**Einladen per Link, nicht per Adresse.** Der Browser der einladenden Person
+**Einladen per Link.** Der Browser der einladenden Person
 verpackt den Notizschlüssel mit einem Zufallsgeheimnis, das nur im Anker des
 Links steht (``…/notiz-einladung?i=<kennung>#<geheimnis>``). Den Anker sendet
 kein Browser an einen Server. Wer den Link öffnet, packt den Schlüssel aus
@@ -19,8 +19,25 @@ Kennung allein reicht nicht: Beitreten verlangt einen Nachweis, den nur das
 Geheimnis ergibt (HKDF mit eigener Kennung, beim Server nur sein SHA-256).
 Endet eine Mitgliedschaft, fallen ALLE offenen Einladungen der Notiz weg.
 
+**Einladen per Adresse (seit 24.11.2026, Tims Wunsch).** Daneben lässt
+sich ein bestimmtes Konto einladen. Jedes Konto mit Notizen hat ein
+Schlüsselpaar (P-256); der öffentliche Teil liegt hier, der private mit dem
+eigenen Datenschlüssel verpackt. Nach dem Annehmen verpackt der Browser
+eines Mitglieds den Notizschlüssel per ECDH für den öffentlichen Schlüssel
+des Eingeladenen (``POST /{id}/grants/{invite_id}``); der packt ihn aus und
+tritt bei. Nur dieses Konto kann annehmen — ein weitergeleiteter Link nützt
+niemandem. Übergeben wird nur an Einladungen, deren Zufallskennung der
+Browser der einladenden Person verschlüsselt in die Notiz gelegt hat — der
+Server kann also keine Einladung erfinden, um an den Schlüssel zu kommen.
+Den öffentlichen Schlüssel des Eingeladenen muss man ihm dagegen glauben
+(wie bei jedem Messenger ohne Code-Vergleich). Die Antwort auf eine
+Einladung ist dieselbe, ob es das Konto gibt oder nicht: keine Kontensuche
+durch die Hintertür.
+
 **Was der Server sieht:** wer in welcher gemeinsamen Notiz zu welchem Punkt
-ist, wann geschrieben wird, wie groß die Änderungen sind.
+ist, wann geschrieben wird, wie groß die Änderungen sind — und bei
+Einladungen per Adresse, wen jemand eingeladen hat (nur, wenn es das Konto
+gibt; bis zur Antwort, höchstens 14 Tage).
 
 **Entfernen ist kein Neuverschlüsseln.** Wer entfernt wird, bekommt keine
 Änderungen mehr — der Server liefert sie ihm nicht. Den alten Notizschlüssel
@@ -47,16 +64,20 @@ from collections import deque
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Response, WebSocket, WebSocketDisconnect, status
+from html import escape
+
+from cryptography.hazmat.primitives.asymmetric import ec
+from fastapi import (APIRouter, BackgroundTasks, Depends, HTTPException, Request, Response, WebSocket,
+                     WebSocketDisconnect, status)
 from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel, Field
 
 from council.store import CouncilStore
-from kern import features
+from kern import features, notify
 from kern.store import Store
 
-from ..antworten import (LiveTicket, NoteInviteInfo, SharedNote, SharedNoteInvite, SharedNoteInvites,
-                         SharedNoteList)
+from ..antworten import (LiveTicket, NoteIdentityState, NoteInvitation, NoteInviteInfo, Ok, SharedNote,
+                         SharedNoteInvite, SharedNoteInvites, SharedNoteList)
 from ..config import get_settings
 from ..deps import get_council_store, get_store, require_active
 from ..ratelimit import RateLimiter
@@ -66,6 +87,10 @@ router = APIRouter(prefix="/api/shared-notes", tags=["notes"])
 invites_router = APIRouter(prefix="/api/note-invites", tags=["notes"])
 
 shared_write_limiter = RateLimiter(max_calls=60, window_seconds=300)
+#: Einladungen per Adresse lösen eine Mail aus — eng genug, dass niemand
+#: darüber Post verschickt, und gegen das Durchprobieren von Adressen.
+address_invite_limiter = RateLimiter(max_calls=20, window_seconds=3600)
+ADDRESS_INVITE_DAYS = 14
 
 #: Ein verpackter Notizschlüssel: 32 Byte Schlüssel + 16 Byte GCM-Etikett.
 WRAPPED_KEY_MAX = 64
@@ -118,6 +143,35 @@ class InviteIn(BaseModel):
     days: int = Field(default=7, ge=1, le=INVITE_DAYS_MAX)
 
 
+class IdentityIn(BaseModel):
+    public_key: str = Field(max_length=100)
+    private_iv: str = Field(max_length=32)
+    private_ct: str = Field(max_length=400)
+    key_version: int = Field(ge=1)
+
+
+class AddressInviteIn(BaseModel):
+    email: str = Field(min_length=3, max_length=254)
+    #: Zufallskennung (16 Byte, Base64) — dieselbe legt der Browser
+    #: verschlüsselt in die Notiz; nur dann übergibt ein Mitglied den Schlüssel.
+    token: str = Field(max_length=32)
+
+
+class GrantIn(BaseModel):
+    epk: str = Field(max_length=100)
+    iv: str = Field(max_length=32)
+    ct: str = Field(max_length=128)
+    #: Der öffentliche Schlüssel, für den verpackt wurde — hat er sich
+    #: inzwischen geändert, nimmt der Server die Übergabe nicht an.
+    for_key: str = Field(max_length=100)
+
+
+class AddressJoinIn(BaseModel):
+    key_iv: str = Field(max_length=32)
+    key_ct: str = Field(max_length=128)
+    key_version: int = Field(ge=1)
+
+
 class AcceptIn(BaseModel):
     key_iv: str = Field(max_length=32)
     key_ct: str = Field(max_length=128)
@@ -127,12 +181,33 @@ class AcceptIn(BaseModel):
     verifier: str = Field(max_length=64)
 
 
-def _note_out(n: dict) -> SharedNote:
+def _punkt(wert: str, feld: str) -> None:
+    """Ein öffentlicher P-256-Schlüssel, roh (65 Byte) — und wirklich ein Punkt der Kurve."""
+    _b64(wert, feld, laenge=65)
+    try:
+        ec.EllipticCurvePublicKey.from_encoded_point(ec.SECP256R1(), base64.b64decode(wert))
+    except ValueError:
+        raise HTTPException(422, f"{feld}: kein Schlüssel.") from None
+
+
+def _note_out(n: dict, store: Store) -> SharedNote:
     return {"id": n["id"], "target_kind": n["target_kind"], "target_key": n["target_key"], "role": n["role"],
             "owner_id": n["owner_id"], "key_iv": n["key_iv"], "key_ct": n["key_ct"], "key_version": n["key_version"],
             "members": [{"user_id": m["user_id"], "display_name": m["display_name"], "role": m["role"]}
                         for m in n["members"]],
+            "pending": [{"invite_id": g["invite_id"], "user_id": g["user_id"], "display_name": g["display_name"],
+                         "public_key": g["public_key"], "token": g["token"]} for g in store.pending_grants(n["id"])],
             "created_at": n["created_at"], "updated_at": n["updated_at"]}
+
+
+def _invitation_out(a: dict, store: Store, council: CouncilStore) -> NoteInvitation:
+    grant = ({"epk": a["grant_epk"], "iv": a["grant_iv"], "ct": a["grant_ct"]}
+             if a.get("grant_ct") else None)
+    return {"id": a["id"], "note_id": a["note_id"], "target_kind": a["target_kind"], "target_key": a["target_key"],
+            "target_title": _ziel_titel(council, a["target_kind"], a["target_key"]),
+            "inviter_name": a["inviter_name"], "created_at": a["created_at"], "expires_at": a["expires_at"],
+            "accepted": a["accepted_at"] is not None, "grant": grant,
+            "already_member": store.shared_note_member(a["note_id"], a["user_id"]) is not None}
 
 
 def _mitglied(store: Store, note_id: str, user_id: int) -> dict:
@@ -147,17 +222,44 @@ def _mitglied(store: Store, note_id: str, user_id: int) -> dict:
 def _eine(store: Store, note_id: str, user_id: int) -> SharedNote:
     for n in store.shared_notes_for(user_id):
         if n["id"] == note_id:
-            return _note_out(n)
+            return _note_out(n, store)
     raise HTTPException(status.HTTP_404_NOT_FOUND, "Diese gemeinsame Notiz gibt es nicht.")
 
 
 @router.get("")
 def list_shared(target_kind: TargetKind | None = None, target_key: str | None = None,
-                user: dict = Depends(require_active), store: Store = Depends(get_store)) -> SharedNoteList:
+                user: dict = Depends(require_active), store: Store = Depends(get_store),
+                council: CouncilStore = Depends(get_council_store)) -> SharedNoteList:
     _an()
     if target_key and target_kind:
         _ziel(target_kind, target_key)
-    return {"notes": [_note_out(n) for n in store.shared_notes_for(user["id"], target_kind, target_key)]}
+    return {"notes": [_note_out(n, store) for n in store.shared_notes_for(user["id"], target_kind, target_key)],
+            "invitations": [_invitation_out(a, store, council)
+                            for a in store.address_invites_for(user["id"], target_kind, target_key)]}
+
+
+# Vor den Pfaden mit {note_id}: „identity" ist keine Notiz.
+@router.get("/identity")
+def get_identity(user: dict = Depends(require_active), store: Store = Depends(get_store)) -> NoteIdentityState:
+    _an()
+    i = store.get_note_identity(user["id"])
+    return {"identity": {k: i[k] for k in ("public_key", "private_iv", "private_ct", "key_version")} if i else None}
+
+
+@router.put("/identity")
+def put_identity(body: IdentityIn, request: Request, user: dict = Depends(require_active),
+                 store: Store = Depends(get_store)) -> NoteIdentityState:
+    """Das eigene Schlüsselpaar anlegen — oder ersetzen, wenn sich das alte
+    nicht mehr öffnen ließ. Prüfen kann der Server die Verpackung nicht: Wer
+    Unsinn schickt, kann nur selbst keine Einladung per Adresse annehmen."""
+    _an()
+    shared_write_limiter.check(request, subject=user["id"])
+    _punkt(body.public_key, "public_key")
+    _b64(body.private_iv, "private_iv", laenge=12)
+    _b64(body.private_ct, "private_ct", hoechstens=256)
+    store.set_note_identity(user["id"], public_key=body.public_key, private_iv=body.private_iv,
+                            private_ct=body.private_ct, key_version=body.key_version)
+    return get_identity(user, store)
 
 
 @router.post("")
@@ -253,6 +355,85 @@ def delete_invite(note_id: str, invite_id: str, user: dict = Depends(require_act
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
+@router.post("/{note_id}/address-invites")
+def invite_address(note_id: str, body: AddressInviteIn, request: Request, background: BackgroundTasks,
+                   user: dict = Depends(require_active), store: Store = Depends(get_store)) -> Ok:
+    """Ein bestimmtes Konto einladen. Die Antwort ist IMMER dieselbe — ob es
+    zu der Adresse ein Konto gibt, erfährt niemand (auch nicht über die
+    Dauer: Einladung, Titel und Meldung entstehen erst nach der Antwort)."""
+    _an()
+    address_invite_limiter.check(request, subject=user["id"])
+    _mitglied(store, note_id, user["id"])
+    email = body.email.strip().lower()
+    if "@" not in email or " " in email:
+        raise HTTPException(422, "Das sieht nicht nach einer E-Mail-Adresse aus.")
+    _b64(body.token, "token", laenge=16)
+    if len(store.shared_note_members(note_id)) >= store.SHARED_MAX_MEMBERS:
+        raise HTTPException(status.HTTP_409_CONFLICT, "Diese Notiz hat schon die höchste Zahl an Mitgliedern.")
+    ziel = store.get_web_user_by_email(email)
+    if ziel and ziel["id"] != user["id"]:
+        background.add_task(_adresse_einladen, note_id, user["id"], ziel["id"], body.token)
+    return {"ok": True}
+
+
+def _adresse_einladen(note_id: str, inviter_id: int, invitee_id: int, token: str) -> None:
+    """Nach der Antwort, mit eigenen Datenbankverbindungen."""
+    settings = get_settings()
+    store = Store(settings.ratslotse_db)
+    council = CouncilStore(settings.council_db, einmal=True)
+    try:
+        if not notify.konto_aktiv(store, invitee_id) or store.shared_note_member(note_id, invitee_id):
+            return
+        n = store.get_shared_note(note_id)
+        if not n or not store.shared_note_member(note_id, inviter_id):
+            return
+        bis = (datetime.utcnow() + timedelta(days=ADDRESS_INVITE_DAYS)).isoformat(timespec="seconds")
+        invite_id, neu = store.create_address_invite(note_id, inviter_id, invitee_id, bis, token)
+        if not neu:
+            return
+        wer = (store.get_web_user_by_id(inviter_id) or {}).get("display_name") or "Jemand"
+        titel = _ziel_titel(council, n["target_kind"], n["target_key"])
+        worum = f"„{titel}“" if titel else ("einem Tagesordnungspunkt" if n["target_kind"] == "agenda_item"
+                                             else "einem Beschluss")
+        pfad = f"/notiz-einladung?a={invite_id}"
+        html = (f"<p><b>{escape(wer)}</b> lädt dich ein, gemeinsam eine Notiz zu {escape(worum)} zu schreiben.</p>"
+                "<p>Die Notiz ist Ende-zu-Ende verschlüsselt: Lesen können sie nur die Mitglieder, "
+                "Ratslotse nicht. Nur dein Konto kann diese Einladung annehmen.</p>"
+                f'<p><a href="{notify.APP_BASE_URL}{pfad}">Einladung ansehen</a></p>'
+                "<p>Kennst du die Person nicht, lehn die Einladung einfach ab.</p>")
+        if notify.einreihen(store, invitee_id, notify.N8_NOTIZ_EINLADUNG,
+                            f"{wer} lädt dich zu einer gemeinsamen Notiz ein", html, pfad,
+                            push_text=f"{wer} lädt dich ein, gemeinsam eine Notiz zu {worum} zu schreiben.",
+                            wichtig=True):
+            notify.zustellen_an(store, invitee_id)
+    except Exception:  # noqa: BLE001 — die Antwort ist längst raus; ein Fehler gehört ins Protokoll
+        import logging
+        logging.getLogger(__name__).exception("Einladung per Adresse fehlgeschlagen")
+    finally:
+        council.close()
+        store.close()
+
+
+@router.post("/{note_id}/grants/{invite_id}", status_code=status.HTTP_204_NO_CONTENT, response_class=Response,
+             responses={204: {"description": "Übergeben"}, 409: {"description": "Nicht mehr offen"}})
+def grant_invite(note_id: str, invite_id: str, body: GrantIn, request: Request, user: dict = Depends(require_active),
+                 store: Store = Depends(get_store)) -> Response:
+    """Ein Mitglied übergibt den Notizschlüssel an ein Konto, das eine
+    Einladung per Adresse angenommen hat — verpackt für dessen öffentlichen
+    Schlüssel, den der Server nicht öffnen kann."""
+    _an()
+    shared_write_limiter.check(request, subject=user["id"])
+    _mitglied(store, note_id, user["id"])
+    _punkt(body.epk, "epk")
+    _punkt(body.for_key, "for_key")
+    _b64(body.iv, "iv", laenge=12)
+    _b64(body.ct, "ct", hoechstens=WRAPPED_KEY_MAX)
+    if not store.grant_address_invite(invite_id, note_id, user["id"], epk=body.epk, iv=body.iv, ct=body.ct,
+                                      for_key=body.for_key):
+        raise HTTPException(status.HTTP_409_CONFLICT, "Diese Einladung wartet nicht mehr auf den Schlüssel.")
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
 @router.post("/{note_id}/ticket")
 def live_ticket(note_id: str, user: dict = Depends(require_active), store: Store = Depends(get_store)) -> LiveTicket:
     _an()
@@ -312,6 +493,69 @@ def accept_invite(invite_id: str, body: AcceptIn, request: Request, user: dict =
                               key_version=body.key_version) == "full":
         raise HTTPException(status.HTTP_409_CONFLICT, "Diese Notiz hat schon die höchste Zahl an Mitgliedern.")
     return _eine(store, i["note_id"], user["id"])
+
+
+def _adressat(store: Store, invite_id: str, user_id: int) -> dict:
+    """Die Einladung — nur für das eingeladene Konto, sonst 404."""
+    a = store.get_address_invite(invite_id)
+    if not a or a["user_id"] != user_id:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Diese Einladung gilt nicht mehr.")
+    return a
+
+
+@invites_router.get("/address/{invite_id}")
+def address_invite_info(invite_id: str, user: dict = Depends(require_active), store: Store = Depends(get_store),
+                        council: CouncilStore = Depends(get_council_store)) -> NoteInvitation:
+    _an()
+    return _invitation_out(_adressat(store, invite_id, user["id"]), store, council)
+
+
+@invites_router.post("/address/{invite_id}/accept")
+async def accept_address_invite(invite_id: str, request: Request, user: dict = Depends(require_active),
+                                store: Store = Depends(get_store),
+                                council: CouncilStore = Depends(get_council_store)) -> NoteInvitation:
+    """Annehmen. Das Konto braucht dafür ein Schlüsselpaar (``PUT /identity``),
+    sonst kann niemand den Notizschlüssel für es verpacken. Wer gerade in der
+    Notiz ist, bekommt Bescheid und übergibt ihn sofort."""
+    _an()
+    shared_write_limiter.check(request, subject=user["id"])
+    a = _adressat(store, invite_id, user["id"])
+    if not store.get_note_identity(user["id"]):
+        raise HTTPException(status.HTTP_409_CONFLICT, "Erst die Notizen einrichten, dann annehmen.")
+    store.accept_address_invite(invite_id, user["id"])
+    await live.verteilen(a["note_id"], {"t": "pending"})
+    return _invitation_out(_adressat(store, invite_id, user["id"]), store, council)
+
+
+@invites_router.post("/address/{invite_id}/decline", status_code=status.HTTP_204_NO_CONTENT,
+                     response_class=Response, responses={204: {"description": "Abgelehnt"}})
+def decline_address_invite(invite_id: str, user: dict = Depends(require_active),
+                           store: Store = Depends(get_store)) -> Response:
+    """Ablehnen. Die einladende Person erfährt es nicht eigens."""
+    _an()
+    _adressat(store, invite_id, user["id"])
+    store.delete_address_invite(invite_id, user_id=user["id"])
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@invites_router.post("/address/{invite_id}/join")
+def join_address_invite(invite_id: str, body: AddressJoinIn, request: Request, user: dict = Depends(require_active),
+                        store: Store = Depends(get_store)) -> SharedNote:
+    """Beitreten, sobald die Übergabe da ist: Der Browser hat den Schlüssel mit
+    dem eigenen privaten Schlüssel ausgepackt und mit dem Datenschlüssel neu
+    verpackt."""
+    _an()
+    shared_write_limiter.check(request, subject=user["id"])
+    a = _adressat(store, invite_id, user["id"])
+    if not a["grant_ct"]:
+        raise HTTPException(status.HTTP_409_CONFLICT, "Der Schlüssel ist noch nicht übergeben.")
+    _b64(body.key_iv, "key_iv", laenge=12)
+    _b64(body.key_ct, "key_ct", hoechstens=WRAPPED_KEY_MAX)
+    if store.join_shared_note(a["note_id"], user["id"], key_iv=body.key_iv, key_ct=body.key_ct,
+                              key_version=body.key_version) == "full":
+        raise HTTPException(status.HTTP_409_CONFLICT, "Diese Notiz hat schon die höchste Zahl an Mitgliedern.")
+    store.delete_address_invite(invite_id)
+    return _eine(store, a["note_id"], user["id"])
 
 
 # ---- Live-Verbindung --------------------------------------------------------

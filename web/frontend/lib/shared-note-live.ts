@@ -45,6 +45,8 @@ export interface LiveOptions {
   url?: (noteId: string, ticket: string) => string;
   onStatus?: (s: LiveStatus) => void;
   onPresence?: (online: number[]) => void;
+  /** Jemand hat eine Einladung per Adresse angenommen und wartet auf den Schlüssel. */
+  onPending?: () => void;
   compactAfter?: number;
   flushMs?: number;
   retryMs?: number[];
@@ -243,6 +245,9 @@ export class SharedNoteLive {
       }
       case "presence":
         this.o.onPresence?.((m.online as number[]) ?? []);
+        break;
+      case "pending":
+        this.o.onPending?.();
         break;
     }
   }

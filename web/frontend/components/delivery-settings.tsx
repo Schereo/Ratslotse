@@ -10,7 +10,7 @@ import type { DeliveryChannel, User } from "@/lib/types";
 
 /** Anlässe, die per Mail auch ohne gewählten Kanal kommen — Spiegel von
  *  `kern.notify.IMMER_PER_MAIL`. */
-const IMMER_PER_MAIL = ["n7_news"];
+const IMMER_PER_MAIL = ["n7_news", "n8_note_invite"];
 
 /** Ein Anlass aus 30a/B — was das Backend über sich selbst erzählt.
  *  `parent`: Unter-Option, die nur wirkt, solange der Eltern-Anlass an ist —

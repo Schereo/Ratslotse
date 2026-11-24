@@ -124,6 +124,53 @@
         "title": "ActivityPageIn",
         "type": "object"
       },
+      "AddressInviteIn": {
+        "properties": {
+          "email": {
+            "maxLength": 254,
+            "minLength": 3,
+            "title": "Email",
+            "type": "string"
+          },
+          "token": {
+            "maxLength": 32,
+            "title": "Token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "email",
+          "token"
+        ],
+        "title": "AddressInviteIn",
+        "type": "object"
+      },
+      "AddressJoinIn": {
+        "properties": {
+          "key_ct": {
+            "maxLength": 128,
+            "title": "Key Ct",
+            "type": "string"
+          },
+          "key_iv": {
+            "maxLength": 32,
+            "title": "Key Iv",
+            "type": "string"
+          },
+          "key_version": {
+            "minimum": 1.0,
+            "title": "Key Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "key_iv",
+          "key_ct",
+          "key_version"
+        ],
+        "title": "AddressJoinIn",
+        "type": "object"
+      },
       "AdminAbweisung": {
         "properties": {
           "n": {
@@ -16017,6 +16064,38 @@
         "title": "Goals",
         "type": "object"
       },
+      "GrantIn": {
+        "properties": {
+          "ct": {
+            "maxLength": 128,
+            "title": "Ct",
+            "type": "string"
+          },
+          "epk": {
+            "maxLength": 100,
+            "title": "Epk",
+            "type": "string"
+          },
+          "for_key": {
+            "maxLength": 100,
+            "title": "For Key",
+            "type": "string"
+          },
+          "iv": {
+            "maxLength": 32,
+            "title": "Iv",
+            "type": "string"
+          }
+        },
+        "required": [
+          "epk",
+          "iv",
+          "ct",
+          "for_key"
+        ],
+        "title": "GrantIn",
+        "type": "object"
+      },
       "GrantReceivedList": {
         "description": "Eine eingelesene Liste: EU je Fonds und Förderperiode, dazu der\nFörderkatalog. ``list_as_of`` ist der Datenstand der Liste.",
         "properties": {
@@ -17629,6 +17708,38 @@
           "items"
         ],
         "title": "IdeasResponse",
+        "type": "object"
+      },
+      "IdentityIn": {
+        "properties": {
+          "key_version": {
+            "minimum": 1.0,
+            "title": "Key Version",
+            "type": "integer"
+          },
+          "private_ct": {
+            "maxLength": 400,
+            "title": "Private Ct",
+            "type": "string"
+          },
+          "private_iv": {
+            "maxLength": 32,
+            "title": "Private Iv",
+            "type": "string"
+          },
+          "public_key": {
+            "maxLength": 100,
+            "title": "Public Key",
+            "type": "string"
+          }
+        },
+        "required": [
+          "public_key",
+          "private_iv",
+          "private_ct",
+          "key_version"
+        ],
+        "title": "IdentityIn",
         "type": "object"
       },
       "ImportanceBreakdown": {
@@ -21321,6 +21432,100 @@
         "title": "NoteEntry",
         "type": "object"
       },
+      "NoteGrant": {
+        "description": "Der Notizschlüssel, per ECDH für den öffentlichen Schlüssel des\nEingeladenen verpackt: kurzlebiger öffentlicher Schlüssel, IV, Geheimtext.",
+        "properties": {
+          "ct": {
+            "title": "Ct",
+            "type": "string"
+          },
+          "epk": {
+            "title": "Epk",
+            "type": "string"
+          },
+          "iv": {
+            "title": "Iv",
+            "type": "string"
+          }
+        },
+        "required": [
+          "epk",
+          "iv",
+          "ct"
+        ],
+        "title": "NoteGrant",
+        "type": "object"
+      },
+      "NoteIdentity": {
+        "description": "Das eigene Schlüsselpaar: öffentlich roh (P-256, 65 Byte), privat mit\ndem eigenen Datenschlüssel verpackt.",
+        "properties": {
+          "key_version": {
+            "title": "Key Version",
+            "type": "integer"
+          },
+          "private_ct": {
+            "title": "Private Ct",
+            "type": "string"
+          },
+          "private_iv": {
+            "title": "Private Iv",
+            "type": "string"
+          },
+          "public_key": {
+            "title": "Public Key",
+            "type": "string"
+          }
+        },
+        "required": [
+          "public_key",
+          "private_iv",
+          "private_ct",
+          "key_version"
+        ],
+        "title": "NoteIdentity",
+        "type": "object"
+      },
+      "NoteIdentityState": {
+        "properties": {
+          "identity": {
+            "description": "Das eigene Schlüsselpaar: öffentlich roh (P-256, 65 Byte), privat mit\ndem eigenen Datenschlüssel verpackt.",
+            "properties": {
+              "key_version": {
+                "title": "Key Version",
+                "type": "integer"
+              },
+              "private_ct": {
+                "title": "Private Ct",
+                "type": "string"
+              },
+              "private_iv": {
+                "title": "Private Iv",
+                "type": "string"
+              },
+              "public_key": {
+                "title": "Public Key",
+                "type": "string"
+              }
+            },
+            "required": [
+              "public_key",
+              "private_iv",
+              "private_ct",
+              "key_version"
+            ],
+            "title": "NoteIdentity",
+            "type": [
+              "object",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "identity"
+        ],
+        "title": "NoteIdentityState",
+        "type": "object"
+      },
       "NoteIn": {
         "properties": {
           "ciphertext": {
@@ -21352,6 +21557,100 @@
           "version"
         ],
         "title": "NoteIn",
+        "type": "object"
+      },
+      "NoteInvitation": {
+        "description": "Eine Einladung per Adresse aus Sicht des eingeladenen Kontos.",
+        "properties": {
+          "accepted": {
+            "title": "Accepted",
+            "type": "boolean"
+          },
+          "already_member": {
+            "title": "Already Member",
+            "type": "boolean"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "expires_at": {
+            "title": "Expires At",
+            "type": "string"
+          },
+          "grant": {
+            "description": "Der Notizschlüssel, per ECDH für den öffentlichen Schlüssel des\nEingeladenen verpackt: kurzlebiger öffentlicher Schlüssel, IV, Geheimtext.",
+            "properties": {
+              "ct": {
+                "title": "Ct",
+                "type": "string"
+              },
+              "epk": {
+                "title": "Epk",
+                "type": "string"
+              },
+              "iv": {
+                "title": "Iv",
+                "type": "string"
+              }
+            },
+            "required": [
+              "epk",
+              "iv",
+              "ct"
+            ],
+            "title": "NoteGrant",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "inviter_name": {
+            "title": "Inviter Name",
+            "type": "string"
+          },
+          "note_id": {
+            "title": "Note Id",
+            "type": "string"
+          },
+          "target_key": {
+            "title": "Target Key",
+            "type": "string"
+          },
+          "target_kind": {
+            "enum": [
+              "agenda_item",
+              "decision"
+            ],
+            "title": "Target Kind",
+            "type": "string"
+          },
+          "target_title": {
+            "title": "Target Title",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "note_id",
+          "target_kind",
+          "target_key",
+          "target_title",
+          "inviter_name",
+          "created_at",
+          "expires_at",
+          "accepted",
+          "grant",
+          "already_member"
+        ],
+        "title": "NoteInvitation",
         "type": "object"
       },
       "NoteInviteInfo": {
@@ -22790,6 +23089,40 @@
           "credential"
         ],
         "title": "PasskeySignupRequest",
+        "type": "object"
+      },
+      "PendingGrant": {
+        "description": "Hat eine Einladung per Adresse angenommen und wartet auf den\nNotizschlüssel — den verpackt der Browser eines Mitglieds für ``public_key``,\naber nur, wenn er ``token`` verschlüsselt in der Notiz findet.",
+        "properties": {
+          "display_name": {
+            "title": "Display Name",
+            "type": "string"
+          },
+          "invite_id": {
+            "title": "Invite Id",
+            "type": "string"
+          },
+          "public_key": {
+            "title": "Public Key",
+            "type": "string"
+          },
+          "token": {
+            "title": "Token",
+            "type": "string"
+          },
+          "user_id": {
+            "title": "User Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "invite_id",
+          "user_id",
+          "display_name",
+          "public_key",
+          "token"
+        ],
+        "title": "PendingGrant",
         "type": "object"
       },
       "PeopleDirectory": {
@@ -35671,6 +36004,13 @@
             "title": "Owner Id",
             "type": "integer"
           },
+          "pending": {
+            "items": {
+              "$ref": "#/components/schemas/PendingGrant"
+            },
+            "title": "Pending",
+            "type": "array"
+          },
           "role": {
             "enum": [
               "owner",
@@ -35706,6 +36046,7 @@
           "key_ct",
           "key_version",
           "members",
+          "pending",
           "created_at",
           "updated_at"
         ],
@@ -35811,6 +36152,13 @@
       },
       "SharedNoteList": {
         "properties": {
+          "invitations": {
+            "items": {
+              "$ref": "#/components/schemas/NoteInvitation"
+            },
+            "title": "Invitations",
+            "type": "array"
+          },
           "notes": {
             "items": {
               "$ref": "#/components/schemas/SharedNote"
@@ -35820,7 +36168,8 @@
           }
         },
         "required": [
-          "notes"
+          "notes",
+          "invitations"
         ],
         "title": "SharedNoteList",
         "type": "object"
@@ -47203,6 +47552,180 @@
         ]
       }
     },
+    "/api/note-invites/address/{invite_id}": {
+      "get": {
+        "operationId": "address_invite_info_api_note_invites_address__invite_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "invite_id",
+            "required": true,
+            "schema": {
+              "title": "Invite Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NoteInvitation"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Address Invite Info",
+        "tags": [
+          "notes"
+        ]
+      }
+    },
+    "/api/note-invites/address/{invite_id}/accept": {
+      "post": {
+        "description": "Annehmen. Das Konto braucht dafür ein Schlüsselpaar (``PUT /identity``),\nsonst kann niemand den Notizschlüssel für es verpacken. Wer gerade in der\nNotiz ist, bekommt Bescheid und übergibt ihn sofort.",
+        "operationId": "accept_address_invite_api_note_invites_address__invite_id__accept_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "invite_id",
+            "required": true,
+            "schema": {
+              "title": "Invite Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NoteInvitation"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Accept Address Invite",
+        "tags": [
+          "notes"
+        ]
+      }
+    },
+    "/api/note-invites/address/{invite_id}/decline": {
+      "post": {
+        "description": "Ablehnen. Die einladende Person erfährt es nicht eigens.",
+        "operationId": "decline_address_invite_api_note_invites_address__invite_id__decline_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "invite_id",
+            "required": true,
+            "schema": {
+              "title": "Invite Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Abgelehnt"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Decline Address Invite",
+        "tags": [
+          "notes"
+        ]
+      }
+    },
+    "/api/note-invites/address/{invite_id}/join": {
+      "post": {
+        "description": "Beitreten, sobald die Übergabe da ist: Der Browser hat den Schlüssel mit\ndem eigenen privaten Schlüssel ausgepackt und mit dem Datenschlüssel neu\nverpackt.",
+        "operationId": "join_address_invite_api_note_invites_address__invite_id__join_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "invite_id",
+            "required": true,
+            "schema": {
+              "title": "Invite Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddressJoinIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SharedNote"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Join Address Invite",
+        "tags": [
+          "notes"
+        ]
+      }
+    },
     "/api/note-invites/{invite_id}": {
       "get": {
         "operationId": "invite_info_api_note_invites__invite_id__get",
@@ -49417,6 +49940,67 @@
         ]
       }
     },
+    "/api/shared-notes/identity": {
+      "get": {
+        "operationId": "get_identity_api_shared_notes_identity_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NoteIdentityState"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Identity",
+        "tags": [
+          "notes"
+        ]
+      },
+      "put": {
+        "description": "Das eigene Schlüsselpaar anlegen — oder ersetzen, wenn sich das alte\nnicht mehr öffnen ließ. Prüfen kann der Server die Verpackung nicht: Wer\nUnsinn schickt, kann nur selbst keine Einladung per Adresse annehmen.",
+        "operationId": "put_identity_api_shared_notes_identity_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IdentityIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NoteIdentityState"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Put Identity",
+        "tags": [
+          "notes"
+        ]
+      }
+    },
     "/api/shared-notes/{note_id}": {
       "delete": {
         "description": "Nur die Leitung löscht die Notiz für alle; ein Mitglied verlässt sie\nüber ``DELETE /{id}/members/{eigene Kennung}``.",
@@ -49448,6 +50032,117 @@
           }
         },
         "summary": "Delete Shared",
+        "tags": [
+          "notes"
+        ]
+      }
+    },
+    "/api/shared-notes/{note_id}/address-invites": {
+      "post": {
+        "description": "Ein bestimmtes Konto einladen. Die Antwort ist IMMER dieselbe — ob es\nzu der Adresse ein Konto gibt, erfährt niemand (auch nicht über die\nDauer: Einladung, Titel und Meldung entstehen erst nach der Antwort).",
+        "operationId": "invite_address_api_shared_notes__note_id__address_invites_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "note_id",
+            "required": true,
+            "schema": {
+              "title": "Note Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddressInviteIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Ok"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Invite Address",
+        "tags": [
+          "notes"
+        ]
+      }
+    },
+    "/api/shared-notes/{note_id}/grants/{invite_id}": {
+      "post": {
+        "description": "Ein Mitglied übergibt den Notizschlüssel an ein Konto, das eine\nEinladung per Adresse angenommen hat — verpackt für dessen öffentlichen\nSchlüssel, den der Server nicht öffnen kann.",
+        "operationId": "grant_invite_api_shared_notes__note_id__grants__invite_id__post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "note_id",
+            "required": true,
+            "schema": {
+              "title": "Note Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "invite_id",
+            "required": true,
+            "schema": {
+              "title": "Invite Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GrantIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Übergeben"
+          },
+          "409": {
+            "description": "Nicht mehr offen"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Grant Invite",
         "tags": [
           "notes"
         ]

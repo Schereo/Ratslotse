@@ -720,10 +720,21 @@ Notizfeld: „Nur ich“, die gemeinsamen Notizen zu diesem Ziel, „+ Gemeinsam
 | Inhalt | ein Yjs-Dokument: verschlüsselter Stand plus verschlüsselte, nummerierte Änderungen | `shared_notes.snapshot`, `shared_note_updates` |
 | Einladung | Notizschlüssel verpackt mit einem Geheimnis, das nur im Link-Anker steht | `shared_note_invites` (das Geheimnis nie) |
 | Nachweis | aus dem Geheimnis abgeleitet (HKDF, eigene Kennung), öffnet nichts | beim Server nur sein SHA-256 (`verifier_hash`) |
+| Schlüsselpaar je Konto | ECDH P-256; privat mit dem eigenen Datenschlüssel verpackt | `note_identities` (öffentlich offen) |
+| Übergabe | Notizschlüssel per ECDH (kurzlebiger Schlüssel, HKDF, AES-GCM) für den öffentlichen Schlüssel des Eingeladenen | `shared_note_address_invites.grant_*` |
 
 **Einladen per Link.** Der Link heißt `/notiz-einladung?i=<Kennung>#<Geheimnis>`.
-Kein Browser schickt den Anker an einen Server; die Seite rettet ihn vor der
-Anmeldung in den `sessionStorage` und nimmt ihn aus der Adresszeile. Wer
+Kein Browser schickt den Anker an einen Server; die Seite legt ihn in den
+`localStorage` und nimmt ihn aus der Adresszeile. Dort bleibt er höchstens 48
+Stunden, gehört dem ersten Konto, das die Seite damit öffnet (ein anderes im
+selben Browser bekommt ihn nicht), und fällt mit dem Beitreten, einer
+abgelaufenen Einladung und dem Abmelden weg. `localStorage` und nicht `sessionStorage`, weil jemand ohne
+Konto sich erst registriert und die Adresse über einen Link aus der Mail
+bestätigt — der öffnet einen neuen Tab. Die Bestätigungsseite führt dann
+zurück zur Einladung (`lib/einladung-merken.ts`), bis dahin sagt die
+Einladungsseite „Bestätige noch deine E-Mail-Adresse“ und fragt beim
+Zurückkommen erneut. Nach dem Beitreten wartet der Einrichtungs-Assistent
+eines neuen Kontos bis zum nächsten Besuch: erst die Notiz. Wer
 beitritt, packt den Notizschlüssel mit dem Geheimnis aus und verpackt ihn mit
 dem eigenen Datenschlüssel neu. Es gibt kein Adressbuch und keine Suche nach
 Konten, und der Server kann sich nicht selbst einladen, weil er das Geheimnis
@@ -735,6 +746,33 @@ Einladungen sieht und zieht es zurück, die Leitung alle. **Endet eine
 Mitgliedschaft** — entfernt, gegangen, Konto gelöscht —, fallen alle offenen
 Einladungen der Notiz weg: Wer geht, kennt den alten Schlüssel und womöglich
 die Links der anderen und wäre damit sonst gleich wieder drin.
+
+**Einladen per Adresse.** Daneben lässt sich ein bestimmtes Konto einladen
+(`lib/shared-note-invite.ts`, `POST /{id}/address-invites`). Die Antwort ist
+immer dieselbe, ob es zu der Adresse ein Konto gibt oder nicht; Einladung und
+Meldung entstehen erst nach der Antwort, damit auch die Dauer nichts verrät.
+Gibt es das Konto, bekommt es den Anlass `n8_note_invite` über
+`notify.einreihen` (an der Tagesgrenze vorbei, nie in der Nachtruhe, sofort
+zugestellt; per Mail auch bei ausgeschalteten Benachrichtigungen, wie „Neu bei
+Ratslotse“ über `IMMER_PER_MAIL` — abbestellbar nur über den eigenen
+Schalter, auf den die Fußzeile der Mail führt) und sieht die
+Einladung an der Notiz des Punkts sowie unter `/notiz-einladung?a=<Kennung>`.
+Annehmen braucht ein Schlüsselpaar, das der Browser beim ersten Öffnen einer
+gemeinsamen Notiz oder beim Annehmen anlegt. Danach übergibt der Browser eines
+Mitglieds, das die Notiz offen hat, den Notizschlüssel von selbst (die
+Live-Verbindung meldet `pending`); die eingeladene Person packt ihn mit ihrem
+privaten Schlüssel aus und tritt bei. Nur dieses Konto kann annehmen.
+**Übergeben wird nur an Einladungen aus der Notiz selbst:** Der einladende
+Browser legt eine Zufallskennung verschlüsselt ins Yjs-Dokument (Map
+`invites`) und schickt dieselbe mit; ein Mitglied verpackt den Schlüssel nur
+für wartende Einträge, deren Kennung es dort findet, und löscht sie danach.
+Ohne das könnte ein unehrlicher Server einen Wartenden erfinden und den
+Notizschlüssel einsammeln. Den öffentlichen Schlüssel des Eingeladenen muss
+man ihm dagegen glauben, wie bei einem Messenger ohne Code-Vergleich; einen
+Sicherheitscode zeigt die Oberfläche bewusst nicht (Tim, 24.11.2026: zu
+kompliziert). Tritt ein Konto auf irgendeinem Weg bei oder endet seine
+Mitgliedschaft, fallen Einladungen per Adresse an dieses Konto weg. Eine Einladung
+per Adresse gilt 14 Tage; geht die einladende Person, fällt sie weg.
 
 **Live.** `web/frontend/lib/shared-note-live.ts` hält das Yjs-Dokument über
 einen WebSocket (`{id}/live` neben den übrigen Pfaden der gemeinsamen Notizen; WebSockets stehen in keinem OpenAPI-Vertrag) mit den anderen im Takt: Tippen
@@ -763,7 +801,9 @@ Was ausdrücklich noch fehlt:
    Notizschlüssel kennt er aber; gegen einen Server, der ihm trotzdem
    Änderungen gäbe, hilft erst ein neuer Schlüssel für alle übrigen.
 2. **Wer den ganzen Link hat, kann beitreten**, bis er abläuft, zurückgezogen
-   ist oder eine Mitgliedschaft endet. Die Leitung sieht, wer dabei ist.
+   ist oder eine Mitgliedschaft endet. Die Leitung sieht, wer dabei ist. Eine
+   Einladung per Adresse ist dagegen an ein Konto gebunden — dafür hängt sie
+   am öffentlichen Schlüssel, den der Server liefert (s. o.).
 3. **Der Server sieht**, wer mit wem eine gemeinsame Notiz zu welchem Punkt
    hat, wann geschrieben wird und wie groß die Änderungen sind.
 4. **Die App** kennt gemeinsame Notizen noch nicht.

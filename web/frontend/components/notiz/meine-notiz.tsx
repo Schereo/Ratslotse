@@ -9,8 +9,9 @@
    „Gemeinsam“ zum Anlegen. Die gemeinsame Ansicht (`shared-note.tsx`, Yjs,
    Live-Verbindung) lädt erst, wenn jemand sie öffnet. */
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
+import { Loader2 } from "lucide-react";
 import { Karte, Fuss, LINK, NotizSchloss, SperrenKnopf, type Offen } from "@/components/notiz/notiz-schloss";
 import type { SharedNote } from "@/components/notiz/shared-note";
 import { Segmented } from "@/components/ui/segmented";
@@ -18,6 +19,7 @@ import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { useFeature } from "@/lib/features";
 import { newNoteKey, wrapForMe } from "@/lib/shared-note-crypto";
+import { acceptInvitation, declineInvitation, joinInvitation, type Invitation } from "@/lib/shared-note-invite";
 import type { ApiAntwort } from "@/lib/vertrag";
 import { NoteField } from "@/components/notiz/note-field";
 import { NoteView } from "@/components/notiz/note-view";
@@ -59,6 +61,7 @@ function Editor({ o, targetKind, targetKey, wofuer, rows, documents }: {
   const teilen = useFeature("notizen-teilen");
   const { user } = useAuth();
   const [geteilt, setGeteilt] = useState<SharedNote[] | null>(null);
+  const [einladungen, setEinladungen] = useState<Invitation[]>([]);
   const ansichtKey = `ratslotse:notiz-ansicht:${targetKind}|${targetKey}`;
   // Gleich beim Anlegen: nach dem Beitreten die neue Notiz, sonst die zuletzt
   // gewählte Ansicht dieses Punkts (auch nach dem Neuladen). Geprüft wird,
@@ -80,6 +83,7 @@ function Editor({ o, targetKind, targetKey, wofuer, rows, documents }: {
       const r = await api.get<ApiAntwort<"/shared-notes">>(
         `/shared-notes?target_kind=${targetKind}&target_key=${encodeURIComponent(targetKey)}`);
       setGeteilt(r.notes);
+      setEinladungen(r.invitations.filter((i) => !i.already_member));
       try { sessionStorage.removeItem(OFFEN_KEY); } catch { /* privat */ }
       setAnsicht((a) => (a === "private" || a === "new" || r.notes.some((n) => n.id === a) ? a : "private"));
     } catch {
@@ -106,6 +110,10 @@ function Editor({ o, targetKind, targetKey, wofuer, rows, documents }: {
 
   return (
     <Karte titel="Meine Notiz" id="meine-notiz" rechts={<SperrenKnopf owner={o.owner} />}>
+      {teilen && einladungen.map((i) => (
+        <EinladungHier key={i.id} inv={i} o={o} onChanged={() => void laden()}
+          onJoined={(id) => { setAnsicht(id); void laden(); }} />
+      ))}
       {teilen && (
         <Segmented className="mb-3 flex-wrap" value={ansicht} onChange={wechseln} options={[
           { value: "private", label: "Nur ich" },
@@ -126,7 +134,7 @@ function Editor({ o, targetKind, targetKey, wofuer, rows, documents }: {
       ) : wartet ? (
         <p className="min-h-11 text-sm text-muted-foreground" role="status">Öffnet …</p>
       ) : aktiv ? (
-        <SharedNoteView note={aktiv} dk={o.dk} meId={o.owner} meName={user?.display_name || "Ich"} rows={rows}
+        <SharedNoteView note={aktiv} dk={o.dk} keyVersion={o.keyVersion} meId={o.owner} meName={user?.display_name || "Ich"} rows={rows}
           documents={documents} seed={seed?.id === aktiv.id ? seed.text : undefined} onChanged={() => void laden()} />
       ) : (
         <PrivatesFeld v={v} wofuer={wofuer} rows={rows} documents={documents} />
@@ -136,17 +144,79 @@ function Editor({ o, targetKind, targetKey, wofuer, rows, documents }: {
   );
 }
 
+/** Eine Einladung per Adresse zu diesem Punkt: annehmen oder ablehnen; nach
+ *  dem Annehmen warten, bis ein Mitglied den Schlüssel übergibt (die Liste
+ *  wird solange alle paar Sekunden neu geholt), dann von selbst beitreten. */
+function EinladungHier({ inv, o, onChanged, onJoined }: {
+  inv: Invitation; o: Offen; onChanged: () => void; onJoined: (noteId: string) => void;
+}) {
+  const [laeuft, setLaeuft] = useState(false);
+  const [fehler, setFehler] = useState<string | null>(null);
+  const wartet = inv.accepted && !inv.grant;
+  const onChangedRef = useRef(onChanged);
+  useEffect(() => { onChangedRef.current = onChanged; });
+  useEffect(() => {
+    if (!wartet) return;
+    const t = window.setInterval(() => { if (document.visibilityState === "visible") onChangedRef.current(); }, 5000);
+    const ende = window.setTimeout(() => window.clearInterval(t), 15 * 60 * 1000);
+    return () => { window.clearInterval(t); window.clearTimeout(ende); };
+  }, [wartet]);
+  const beigetreten = useRef(false);
+  useEffect(() => {
+    if (!inv.grant || beigetreten.current) return;
+    beigetreten.current = true;
+    joinInvitation(inv, o.dk, o.keyVersion, o.owner)
+      .then((n) => (n ? onJoined(n.id) : setFehler("Der Schlüssel ließ sich nicht öffnen. Lass dich noch einmal einladen.")))
+      .catch((e) => setFehler(e instanceof Error ? e.message : "Das hat nicht geklappt."));
+  }, [inv, o, onJoined]);
+  const tun = async (fn: () => Promise<unknown>) => {
+    setLaeuft(true);
+    setFehler(null);
+    try {
+      await fn();
+      onChanged();
+    } catch (e) {
+      setFehler(e instanceof Error ? e.message : "Das hat nicht geklappt.");
+    } finally {
+      setLaeuft(false);
+    }
+  };
+  return (
+    <div className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border border-primary/30 bg-primary/[0.06] px-3 py-2 text-sm text-foreground">
+      {!inv.accepted ? (
+        <>
+          <p className="min-w-0 flex-1"><strong>{inv.inviter_name}</strong> lädt dich zu dieser Notiz ein.</p>
+          <div className="flex gap-1">
+            <button type="button" disabled={laeuft} onClick={() => void tun(() => acceptInvitation(inv, o.dk, o.keyVersion))}
+              className="inline-flex h-11 items-center rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-60 desk:h-9">
+              Annehmen
+            </button>
+            <button type="button" disabled={laeuft} onClick={() => void tun(() => declineInvitation(inv))}
+              className="inline-flex h-11 items-center rounded-lg px-3 text-sm font-medium text-foreground hover:bg-accent disabled:opacity-60 desk:h-9">
+              Ablehnen
+            </button>
+          </div>
+        </>
+      ) : (
+        <p className="flex min-h-9 items-center gap-2" role="status">
+          <Loader2 className="h-4 w-4 shrink-0 animate-spin text-primary" aria-hidden />
+          {inv.grant ? "Tritt bei …" : "Angenommen. Gleich bist du dabei."}
+        </p>
+      )}
+      {fehler && <p className="basis-full text-destructive" role="alert">{fehler}</p>}
+    </div>
+  );
+}
+
 function Anlegen({ eigenerText, onAnlegen }: { eigenerText: string; onAnlegen: (mitText: boolean) => Promise<void> }) {
   const [mitText, setMitText] = useState(Boolean(eigenerText.trim()));
   const [laeuft, setLaeuft] = useState(false);
   const [fehler, setFehler] = useState<string | null>(null);
   return (
     <div className="rounded-xl border border-dashed border-border p-4">
-      <p className="text-sm text-foreground">
-        Eine gemeinsame Notiz schreibt ihr zu mehreren, alle sehen Änderungen sofort. Eingeladen wird per Link.
-      </p>
+      <p className="text-sm text-foreground">Schreibt zu mehreren an einer Notiz, live und verschlüsselt.</p>
       {eigenerText.trim() && (
-        <label className="mt-3 flex min-h-11 items-center gap-2 text-sm text-foreground">
+        <label className="mt-2 flex min-h-11 items-center gap-2 text-sm text-foreground">
           <input type="checkbox" checked={mitText} onChange={(e) => setMitText(e.target.checked)} className="h-4 w-4 accent-primary" />
           Mit meiner Notiz beginnen
         </label>

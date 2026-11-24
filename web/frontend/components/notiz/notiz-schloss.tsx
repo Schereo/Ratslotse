@@ -40,19 +40,28 @@ export function schlossMeldung(e: unknown, rueckweg?: string): string {
   return ohneRueckweg ? satz : `${satz} ${rueckweg}`;
 }
 
-export function Karte({ titel, id, children, rechts }: { titel: string; id: string; children: React.ReactNode; rechts?: React.ReactNode }) {
+/** ``kopf={false}``: ohne sichtbare Überschrift und ohne Marke rechts — wo
+ *  die Karte nur ein Schritt auf einer Seite ist, die selbst sagt, worum es
+ *  geht (die Einladung zu einer gemeinsamen Notiz). */
+export function Karte({ titel, id, children, rechts, kopf = true }: {
+  titel: string; id: string; children: React.ReactNode; rechts?: React.ReactNode; kopf?: boolean;
+}) {
   return (
     <section aria-labelledby={id} className="rounded-2xl border border-border bg-card p-4 shadow-sm">
-      <div className="flex items-baseline justify-between gap-2">
-        <h2 id={id} className="font-display text-base font-semibold text-foreground">{titel}</h2>
-        {rechts ?? <span className={KICKER}>Mit Konto</span>}
-      </div>
-      <div className="mt-2">{children}</div>
+      {kopf ? (
+        <div className="flex items-baseline justify-between gap-2">
+          <h2 id={id} className="font-display text-base font-semibold text-foreground">{titel}</h2>
+          {rechts ?? <span className={KICKER}>Mit Konto</span>}
+        </div>
+      ) : <h2 id={id} className="sr-only">{titel}</h2>}
+      <div className={kopf ? "mt-2" : undefined}>{children}</div>
     </section>
   );
 }
 
+/** Leerer Text: kein Hinweis. */
 export function Fuss({ text = HINWEIS }: { text?: string }) {
+  if (!text) return null;
   return (
     <p className="mt-2 flex items-start gap-1.5 text-hinweis text-muted-foreground">
       <Lock className="mt-0.5 h-3.5 w-3.5 flex-none" aria-hidden /> {text}
@@ -69,9 +78,10 @@ export function SperrenKnopf({ owner }: { owner: number }) {
 }
 
 /** ``titel``/``id``: die Karte; ``angebot``: der Satz vor dem Einrichten;
- *  ``fuss``: der Hinweis unter der Karte. */
-export function NotizSchloss({ titel, id, angebot, fuss, children }: {
-  titel: string; id: string; angebot: string; fuss?: string; children: (o: Offen) => React.ReactNode;
+ *  ``fuss``: der Hinweis unter der Karte (leer: keiner); ``kopf={false}``:
+ *  die Karte ohne sichtbare Überschrift. */
+export function NotizSchloss({ titel, id, angebot, fuss, kopf = true, children }: {
+  titel: string; id: string; angebot: string; fuss?: string; kopf?: boolean; children: (o: Offen) => React.ReactNode;
 }) {
   const { user, loading } = useAuth();
   const owner = user?.id ?? null;
@@ -90,7 +100,7 @@ export function NotizSchloss({ titel, id, angebot, fuss, children }: {
   }, [owner]);
 
   if (loading) return null;
-  const k = { titel, id };
+  const k = { titel, id, kopf };
   if (owner == null) {
     return (
       <Karte {...k}>
@@ -115,7 +125,7 @@ export function NotizSchloss({ titel, id, angebot, fuss, children }: {
  *  die Passphrase als Rückfall — wo der Browser kein PRF kann oder man lieber
  *  tippt. */
 function Einrichten({ owner, karte, angebot, fuss, onFertig }: {
-  owner: number; karte: { titel: string; id: string }; angebot: string; fuss?: string;
+  owner: number; karte: { titel: string; id: string; kopf?: boolean }; angebot: string; fuss?: string;
   onFertig: (k: NoteKeysState, dk: CryptoKey) => void;
 }) {
   const { user } = useAuth();
@@ -198,7 +208,7 @@ function Einrichten({ owner, karte, angebot, fuss, onFertig }: {
 
 /** Der bisherige Weg: eigene Passphrase plus Wiederherstellungscode. */
 function MitPassphrase({ owner, karte, fuss, hinweis, onFertig, onPasskey }: {
-  owner: number; karte: { titel: string; id: string }; fuss?: string; hinweis: string | null;
+  owner: number; karte: { titel: string; id: string; kopf?: boolean }; fuss?: string; hinweis: string | null;
   onFertig: (k: NoteKeysState, dk: CryptoKey) => void; onPasskey?: () => void;
 }) {
   const [p1, setP1] = useState("");
@@ -293,7 +303,7 @@ function MitPassphrase({ owner, karte, fuss, hinweis, onFertig, onPasskey }: {
 // ---- Entsperren ---------------------------------------------------------------
 
 function Entsperren({ owner, karte, fuss, keys, onKeys, onOffen }: {
-  owner: number; karte: { titel: string; id: string }; fuss?: string; keys: NoteKeysState;
+  owner: number; karte: { titel: string; id: string; kopf?: boolean }; fuss?: string; keys: NoteKeysState;
   onKeys: (k: NoteKeysState) => void; onOffen: (dk: CryptoKey) => void;
 }) {
   const { user } = useAuth();
