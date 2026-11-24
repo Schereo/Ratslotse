@@ -89,7 +89,7 @@ export function Stern({ gemerkt, onClick, name, className }: {
       title={gemerkt ? "Nicht mehr beobachten" : "Beobachten"}
       className={cn(
         "rounded-md p-1 transition-colors hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-        gemerkt ? "text-signal" : "text-muted-foreground/50 hover:text-foreground",
+        gemerkt ? "text-signal-ink" : "text-muted-foreground/50 hover:text-foreground",
         className,
       )}
     >

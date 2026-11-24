@@ -60,7 +60,7 @@ function Zugriff({ zeile }: { zeile: Zeile }) {
       title={titel}
       className={cn(
         "whitespace-nowrap font-mono text-[10px] font-medium uppercase tracking-[0.08em]",
-        zeile.took_last_seat ? "text-signal" : "text-muted-foreground",
+        zeile.took_last_seat ? "text-signal-ink" : "text-muted-foreground",
       )}
     >
       {text}
@@ -121,7 +121,7 @@ function RangZeile({ zeile, max, partei, hochrechnung, waehle }: {
             {hochrechnung && zeile.projected_seats !== null ? <> · Hochr. {zeile.projected_seats}</> : null}
           </span>
         </span>
-        <ChevronRight aria-hidden className="h-4 w-4 flex-none text-muted-foreground/60" />
+        <ChevronRight aria-hidden className="h-4 w-4 flex-none text-muted-foreground" />
       </button>
     </li>
   );

@@ -232,7 +232,7 @@ export function Hantel({
         <span className="font-semibold">{deMio(z.ist as number)}</span>
         <span className="sr-only">, Abweichung </span>
         <span className={cn("ml-1 font-display text-[15px] font-bold leading-none tracking-tight",
-                            d !== 0 && "text-signal")}>
+                            d !== 0 && "text-signal-ink")}>
           {d > 0 ? "+" : ""}{deMio(d)}
         </span>
         {mitQuote && quote != null && (
@@ -279,7 +279,7 @@ export function Hantel({
                 </span>
                 {(() => { const d = diff(z); return (
                   <span className={cn("text-[11.5px] font-semibold tabular-nums",
-                    d !== 0 && "text-signal")}>
+                    d !== 0 && "text-signal-ink")}>
                     {d > 0 ? "+" : ""}{deMio(d)}
                   </span>
                 ); })()}

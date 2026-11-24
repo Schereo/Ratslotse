@@ -233,6 +233,13 @@ jobs:
             wirtschaftsplaene=0
             .venv/bin/python scripts/ingest_wirtschaftsplaene.py || wirtschaftsplaene=$?
 
+            # Die Quartalsberichte der Beteiligungen — Plan und Hochrechnung je
+            # Stichtag. Liest wie die Wirtschaftspläne aus dem Bestand (der
+            # gespeicherte Anlagentext, kein Download), steht deshalb NACH dem
+            # Anlagen-Backfill oben. Was seine Proben reißt, wird nicht
+            # gespeichert und im Protokoll genannt — der Lauf bleibt grün.
+            .venv/bin/python scripts/ingest_holding_quarterly.py
+
             # Die Haushaltssatzung — Kreditermächtigung (§ 2), Dispo-Höchstbetrag
             # (§ 4), Verpflichtungsermächtigungen (§ 3) und der Finanzhaushalt
             # als Ganzes (§ 1.2). Steht NACH dem Anlagen-Backfill oben, weil sie

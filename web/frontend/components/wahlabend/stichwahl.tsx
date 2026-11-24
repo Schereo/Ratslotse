@@ -292,7 +292,7 @@ function Person({
           <dd className="mt-0.5 tabular-nums text-muted-foreground">
             {prozent(k.first_round_pct)}
             {diff !== null ? (
-              <span className="ml-1.5 font-mono text-[11px] text-signal">
+              <span className="ml-1.5 font-mono text-[11px] text-signal-ink">
                 {diff > 0 ? "+" : diff < 0 ? "−" : "±"}
                 {fixed(Math.abs(diff))} Pkt.
               </span>
@@ -421,7 +421,7 @@ function Meldung({ daten }: { daten: Stichwahl }) {
         {neuVorn ? (
           <>
             <span className="mx-2 text-muted-foreground">·</span>
-            <span className="font-semibold text-signal" data-testid="fuehrungswechsel-zeile">
+            <span className="font-semibold text-signal-ink" data-testid="fuehrungswechsel-zeile">
               Führungswechsel — {neuVorn.name} liegt jetzt vorn
             </span>
           </>
@@ -475,7 +475,7 @@ function BuehneEntschieden({ daten, p }: { daten: Stichwahl; p: StichwahlHochrec
             : `${wer?.name ?? p.actual_leader} liegt uneinholbar vorn`}
         </h2>
         <p className="mt-2 max-w-[60ch] text-[14px] leading-relaxed text-muted-foreground">
-          Der Vorsprung von <strong className="font-semibold text-signal">{zahl(p.actual_lead_votes)} Stimmen</strong>{" "}
+          Der Vorsprung von <strong className="font-semibold text-signal-ink">{zahl(p.actual_lead_votes)} Stimmen</strong>{" "}
           {fertig
             ? "steht — alle Bezirke sind gezählt."
             : `ist größer als alle Stimmen, die noch offen sind (höchstens ${zahl(p.open_votes_max)}).`}{" "}

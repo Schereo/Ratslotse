@@ -649,7 +649,7 @@ function DaumenRunterZeile({ d }: { d: AdminDaumenRunter }) {
         <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
           <p className="text-[14px] font-semibold leading-snug text-foreground">{d.question}</p>
           {d.reason_kind && (
-            <span className="rounded-full bg-signal/10 px-2 py-0.5 text-[11px] font-medium text-signal">
+            <span className="rounded-full bg-signal/10 px-2 py-0.5 text-[11px] font-medium text-signal-ink">
               {DAUMEN_GRUND[d.reason_kind] ?? d.reason_kind}
             </span>
           )}

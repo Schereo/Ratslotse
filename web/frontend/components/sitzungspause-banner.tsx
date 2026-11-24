@@ -88,8 +88,8 @@ export function SitzungspauseBanner({ className, compact = false }: { className?
             </span>
           )}
         </p>
-        <span className="hidden shrink-0 text-xs font-medium text-muted-foreground/80 sm:inline">{open ? "Weniger" : "Mehr"}</span>
-        <ChevronDown className={cn("h-4 w-4 shrink-0 text-muted-foreground/60 transition-transform", open && "rotate-180")} />
+        <span className="hidden shrink-0 text-xs font-medium text-muted-foreground sm:inline">{open ? "Weniger" : "Mehr"}</span>
+        <ChevronDown className={cn("h-4 w-4 shrink-0 text-muted-foreground transition-transform", open && "rotate-180")} />
       </button>
       {open && (
         <div className="flex flex-wrap items-center gap-4 border-t border-border/60 px-4 pb-4 pt-3">

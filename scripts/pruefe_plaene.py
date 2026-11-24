@@ -260,7 +260,9 @@ def _pruefe_kernpunkte(conn: sqlite3.Connection) -> list[Befund]:
                     continue  # lokaler Abzug ohne Anlagen-Texte
             if not zeile or not zeile[0]:
                 befunde.append(Befund(key, "fehler", f"Quelle fehlt im Bestand: {ref['kind']} {ref['template']}"))
-            elif plan_judge.tight(entry["quote"]) not in plan_judge.tight(zeile[0]):
+            # Dieselbe Regel wie beim Erzeugen (``evidence.locate``) — sonst meldet die
+            # Prüfung Zitate, die der Erzeuger zu Recht annimmt (Ligatur ohne Zeichen).
+            elif not plan_judge.locate(entry["quote"], {"text": zeile[0]}, None)[0]:
                 befunde.append(Befund(key, "fehler", f"Zitat steht nicht in {ref['kind']} {ref['template']}: "
                                                       f"{entry['quote'][:60]}…"))
         # Die Zahl einer Kachel und der Termin fürs Zeitband sind von Hand gesetzt — beides muss im Zitat stehen.

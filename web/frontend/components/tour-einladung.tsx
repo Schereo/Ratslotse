@@ -109,7 +109,7 @@ export function TourEinladung() {
             <Mascot pose="wave" decorative className="h-28 w-28" />
           </div>
 
-          <p className="wl-title mt-5 font-mono text-[11px] font-semibold uppercase tracking-[0.16em] text-signal">
+          <p className="wl-title mt-5 font-mono text-[11px] font-semibold uppercase tracking-[0.16em] text-signal-ink">
             Alles eingerichtet
           </p>
           <DialogPrimitive.Title className="wl-title mt-2 font-display text-[24px] font-extrabold leading-[1.12] tracking-tight text-foreground [hyphens:none]">
@@ -131,7 +131,7 @@ export function TourEinladung() {
           </div>
           {/* Der Weg zurück, falls jemand ablehnt — genau der, der vorher
               niemandem auffiel. */}
-          <p className="wl-r3 mt-4 text-[11.5px] leading-snug text-muted-foreground/80">
+          <p className="wl-r3 mt-4 text-[11.5px] leading-snug text-muted-foreground">
             Die Tour findest du später auf der Übersicht unter „Erste Schritte“.
           </p>
         </DialogPrimitive.Content>

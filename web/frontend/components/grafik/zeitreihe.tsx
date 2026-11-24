@@ -809,7 +809,7 @@ export function Zeitreihe({
                 <span key={s.year} className="flex justify-between gap-2 border-t border-border/60 py-1">
                   <span className="font-mono text-muted-foreground">{s.year}</span>
                   {/* Eine Lücke bleibt auch in der Tabelle eine Lücke. */}
-                  <span className={s.art === "value" ? "" : "text-signal"}>
+                  <span className={s.art === "value" ? "" : "text-signal-ink"}>
                     {s.art === "value" ? fmt(s.punkt.value) : "—"}
                   </span>
                 </span>

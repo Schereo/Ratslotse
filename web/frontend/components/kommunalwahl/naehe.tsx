@@ -105,7 +105,7 @@ function PaarDetail({ d, kombi, onClose }: { d: NaeheDaten; kombi: [string, stri
                         <span>
                           <strong className="font-semibold text-foreground">{bel!.kurz}</strong>{" "}
                           {bel!.href ? (
-                            <a href={bel!.href} target="_blank" rel="noopener noreferrer" className="text-primary">
+                            <a href={bel!.href} target="_blank" rel="noopener noreferrer" className="textlink">
                               ({bel!.seitenLabel} ↗)
                             </a>
                           ) : (

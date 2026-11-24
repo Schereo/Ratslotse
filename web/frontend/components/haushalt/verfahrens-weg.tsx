@@ -37,7 +37,7 @@ const NEUTRAL = { bg: "hsl(209 18% 65%)", ring: false };
 function Mio({ euro }: { euro: number }) {
   return (
     <span className={cn("whitespace-nowrap font-mono text-[12px] tabular-nums",
-      euro < 0 ? "text-signal" : "text-foreground")}>
+      euro < 0 ? "text-signal-ink" : "text-foreground")}>
       {deltaBetrag(euro)}
     </span>
   );
@@ -61,7 +61,7 @@ function WegZeile({ label, euro, stark }: {
       </span>
       <span className={cn("ml-auto flex-none whitespace-nowrap font-mono text-[12.5px] tabular-nums",
         stark ? "font-semibold" : "",
-        euro < 0 ? "text-signal" : "text-foreground")}>
+        euro < 0 ? "text-signal-ink" : "text-foreground")}>
         {deltaBetrag(euro)}
       </span>
     </p>

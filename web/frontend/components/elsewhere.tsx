@@ -84,7 +84,7 @@ function Eintragskarte({ item }: { item: Eintrag }) {
               </span>
             )}
             {item.originator && (
-              <span className="text-xs text-muted-foreground/80">{item.originator}</span>
+              <span className="text-xs text-muted-foreground">{item.originator}</span>
             )}
           </div>
           <p className="mt-1 text-sm font-medium text-foreground" title={`Nähe ${Math.round(item.score * 100)} %`}>
@@ -130,7 +130,7 @@ export function Elsewhere({ decisionId }: { decisionId: number }) {
   return (
     <div className="mt-6">
       <h2 className="text-sm font-semibold text-muted-foreground">In anderen Städten</h2>
-      <p className="text-xs text-muted-foreground/70">
+      <p className="text-xs text-muted-foreground">
         Ähnliche Vorlagen aus {aufzaehlung(data.bodies)}, nach Ähnlichkeit der Texte
         {" "}ausgewählt. Nicht jede wurde beschlossen — das Ergebnis steht dabei, wo es
         {" "}bekannt ist.

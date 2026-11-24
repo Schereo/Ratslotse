@@ -199,6 +199,10 @@ export function DeliverySettings() {
                 <div
                   key={k.key}
                   id={`anlass-${k.key}`}
+                  // Gedimmt heißt hier „Schalter gerade wirkungslos" — ein
+                  // inaktives Bedienelement samt Beschriftung nimmt WCAG 1.4.3
+                  // aus (a11y-ausnahmen.json).
+                  data-a11y-ausnahme={wirkungslos ? "color-contrast" : undefined}
                   className={`flex items-center justify-between gap-3 scroll-mt-24 rounded-lg transition-shadow ${
                     k.parent ? "ml-3 border-l-2 border-border pl-3" : ""
                   } ${wirkungslos ? "opacity-45" : ""} ${

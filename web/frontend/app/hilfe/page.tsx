@@ -62,7 +62,7 @@ export default function HilfePage() {
             </div>
             <p className="mt-3 text-sm text-muted-foreground">
               Lieber direkt per Mail?{" "}
-              <a href={KONTAKT_MAILTO} className="text-primary hover:underline">
+              <a href={KONTAKT_MAILTO} className="textlink">
                 {KONTAKT_EMAIL}
               </a>
             </p>
@@ -72,7 +72,7 @@ export default function HilfePage() {
             <div className="mt-3 space-y-4">
               <Frage question="Ich komme nicht in mein Konto.">
                 <p>
-                  Über <Link href="/forgot-password" className="text-primary hover:underline">Passwort vergessen</Link>{" "}
+                  Über <Link href="/forgot-password" className="textlink">Passwort vergessen</Link>{" "}
                   bekommst du einen Link zum Zurücksetzen an deine Adresse. Kommt keine Mail an, sieh
                   bitte im Spam-Ordner nach — und wenn sie auch dort fehlt, schreib mir oben kurz über
                   das Formular.
@@ -113,7 +113,7 @@ export default function HilfePage() {
               <Frage question="Was passiert mit meinen Daten?">
                 <p>
                   Das steht vollständig in der{" "}
-                  <Link href="/datenschutz" className="text-primary hover:underline">Datenschutzerklärung</Link>.
+                  <Link href="/datenschutz" className="textlink">Datenschutzerklärung</Link>.
                   Kurz: nur, was für den Betrieb nötig ist — kein Weiterverkauf, kein Tracking für Werbung.
                 </p>
               </Frage>
@@ -130,9 +130,9 @@ export default function HilfePage() {
         </div>
 
         <footer className="mt-12 border-t border-border pt-6 text-sm text-muted-foreground">
-          <Link href="/impressum" className="text-primary hover:underline">Impressum</Link>
+          <Link href="/impressum" className="textlink">Impressum</Link>
           {" · "}
-          <Link href="/datenschutz" className="text-primary hover:underline">Datenschutz</Link>
+          <Link href="/datenschutz" className="textlink">Datenschutz</Link>
           {" · "}
           <Link href="/" className="hover:text-foreground">Startseite</Link>
         </footer>

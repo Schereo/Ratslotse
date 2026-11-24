@@ -61,7 +61,7 @@ function Bonzeile({ z }: { z: BonZeile }) {
   return (
     <div className={cn(
       "flex items-baseline gap-1.5",
-      z.ton === "signal" && "text-signal",
+      z.ton === "signal" && "text-signal-ink",
       z.ton === "leise" && "text-muted-foreground",
     )}>
       <span className="flex-none">{z.label}</span>
@@ -128,7 +128,7 @@ export function Kassenzettel({
               {untertitel}
             </p>
             {stempel && (
-              <p className="mt-3 text-center text-[10.5px] uppercase tracking-[0.07em] text-signal">
+              <p className="mt-3 text-center text-[10.5px] uppercase tracking-[0.07em] text-signal-ink">
                 {stempel}
               </p>
             )}
@@ -191,7 +191,7 @@ export function Kassenzettel({
               (Designsprache §4): Die Punkte sind sehr verschieden lang,
               Spalten fließen und balancieren sich selbst. */}
           <div className="rounded-2xl border border-signal/35 bg-card p-4">
-            <p className="text-[12.5px] font-bold text-signal">So ist die Pro-Kopf-Zahl einzuordnen</p>
+            <p className="text-[12.5px] font-bold text-signal-ink">So ist die Pro-Kopf-Zahl einzuordnen</p>
             <ul className="mt-2.5 space-y-2.5 @2xl/zettel:columns-2 @2xl/zettel:gap-5 @2xl/zettel:space-y-0">
               {nichtAussagen.map((n) => (
                 <li key={n.kern} className="flex break-inside-avoid gap-2.5 @2xl/zettel:mb-2.5">

@@ -200,6 +200,22 @@ PROBEN: dict[str, str] = {
         "Teilhaushalt nur das Jahresergebnis. Die dreizehn Zeilen ergeben in "
         "Plan und Abweichung die gedruckte Summenzeile, und Plan plus "
         "Abweichung ergibt dort die Prognose.",
+    # Die Quartalsberichte der Beteiligungen (council/holding_quarterly.py):
+    # Plan und Hochrechnung je Unternehmen. Es gibt kein Ist zum Stichtag, an
+    # dem sich etwas prüfen ließe — geprüft wird, was der Bericht selbst
+    # zweimal sagt.
+    "holding_quarterly_deviation":
+        "Die gedruckte Abweichung ist je Zeile die Differenz aus Hochrechnung "
+        "und Plan. Welches Vorzeichen der Bericht dafür benutzt, ist gerechnet "
+        "und nicht geglaubt: Es gilt die Regel, unter der die Zeilen aufgehen. "
+        "Eine Zeile, bei der das nicht aufgeht, wird nicht übernommen.",
+    "holding_quarterly_period":
+        "Das Quartal steht im Titel der Vorlage, der Stichtag in jedem "
+        "Abschnitt des Berichts und das Jahr in der Kopfzeile der Tabelle — "
+        "alle drei nennen denselben Zeitpunkt.",
+    "holding_quarterly_plan_text":
+        "Der Plan steht zweimal im Bericht: in der Übersichtstabelle und im "
+        "Abschnitt des Unternehmens. Beide nennen denselben Betrag.",
     # Die Kernzahl aus dem Beschlusstext, bestätigt durch die Anlage
     # (council/wirtschaftsplan_kernzahl.py) — die einzige Probe des Bereichs,
     # die über ZWEI Dokumente geht.
@@ -899,6 +915,9 @@ HERKUNFT_TABELLEN: tuple[str, ...] = (
     # Die Kontenebene der Teilhaushalte (council/budget_accounts.py): je
     # Plan und Teilhaushalt die Herkunft der Anlage.
     "council_budget_accounts",
+    # Die Quartalsberichte der Beteiligungen (council/holding_quarterly.py):
+    # Plan und Hochrechnung je Unternehmen und Stichtag. Neu, ohne Altbestand.
+    "council_holding_forecasts",
 )
 
 

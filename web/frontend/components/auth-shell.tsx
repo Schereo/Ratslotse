@@ -28,7 +28,7 @@ const CLAIM_POINTS = [
  */
 function RechtlicherFuss({ breit }: { breit: boolean }) {
   return (
-    <div
+    <footer
       className={cn(
         "mx-auto mt-5 w-full max-w-sm space-y-1 text-center text-xs leading-relaxed text-muted-foreground",
         breit && "lg:max-w-xl",
@@ -44,7 +44,7 @@ function RechtlicherFuss({ breit }: { breit: boolean }) {
         {" · "}
         <Link href="/datenschutz" className="hover:text-foreground hover:underline">Datenschutz</Link>
       </p>
-    </div>
+    </footer>
   );
 }
 
@@ -75,7 +75,7 @@ export function AuthShell({
   return (
     <div className="grid min-h-screen lg:grid-cols-[1.1fr_1fr]">
       {/* Marken-Hälfte: nur Desktop — Claim + Familien-Fries. */}
-      <div className="relative hidden overflow-hidden bg-waves bg-gradient-to-br from-[#eaf5fd] via-background to-[hsl(19_92%_55%/0.07)] dark:from-muted/40 dark:via-background dark:to-card lg:flex lg:flex-col lg:justify-between lg:p-12">
+      <aside aria-label="Über Ratslotse" className="relative hidden overflow-hidden bg-waves bg-gradient-to-br from-[#eaf5fd] via-background to-[hsl(19_92%_55%/0.07)] dark:from-muted/40 dark:via-background dark:to-card lg:flex lg:flex-col lg:justify-between lg:p-12">
         {/* Logo führt zurück zur Startseite — sonst ist die Auth-Seite eine Sackgasse. */}
         <Link href="/" aria-label="Zur Startseite" className="w-fit">
           <BrandMark />
@@ -100,7 +100,7 @@ export function AuthShell({
           </ul>
         </div>
         <SeasonalFamily className="h-24 self-start" />
-      </div>
+      </aside>
 
       {/* Formular-Hälfte: Karte oben, Pflicht-Fuß unten am Spaltenende. */}
       {/* Der Abstand über der Karte ist kein Geschmack, sondern Lottis Platz:
@@ -116,7 +116,7 @@ export function AuthShell({
             langen Formularen auf kleinen Bildschirmen nicht nach oben aus dem
             Bild, wie es echtes Zentrieren täte (Lotti in der Dynamic Island,
             Tims Befund 14.08.). */}
-        <div className="flex flex-1 justify-center">
+        <main className="flex flex-1 justify-center">
           <div className={cn("relative my-auto w-full max-w-sm", breit && "lg:max-w-xl")}>
             <Mascot pose={pose} className="pointer-events-none absolute -top-[5.65rem] left-1/2 h-24 w-24 -translate-x-1/2" />
             {/* p-6 auf dem Handy: Die Registrieren-Karte ist die längste —
@@ -130,7 +130,7 @@ export function AuthShell({
               {children}
             </Card>
           </div>
-        </div>
+        </main>
         <RechtlicherFuss breit={breit} />
       </div>
     </div>

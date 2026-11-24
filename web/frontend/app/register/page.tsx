@@ -139,7 +139,7 @@ export default function RegisterPage() {
         </form>
         <p className="mt-4 text-center text-sm text-muted-foreground">
           Schon registriert?{" "}
-          <Link href={`/login${weiter}`} className="font-medium text-primary hover:underline">
+          <Link href={`/login${weiter}`} className="font-medium textlink">
             Anmelden
           </Link>
         </p>

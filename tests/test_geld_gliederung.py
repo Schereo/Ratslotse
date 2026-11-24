@@ -110,6 +110,9 @@ FRAGEN = [
     "Wie viel aus den Verpflichtungsermächtigungen des Haushalts 2026 wird 2027 fällig?",
     "Welches Jahresergebnis hatte die Bäderbetriebsgesellschaft 2025 laut Jahresabschluss?",
     "Was steckt hinter den Rückstellungen in der Bilanz der Stadt 2025?",
+    # Die Quartalsberichte der Beteiligungen (11/2026): zwei Unternehmen, ein
+    # gefragtes Jahr, mit geändertem Plan (VWG) und Widerspruch Tabelle/Text (KOL).
+    "Wie sieht die Hochrechnung 2025 von Klinikum und VWG laut Quartalsbericht aus?",
 ]
 
 

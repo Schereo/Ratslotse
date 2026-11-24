@@ -63,6 +63,7 @@ from pathlib import Path
 DEV_ONLY_TABLES = (
     "template_terms",             # Fachwörter aus der Vorlage (begriffe-aus-vorlage)
     "template_program_stances",   # Wahlprogramme am Punkt (wahlprogramm-am-punkt)
+    "budget_draft_findings",      # Was der Haushaltsentwurf zeigt (haushaltsentwurf-befunde)
     "program_vectors",            # Vektoren der Wahlprogramme dazu
     "template_dossiers",          # Vorlagen aufbereiten (Prod-Bestand läuft nach)
     "agenda_item_arguments",      # Argumente am Punkt (punkt-argumente)

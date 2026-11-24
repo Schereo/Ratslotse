@@ -14,6 +14,7 @@
 // stattdessen, was da ist, und lässt die Lücke Lücke sein.
 
 import type { Herkunft } from "@/lib/herkunft";
+import type { ApiAntwort } from "@/lib/vertrag";
 
 export type { Herkunft };
 
@@ -29,7 +30,26 @@ export type Gesellschaft = {
    *  trägt eine Person ihr Amt (s. `aufsichtspersonen`). Optional, weil eine
    *  ältere API das Feld nicht kennt — dann gilt „unbekannt", nicht „ja". */
   roles_assignable?: boolean;
+  /** Aus welcher Ratsperiode die Besetzung im Bericht stammt; `note` steht
+   *  nur da, wenn die Periode inzwischen abgelaufen ist (Backend:
+   *  `shareholding_handbook.board_term_note`). Optional wie oben. */
+  board_term?: {
+    term_label: string; term_start: string; term_end: string;
+    term_ended: boolean; note: string | null;
+  } | null;
+  /** Gilt das Handbuch Beteiligungen, und wie (Handbuch S. 10) — der Satz
+   *  kommt fertig aus dem Backend (`shareholding_handbook.scope`). */
+  handbook_scope?: { key: string; text: string; pages: string } | null;
 };
+
+/** Das Handbuch Beteiligungen der Stadt — Fundstelle und Kurzfassungen. */
+export type Handbuch = ApiAntwort<"/council/budget/shareholdings">["handbook"];
+
+/** Adresse einer Seite der Broschüre. Die gedruckte Seitenzahl ist die des
+ *  PDFs (Umschlag = S. 1). */
+export function handbuchSeite(h: Handbuch, seite: number): string {
+  return `${h.url}#page=${seite}`;
+}
 
 /** Ein Mitglied des Aufsichtsorgans — Betriebsausschuss, Aufsichtsrat oder
  *  Verwaltungsrat, je nach Rechtsform.
@@ -107,7 +127,16 @@ export type Konzernzeile = {
   difference: number;
 };
 
+/** Ein Unternehmen im jüngsten Jahr mit Quartalsbericht: Plan und
+ *  Hochrechnungen je Stichtag (`stations`), das Ist nur aus dem Abschluss
+ *  (`actual`). Zusammengestellt im Backend (`council/holding_quarterly.py`);
+ *  die Seite rechnet nichts davon neu. */
+export type Quartalsjahr = ApiAntwort<"/council/budget/shareholdings">["forecasts"][number];
+export type Quartalsstand = Quartalsjahr["stations"][number];
+
 export type BeteiligungsDaten = {
+  /** Optional wie alles Neue: eine ältere API kennt das Feld nicht. */
+  forecasts?: Quartalsjahr[];
   report_years: number[];
   years: number[];
   companies: Gesellschaft[];
@@ -120,6 +149,8 @@ export type BeteiligungsDaten = {
   people?: Aufsichtsperson[];
   owners?: Eigentuemer[];
   provenance: Record<string, Herkunft>;
+  /** Optional, damit eine ältere API die Seite nicht leer lässt. */
+  handbook?: Handbuch;
 };
 
 /** Überschriften der beschreibenden Abschnitte, in der Reihenfolge des
@@ -139,6 +170,31 @@ export const KENNZAHL_TITEL: Record<Kennzahl["indicator"], string> = {
   bilanzsumme: "Bilanzsumme",
   eigenkapitalquote: "Eigenkapitalquote",
 };
+
+/** Plan und Hochrechnungen einer Gesellschaft im jüngsten Jahr mit Bericht. */
+export function quartalsjahrVon(daten: BeteiligungsDaten | null, company: string): Quartalsjahr | null {
+  const j = (daten?.forecasts ?? []).find((f) => f.company === company);
+  return j && j.stations.length > 0 ? j : null;
+}
+
+/** Wie der Bericht den Plan nennt: „Geänderter Plan“ nur, wo er ihn so nennt.
+ *  Ohne Angabe heißt er schlicht „Plan“ — eine Art wird nicht geraten. */
+export function planTitel(kind: string | null | undefined): string {
+  return kind === "adjusted" ? "Geänderter Plan" : "Plan";
+}
+
+/** „30.09.2025“ aus „2025-09-30“. */
+export function stichtagText(iso: string): string {
+  const [j, m, t] = iso.split("-");
+  return `${t}.${m}.${j}`;
+}
+
+/** Ein Betrag in vollen Euro — bei Plan und Hochrechnung sind es die
+ *  Unterschiede im Tausender, die zählen; „Mio. €“ ließe zwei Stände gleich
+ *  aussehen. */
+export function euroVoll(value: number): string {
+  return `${Math.round(value).toLocaleString("de-DE")} €`;
+}
 
 export function herkunftVon(daten: BeteiligungsDaten | null, id: number | null | undefined) {
   if (!daten || id == null) return null;

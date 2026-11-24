@@ -52,11 +52,13 @@ import Link from "next/link";
 import { ArrowLeft, ChevronDown } from "lucide-react";
 import {
   ABSCHNITTE, Aufsichtsperson, BeteiligungsDaten, Eigentuemer, Gesellschaft,
-  KENNZAHL_TITEL, Kennzahl, RECHTSFORM_TITEL,
+  Handbuch, KENNZAHL_TITEL, Kennzahl, RECHTSFORM_TITEL,
   absatzVorschau, anteilsGewicht, aufsichtsgruppen,
-  aufsichtspersonen, eigentuemerVon, einordnungFuer, eur, gremiumName, herkunftVon,
-  percent, rechtsform, reihen, textVon, wertText,
+  aufsichtspersonen, eigentuemerVon, einordnungFuer, eur, gremiumName, handbuchSeite,
+  euroVoll, herkunftVon, percent, planTitel, quartalsjahrVon, rechtsform, reihen,
+  stichtagText, textVon, wertText,
 } from "@/lib/haushalt-beteiligungen";
+import { GlossaryText } from "@/components/glossary-text";
 import { personHref } from "@/lib/routes";
 import type { JahrPunkt } from "@/components/grafik/daten";
 import { deZahl } from "@/components/grafik/format";
@@ -232,6 +234,112 @@ function Zahlenkopf({ daten, g }: { daten: BeteiligungsDaten; g: Gesellschaft })
   );
 }
 
+/** „Im laufenden Jahr": Plan, Hochrechnungen, Ist — drei getrennte Stationen.
+ *
+ *  Die Quartalsberichte der Geschäftsführungen an den Finanzausschuss
+ *  (`council/holding_quarterly.py`). Drei Regeln, die hier gelten:
+ *
+ *  1. **Nie verrechnet, nie bewertet.** Plan und Hochrechnung stehen
+ *     nebeneinander, ohne Differenz, ohne Pfeil, ohne Farbe: Ob ein Abstand
+ *     gut oder schlecht ist, entscheidet nicht diese Seite. Der Satz, mit dem
+ *     der Bericht selbst sagt, ob der Wirtschaftsplan eingehalten wird, steht
+ *     im Wortlaut als Zitat der Quelle.
+ *  2. **Jede Hochrechnung bleibt stehen.** Ein Jahr trägt bis zu drei Stände
+ *     (30.06., 30.09., 31.12.); der spätere ersetzt den früheren nicht.
+ *  3. **Das Ist kommt nur aus dem Abschluss.** Die Spalte „Vorjahr Ist“ des
+ *     Berichts wird nirgends gezeigt. Wo noch kein Abschluss das Jahr nennt,
+ *     steht das als Auskunft über die Quelle da, nicht als Lücke.
+ *
+ *  Beträge in vollen Euro: Bei Plan und Hochrechnung zählt der Tausender. */
+function ImLaufendenJahr({ daten, g }: { daten: BeteiligungsDaten; g: Gesellschaft }) {
+  const j = quartalsjahrVon(daten, g.company);
+  if (!j) return null;
+  const letzte = j.stations[j.stations.length - 1];
+  const zuschuss = j.basis === "subsidy_need";
+  const istQuelle = j.actual?.source === "annual_accounts"
+    ? "Jahresabschluss der Gesellschaft" : "Beteiligungsbericht";
+
+  return (
+    <Abschnitt kicker="Im laufenden Jahr" zusatz={`Wirtschaftsjahr ${j.year}`}
+      className="@container/laufend">
+      <div data-testid="im-laufenden-jahr">
+        <p className="mt-1.5 max-w-[76ch] text-[13px] leading-relaxed text-foreground/90">
+          {zuschuss
+            ? "Gesamtzuschussbedarf laut Quartalsbericht — der Jahresfehlbetrag vor der Ausgleichszahlung der Stadt, samt Verzinsung des EWE-Anteils."
+            : "Jahresergebnis laut Quartalsbericht der Geschäftsführung."}
+        </p>
+
+        <ol className="mt-3 flex flex-col gap-3">
+          {j.stations.map((s) => (
+            <li key={s.as_of} className="min-w-0 border-t border-border pt-3 first:border-t-0 first:pt-0">
+              <p className="font-mono text-[10px] font-medium uppercase tracking-[0.1em] text-muted-foreground">
+                Stand {stichtagText(s.as_of)} · Bericht zum {s.quarter}. Quartal · Vorlage {s.template_number}
+              </p>
+              <dl className="mt-1.5 grid gap-x-8 gap-y-2 @md/laufend:grid-cols-2">
+                <div className="min-w-0">
+                  <dt className="font-mono text-[9.5px] font-medium uppercase tracking-[0.1em] text-muted-foreground">
+                    {planTitel(s.plan_kind)} {j.year}
+                  </dt>
+                  <dd className="font-display text-[19px] font-bold leading-tight tracking-tight tabular-nums">
+                    {euroVoll(s.plan)}
+                  </dd>
+                </div>
+                <div className="min-w-0">
+                  <dt className="font-mono text-[9.5px] font-medium uppercase tracking-[0.1em] text-muted-foreground">
+                    Hochrechnung {j.year}
+                  </dt>
+                  <dd className="font-display text-[19px] font-bold leading-tight tracking-tight tabular-nums">
+                    {euroVoll(s.forecast)}
+                  </dd>
+                </div>
+              </dl>
+              {(s.conflict_note || s.plan_other != null || s.rounded) && (
+                <p className="mt-1.5 max-w-[74ch] text-[12px] leading-relaxed text-muted-foreground">
+                  {s.conflict_note}
+                  {s.conflict_note && s.plan_other != null ? " " : ""}
+                  {s.plan_other != null && (
+                    <>Daneben nennt der Abschnitt des Unternehmens: {planTitel(s.plan_other_kind)} {j.year} {euroVoll(s.plan_other)}.</>
+                  )}
+                  {s.rounded ? " Dieser Bericht rechnet in Tausend Euro." : ""}
+                </p>
+              )}
+              {s.statement && (
+                <p className="mt-1.5 max-w-[74ch] text-[12.5px] leading-relaxed text-foreground/80">
+                  Der Bericht schreibt: „{s.statement}“
+                </p>
+              )}
+            </li>
+          ))}
+        </ol>
+
+        <div className="mt-3 border-t border-dashed border-border pt-3">
+          <p className="font-mono text-[9.5px] font-medium uppercase tracking-[0.1em] text-muted-foreground">
+            Ist {j.year}
+          </p>
+          {j.actual ? (
+            <p className="font-display text-[19px] font-bold leading-tight tracking-tight tabular-nums">
+              {euroVoll(j.actual.value)}
+              <span className="ml-2 font-sans text-[12px] font-normal text-muted-foreground">
+                laut {istQuelle}
+              </span>
+            </p>
+          ) : (
+            <p className="mt-0.5 max-w-[74ch] text-[12.5px] leading-relaxed text-muted-foreground">
+              {j.actual_note
+                ?? `Das Ist steht erst im Jahresabschluss; er liegt für ${j.year} noch nicht vor.`}
+            </p>
+          )}
+        </div>
+
+        <Einordnung className="mt-3"
+          satz={`Die Hochrechnung ist die Erwartung der Geschäftsführung für den 31. Dezember, kein Zwischenergebnis. ${j.stations.length > 1 ? "Die Stände stehen nebeneinander; keiner ersetzt den anderen. " : ""}Der Bericht führt nur Beteiligungen mit mehr als 50 % Anteil und die Eigenbetriebe.`} />
+        <Fundstelle className="mt-3"
+          h={herkunftVon(daten, letzte.herkunft_id)} />
+      </div>
+    </Abschnitt>
+  );
+}
+
 /** „Was die Gesellschaft tut": erster Absatz sichtbar, der Rest hinter einem
  *  Auslöser. Weglassen heißt hinter einen Auslöser, nie ersatzlos (H4-A) —
  *  gekürzt wird die Darstellung, nicht der Wortlaut. */
@@ -365,10 +473,52 @@ function Person({ p, zeigeFunktion }: { p: Aufsichtsperson; zeigeFunktion: boole
   );
 }
 
+/** Ein Verweis auf eine Seite des Handbuchs Beteiligungen — das Original,
+ *  nicht unsere Zusammenfassung. */
+function HandbuchVerweis({ h, seite, text }: { h: Handbuch; seite: number; text: string }) {
+  return (
+    <a href={handbuchSeite(h, seite)} target="_blank" rel="noopener noreferrer"
+      className="font-semibold text-primary hover:underline">
+      {text}
+    </a>
+  );
+}
+
+/** Die Regeln hinter dem Gremium: Gilt das Handbuch Beteiligungen für diese
+ *  Gesellschaft — und ist die Besetzung im Bericht noch die heutige?
+ *
+ *  Beide Sätze kommen fertig aus dem Backend (`shareholding_handbook`). Sie
+ *  sagen, was das Handbuch VORSIEHT, nie, ob eine Gesellschaft es einhält: Das
+ *  steht in keiner unserer Quellen. */
+function Gremienregeln({ g, h }: { g: Gesellschaft; h?: Handbuch }) {
+  const stand = g.board_term?.note;
+  const geltung = g.handbook_scope;
+  if (!stand && !(geltung && h)) return null;
+  return (
+    <div className="mt-3 flex max-w-[74ch] flex-col gap-1.5 border-t border-dashed border-border pt-3 text-[12.5px] leading-relaxed text-muted-foreground">
+      {stand && (
+        <p>
+          <span className="font-semibold text-foreground">Stand der Besetzung.</span>{" "}
+          {stand}
+          {h && <> (<HandbuchVerweis h={h} seite={22} text="Handbuch Beteiligungen, S. 16–17 und 22" />)</>}
+        </p>
+      )}
+      {geltung && h && (
+        <p>
+          <span className="font-semibold text-foreground">Regeln der Stadt.</span>{" "}
+          {geltung.text}{" "}
+          (<HandbuchVerweis h={h} seite={10} text={`Handbuch Beteiligungen, ${geltung.pages}`} />)
+        </p>
+      )}
+    </div>
+  );
+}
+
 /** „Wer sie beaufsichtigt": die Mitglieder, nach Funktion gebündelt. */
-function Aufsichtsorgan({ personen, zuordenbar, herkunft }: {
+function Aufsichtsorgan({ personen, zuordenbar, herkunft, g, handbuch }: {
   personen: Aufsichtsperson[]; zuordenbar: boolean;
   herkunft: ReturnType<typeof herkunftVon>;
+  g: Gesellschaft; handbuch?: Handbuch;
 }) {
   const gruppen = useMemo(() => aufsichtsgruppen(personen, zuordenbar),
     [personen, zuordenbar]);
@@ -382,7 +532,9 @@ function Aufsichtsorgan({ personen, zuordenbar, herkunft }: {
           Wer einen Eintrag hat, ist verlinkt — das sieht man. */}
       {committee && (
         <p className="mt-1.5 text-[13px] leading-relaxed text-foreground/90">
-          Das Aufsichtsorgan ist der {committee}.
+          {/* Die Gremiennamen sind Glossar-Begriffe (Aufsichtsrat,
+              Verwaltungsrat, Betriebsausschuss, Gesellschafterversammlung). */}
+          <GlossaryText text={`Das Aufsichtsorgan ist der ${committee}.`} />
         </p>
       )}
 
@@ -410,6 +562,7 @@ function Aufsichtsorgan({ personen, zuordenbar, herkunft }: {
           ist aus dieser Tabelle nicht möglich.
         </p>
       )}
+      <Gremienregeln g={g} h={handbuch} />
       <Fundstelle h={herkunft} className="mt-3" />
     </Abschnitt>
   );
@@ -516,6 +669,8 @@ export function Steckbrief({ daten, g, zurueck }: {
 
       <Zahlenkopf daten={daten} g={g} />
 
+      <ImLaufendenJahr daten={daten} g={g} />
+
       {gegenstand && (
         <Auftrag text={gegenstand.text} herkunft={herkunftVon(daten, gegenstand.herkunft_id)} />
       )}
@@ -534,6 +689,7 @@ export function Steckbrief({ daten, g, zurueck }: {
           // Ohne Angabe gilt „unbekannt": Eine alte API, die das Feld nicht
           // kennt, darf keine Ämter behaupten.
           zuordenbar={g.roles_assignable === true}
+          g={g} handbuch={daten.handbook}
           herkunft={herkunftVon(daten, personen[0].herkunft_id ?? organe?.herkunft_id ?? null)} />
       ) : organe ? (
         <Rohtext kicker={TITEL.aufsichtsorgane} text={organe.text}

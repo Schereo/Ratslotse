@@ -448,7 +448,7 @@ function NavLinksInner({ activeTab, tab, sub, onNavigate }: {
   return (
     <div ref={gruppeRef} className="gleit-gruppe relative flex-1">
       <GleitMarker markerRef={markerRef} radius="var(--radius)" />
-      <nav className="space-y-1 px-3">
+      <nav aria-label="Bereiche" className="space-y-1 px-3">
         {MAIN_ITEMS.map((l) => {
           const active = l.tab ? onCouncil && activeTab === l.tab : isActive(l.href);
           return l.tab === "analysis"
@@ -624,7 +624,7 @@ function RechtsLinks({ zentriert = false }: { zentriert?: boolean }) {
 
 export function DesktopSidebar() {
   return (
-    <aside className="hidden w-60 shrink-0 flex-col border-r border-border bg-card desk:flex desk:sticky desk:top-0 desk:h-screen desk:self-start desk:overflow-y-auto">
+    <aside aria-label="Hauptmenü" className="hidden w-60 shrink-0 flex-col border-r border-border bg-card desk:flex desk:sticky desk:top-0 desk:h-screen desk:self-start desk:overflow-y-auto">
       {/* Design 28a/R5: Hier standen zwei „Suchen" mit derselben Lupe 40 px
           übereinander — die Ghost-Zeile (Befehlspalette) und der Navigations-
           punkt „Suchen & Fragen". Wer die Lupe nahm, landete oft im falschen

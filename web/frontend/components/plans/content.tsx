@@ -229,7 +229,7 @@ function Questions({ questions }: { questions: readonly string[] }) {
   return (
     <div role="group" aria-label="Fragen an Lotti" className="mt-4 border-t border-border/70 pt-3.5">
       <p className="inline-flex items-center gap-1.5 font-mono text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
-        <Sparkles className="h-3.5 w-3.5 text-signal" aria-hidden /> Frag Lotti
+        <Sparkles className="h-3.5 w-3.5 text-signal-ink" aria-hidden /> Frag Lotti
       </p>
       <ul className="mt-1 max-w-[76ch]">
         {questions.map((question) => (

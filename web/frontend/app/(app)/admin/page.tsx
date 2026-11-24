@@ -150,6 +150,8 @@ const FEATURE_LABELS: Record<string, string> = {
   template_terms_verify: "Fachwörter aus der Vorlage prüfen",
   program_stance: "Wahlprogramme zum Punkt einordnen",
   program_stance_verify: "Wahlprogramme zum Punkt prüfen",
+  budget_findings: "Was der Haushaltsentwurf zeigt",
+  budget_findings_verify: "Was der Haushaltsentwurf zeigt – Prüfung",
   simple_summary: "Lotti erklärt's einfach",
   social_card_text: "Social-Kartentext",
   social_critic: "Social-Kritiker",
@@ -292,7 +294,7 @@ function FehlerTab() {
           ] as [string, string, string | null][]).map(([label, wert, ton]) => (
             <Card key={label} className="p-4">
               <p className={`font-display text-2xl font-bold tabular-nums ${
-                ton === "warn" ? "text-signal" : "text-foreground"}`}>{wert}</p>
+                ton === "warn" ? "text-signal-ink" : "text-foreground"}`}>{wert}</p>
               <p className="mt-0.5 text-xs text-muted-foreground">{label}</p>
             </Card>
           ))}
@@ -626,7 +628,7 @@ function LlmUsageTab() {
         <Card className="p-4">
           <StatKicker>Täglicher Kostenverlauf (30 T)</StatKicker>
           <AreaSparkline values={data.series.map((d) => d.cost)} days={data.series.map((d) => d.date)} axisTicks={6} color="hsl(var(--primary))" height={110} className="mt-3" />
-          <p className="mt-1.5 text-[11px] text-muted-foreground/80">Spitzen = wöchentlicher Enrichment-Lauf (Klassifikation, Interest, Fundstück).</p>
+          <p className="mt-1.5 text-[11px] text-muted-foreground">Spitzen = wöchentlicher Enrichment-Lauf (Klassifikation, Interest, Fundstück).</p>
         </Card>
         <Card className="p-4">
           <StatKicker>Kostentreiber — Feature</StatKicker>
@@ -677,7 +679,7 @@ function LlmUsageTab() {
           </tbody>
         </table>
       </Card>
-      <p className="text-xs leading-relaxed text-muted-foreground/70">
+      <p className="text-xs leading-relaxed text-muted-foreground">
         Kosten geschätzt aus den erfassten Token-Zahlen × hinterlegten Modellpreisen. Die Erfassung läuft ab
         Einführung dieser Seite (frühere Läufe sind nicht enthalten). Streaming-Antworten liefern je nach Anbieter
         nicht immer eine Token-Angabe.

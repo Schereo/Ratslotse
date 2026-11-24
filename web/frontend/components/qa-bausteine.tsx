@@ -401,7 +401,7 @@ export function PersonBadge({ p, zeilenPartei = null }: {
           tatsächlich geändert hat — der Wechsel zwischen Gruppen-Label und
           Einzelpartei („FDP/Volt" ↔ „FDP") ist keiner. */}
       {gewechselt && (
-        <span className="ml-1 text-[10.5px] font-normal text-muted-foreground/80">
+        <span className="ml-1 text-[10.5px] font-normal text-muted-foreground">
           (heute {p.aktiv ? p.party : "nicht mehr im Rat"})
         </span>
       )}
@@ -419,7 +419,7 @@ export function PersonBadge({ p, zeilenPartei = null }: {
             </span>
           )}
           {period && (
-            <span className="mt-1 block text-[10.5px] text-muted-foreground/70">{period}</span>
+            <span className="mt-1 block text-[10.5px] text-muted-foreground">{period}</span>
           )}
           {/* Verwaltung verlinkt nur mit ERKANNTEM Amt (Tims Wunsch 19.08.) —
               ohne rolle liefert /person/{slug} 404 (verwaltung_detail() im
@@ -1049,7 +1049,7 @@ export function TagesordnungBlock({ sessions }: { sessions: SitzungsInfo[] }) {
             ))}
           </ul>
           <div className="mt-2 flex items-center justify-between gap-2 border-t border-border pt-2">
-            <p className="min-w-0 text-[10.5px] leading-relaxed text-muted-foreground/70">
+            <p className="min-w-0 text-[10.5px] leading-relaxed text-muted-foreground">
               {s.kuenftig
                 ? "Die Sitzung steht noch bevor."
                 : s.n_agenda > s.agenda.length
@@ -1195,14 +1195,14 @@ export function DebattenBlock({ debates, nachgeladen = 0, laedt = false }: {
           {nachgeladen > 0 && (
             <>
               <p className="mt-3 border-t border-dashed border-border pt-2 font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
-                Weitere Beiträge zum Thema <span className="text-muted-foreground/60">· neueste zuerst</span>
+                Weitere Beiträge zum Thema <span className="text-muted-foreground">· neueste zuerst</span>
               </p>
               <ul className="mt-1.5 space-y-2.5">
                 {debates.slice(debates.length - nachgeladen).map((d, i) => (
                   <DebattenZeile key={`n${i}`} d={d} artLabel={artLabel} />
                 ))}
               </ul>
-              <p className="mt-2 text-[10px] leading-relaxed text-muted-foreground/60">
+              <p className="mt-2 text-[10px] leading-relaxed text-muted-foreground">
                 Die Antwort oben stützt sich nur auf die Beiträge über der Linie.
               </p>
             </>
@@ -1220,7 +1220,7 @@ export function DebattenBlock({ debates, nachgeladen = 0, laedt = false }: {
       )}
       {/* Ehrlichkeit zur Quelle: Ratsprotokolle sind Verlaufsprotokolle —
           der wesentliche Inhalt in indirekter Rede, kein Wortprotokoll. */}
-      <p className="mt-2 text-[10px] leading-relaxed text-muted-foreground/60">
+      <p className="mt-2 text-[10px] leading-relaxed text-muted-foreground">
         Die Protokolle fassen Wortbeiträge sinngemäß zusammen — keine wörtlichen
         Zitate, ohne Anspruch auf Vollständigkeit.
       </p>
@@ -1268,7 +1268,7 @@ function DebattenZeile({ d, artLabel }: { d: DebattenHinweis; artLabel: Record<s
             aria-label={d.minutes_page
               ? `Sitzungsprotokoll öffnen (PDF, Seite ${d.minutes_page})`
               : "Sitzungsprotokoll öffnen (PDF)"}
-            className="-m-1.5 shrink-0 p-1.5 text-muted-foreground/60 transition-colors hover:text-primary">
+            className="-m-1.5 shrink-0 p-1.5 text-muted-foreground transition-colors hover:text-primary">
             <FileDown className="h-3 w-3" aria-hidden />
           </a>
         )}
@@ -1340,7 +1340,7 @@ export function ParteienListe({ parties, ohneBeitraege = [], onFrageStellen }: {
         <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
           Aus den Ratsdebatten
         </p>
-        <p className="text-[10.5px] text-muted-foreground/70">
+        <p className="text-[10.5px] text-muted-foreground">
           {parties === null ? "Positionen werden zusammengefasst …"
             : `${parties.length} ${nurFraktionen ? "Fraktionen" : "Fraktionen und Verbände"}`
               + (daten.length === 1 ? ` · Sitzung ${daten[0]}` : "")}
@@ -1400,7 +1400,7 @@ export function ParteienListe({ parties, ohneBeitraege = [], onFrageStellen }: {
                       {/* Ehrlichkeit zur Datenbasis: aus wie vielen Wortbeiträgen
                           die Position verdichtet ist (Tims Befund 10.08.). */}
                       {p.contributions > 0 && (
-                        <span className="inline-flex items-center gap-0.5 whitespace-nowrap font-mono text-[10px] text-muted-foreground/70">
+                        <span className="inline-flex items-center gap-0.5 whitespace-nowrap font-mono text-[10px] text-muted-foreground">
                           {p.contributions === 1 ? "1 Beitrag" : `${p.contributions} Beiträge`}
                           {aufklappbar && (
                             <ChevronDown aria-hidden
@@ -1428,7 +1428,7 @@ export function ParteienListe({ parties, ohneBeitraege = [], onFrageStellen }: {
                     {p.kernaussage && (
                       <p className="mt-1 text-[12px] italic leading-snug text-muted-foreground">
                         {p.kernaussage.text}
-                        <span className="font-mono text-[10px] not-italic text-muted-foreground/80">
+                        <span className="font-mono text-[10px] not-italic text-muted-foreground">
                           {" "}— {p.kernaussage.speaker ? <SprecherName name={p.kernaussage.speaker} party={p.party} date={p.kernaussage.date} /> : "ohne Namen"}{p.kernaussage.date ? `, ${p.kernaussage.date}` : ""}
                         </span>
                       </p>
@@ -1451,7 +1451,7 @@ export function ParteienListe({ parties, ohneBeitraege = [], onFrageStellen }: {
               );
             })}
           </div>
-          <p className="mt-1.5 border-t border-dashed border-border pt-2 text-[10px] leading-normal text-muted-foreground/70">
+          <p className="mt-1.5 border-t border-dashed border-border pt-2 text-[10px] leading-normal text-muted-foreground">
             {/* Vollständigkeits-Ehrlichkeit (Tims Direktive): fehlende Fraktionen
                 benennen statt still weglassen. */}
             {ohneBeitraege.length > 0 && (

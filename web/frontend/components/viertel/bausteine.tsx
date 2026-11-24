@@ -475,7 +475,7 @@ export function DemnaechstKarte({ items, className, style }: { items: Tafel["upc
   return (
     <Card className={cn("border-signal/30 bg-signal/5 p-4", className)} style={style}>
       <h2 className="flex items-center gap-2 font-display text-base font-bold text-foreground">
-        <CalendarDays className="h-4 w-4 text-signal" /> Demnächst im Rat
+        <CalendarDays className="h-4 w-4 text-signal-ink" /> Demnächst im Rat
       </h2>
       <ul className="mt-2 space-y-2">
         {items.map((u) => (
@@ -737,7 +737,7 @@ export function VorhabenDetail({ v, ortName, angemeldet, gemeldet, onMelden, onZ
       <div className="flex items-start justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
           <Badge color={stand.color}>{stand.label}</Badge>
-          {v.when && <span className="font-semibold text-signal">{v.when}</span>}
+          {v.when && <span className="font-semibold text-signal-ink">{v.when}</span>}
           <span>{KATEGORIE[v.category] ?? KATEGORIE.other}</span>
         </div>
         {schliessenSichtbar !== "nie" && (

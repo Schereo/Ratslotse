@@ -71,8 +71,12 @@ def heute_lang(tag: date | None = None) -> str:
 #: „nachschlagen, nachschlagen, rechnen“; danach antwortet Lotti mit dem,
 #: was sie hat.
 MAX_RUNDEN = 3
-#: Deckel je Werkzeug-Ergebnis — so lang wie ein großer Geld-Baustein.
-BLOCK_MAX = 3000
+#: Deckel je Werkzeug-Ergebnis. Bis 11/2026 3.000 Zeichen — „so lang wie ein
+#: großer Geld-Baustein". Inzwischen ziehen Fragen zu Gesellschaften zwei
+#: Bausteine, die zusammengehören: die Regel aus dem Handbuch Beteiligungen
+#: (bis 2.450) und den Steckbrief der Gesellschaft (bis 2.400). Mit 3.000 kam
+#: immer nur einer durch; gilt auch für den MCP-Server (`mcp_tools`).
+BLOCK_MAX = 4500
 
 _RECHT = "budget"
 

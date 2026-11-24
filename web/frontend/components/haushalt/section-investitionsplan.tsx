@@ -386,7 +386,7 @@ export function InvestitionsplanAbschnitt({ onBestand }: {
           <p className="mt-3.5 max-w-[86ch] text-[11.5px] leading-relaxed text-muted-foreground">
             Die Bereiche heißen im Haushalt „Teilhaushalte“ — dieselbe Einteilung
             wie unter{" "}
-            <Link href="/haushalt/produkte#bereiche" className="text-primary hover:underline">
+            <Link href="/haushalt/produkte#bereiche" className="textlink">
               Was steckt hinter den Namen?
             </Link>
             . Hohe Investitionsauszahlungen bedeuten zunächst nur, dass in diesem
@@ -474,7 +474,7 @@ export function InvestitionsplanAbschnitt({ onBestand }: {
             Bis 02.09.2026 stand er hier als dritter Stil neben den beiden
             anderen der Seite. */}
         <section className="@container rounded-2xl border border-border border-l-[3px] border-l-signal bg-card p-4 shadow-sm">
-          <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-signal">
+          <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-signal-ink">
             Was diese Zahlen nicht sagen
           </p>
           <ul className="mt-2.5 flex list-disc flex-col gap-2 pl-4 text-[12.5px] leading-relaxed text-foreground/90">
@@ -490,7 +490,7 @@ export function InvestitionsplanAbschnitt({ onBestand }: {
               bestimmte Schule saniert wird, ist deshalb auch hier nicht
               beantwortet — was der Rat dazu beschlossen hat, findest du über
               die{" "}
-              <Link href="/council?tab=decisions" className="text-primary hover:underline">Suche</Link>{" "}
+              <Link href="/council?tab=decisions" className="textlink">Suche</Link>{" "}
               in den Beschlüssen.
             </li>
             <li>
@@ -520,7 +520,7 @@ export function InvestitionsplanAbschnitt({ onBestand }: {
               Die Stadt stellt diesen Datensatz erst im Jahr nach dem
               Haushaltsjahr ins Open-Data-Portal. Für das laufende Jahr gibt es
               ihn dort noch nicht — im{" "}
-              <Link href="/haushalt" className="text-primary hover:underline">
+              <Link href="/haushalt" className="textlink">
                 Datenstand
               </Link>{" "}
               steht, wann der nächste Jahrgang erwartet wird.

@@ -317,7 +317,7 @@ export function GebautAbschnitt({ onBestand }: {
             Warum hier keine Quote steht — eigener Block, kein Kleingedrucktes.
             Es ist die Zahl, nach der jede Leserin als Nächstes sucht. */}
         <section className="@container rounded-2xl border border-border border-l-[3px] border-l-signal bg-card p-4 shadow-sm">
-          <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-signal">
+          <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-signal-ink">
             Warum hier keine „Umsetzungsquote“ steht
           </p>
           <p className="mt-2 max-w-[76ch] text-[13px] leading-relaxed text-foreground/90">
@@ -498,7 +498,7 @@ export function GebautAbschnitt({ onBestand }: {
 
         {/* Die Grenzen — eigener Block, nicht Kleingedrucktes. */}
         <section className="@container rounded-2xl border border-border border-l-[3px] border-l-signal bg-card p-4 shadow-sm">
-          <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-signal">
+          <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-signal-ink">
             Was diese Zahlen nicht sagen
           </p>
           <ul className="mt-2 grid list-disc grid-cols-1 gap-x-8 gap-y-1.5 pl-4 text-[13px] leading-relaxed text-foreground/90 @3xl:grid-cols-2">

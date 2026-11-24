@@ -623,7 +623,7 @@ function BereichInner() {
               <>
                 {kopf && (
                   <div className="mt-2.5 flex flex-wrap items-end gap-x-4 gap-y-1">
-                    <p className="font-display text-[34px] font-bold leading-none tracking-tight tabular-nums text-signal">
+                    <p className="font-display text-[34px] font-bold leading-none tracking-tight tabular-nums text-signal-ink">
                       {kopf.delta > 0 ? "+" : kopf.delta < 0 ? "−" : ""}{deMio(Math.abs(kopf.delta))}
                     </p>
                     <p className="max-w-[54ch] text-[12.5px] leading-relaxed text-foreground/85">
@@ -751,7 +751,7 @@ function BereichInner() {
                       <div key={g.nr} className="flex flex-col gap-1">
                         <span className="text-[12.5px] font-semibold">
                           {g.label}
-                          <span className="ml-1.5 font-mono text-[11px] font-normal tabular-nums text-signal">
+                          <span className="ml-1.5 font-mono text-[11px] font-normal tabular-nums text-signal-ink">
                             {(g.delta_meur ?? 0) > 0 ? "+" : ""}{deMio(g.delta_meur)}&#8239;Mio.&nbsp;€
                           </span>
                         </span>
