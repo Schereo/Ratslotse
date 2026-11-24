@@ -7,7 +7,7 @@
  * virtuellen Authenticator mit PRF. Nur der Punkt kommt aus der Fixture —
  * so läuft der Test auch gegen die leere Ratsdatenbank.
  */
-import { test, expect, type Browser, type BrowserContext, type Page } from "@playwright/test";
+import { test, expect, type Browser, type BrowserContext, type Locator, type Page } from "@playwright/test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
@@ -45,6 +45,14 @@ async function notizenEinrichten(scope: ReturnType<Page["locator"]>) {
   await scope.getByRole("button", { name: "Mit Passkey einrichten" }).click();
 }
 
+/** Der Text der Notiz OHNE die Namensschilder fremder Cursor — die stehen als
+ *  Elemente im Editor, und `toHaveText` läse „…und RadwegBen“ (CI 24.11.2026). */
+const ohneCursor = (feld: Locator) => feld.evaluate((el) => {
+  const kopie = el.cloneNode(true) as HTMLElement;
+  kopie.querySelectorAll(".collaboration-carets__caret").forEach((n) => n.remove());
+  return kopie.textContent ?? "";
+});
+
 test.describe("Gemeinsame Notizen", () => {
   test.setTimeout(120_000);
 
@@ -62,7 +70,7 @@ test.describe("Gemeinsame Notizen", () => {
       await expect(ka.getByRole("checkbox", { name: "Mit meiner Notiz beginnen" })).toBeChecked();
       await ka.getByRole("button", { name: "Gemeinsame Notiz anlegen" }).click();
       const feldA = ka.getByRole("textbox", { name: "Gemeinsame Notiz" });
-      await expect(feldA).toHaveText("Tempo 30 vor der Schule", { timeout: 15_000 });
+      await expect.poll(() => ohneCursor(feldA), { timeout: 15_000 }).toBe("Tempo 30 vor der Schule");
       await expect(ka.getByText("Live", { exact: true })).toBeVisible();
 
       // Einladen: der Link trägt das Geheimnis im Anker.
@@ -88,14 +96,14 @@ test.describe("Gemeinsame Notizen", () => {
       await ben.page.waitForURL(/\/council\/punkt/);
       const kb = karte(ben.page);
       const feldB = kb.getByRole("textbox", { name: "Gemeinsame Notiz" });
-      await expect(feldB).toHaveText("Tempo 30 vor der Schule", { timeout: 15_000 });
+      await expect.poll(() => ohneCursor(feldB), { timeout: 15_000 }).toBe("Tempo 30 vor der Schule");
       await expect(kb.getByRole("button", { name: "Mit Anna" })).toHaveAttribute("aria-pressed", "true");
 
       // Beide schreiben — jeder sieht den Text des anderen.
       await feldB.click();
       await ben.page.keyboard.press("ControlOrMeta+End");
       await ben.page.keyboard.type(" und Radweg");
-      await expect(feldA).toHaveText("Tempo 30 vor der Schule und Radweg", { timeout: 10_000 });
+      await expect.poll(() => ohneCursor(feldA), { timeout: 10_000 }).toBe("Tempo 30 vor der Schule und Radweg");
       await feldA.click();
       await anna.page.keyboard.press("ControlOrMeta+End");
       await anna.page.keyboard.press("Enter");
