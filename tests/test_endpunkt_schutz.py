@@ -275,6 +275,11 @@ def _endpunkte():
 
     aus = []
     for pfad, methoden, dependant, extra in laufen(app.routes):
+        if dependant is None or not methoden:
+            # Eine WebSocket-Route hat weder HTTP-Methoden noch ihre Prüfung
+            # als Abhängigkeit — sie steht in WEBSOCKETS und hat ihren eigenen
+            # Wächter (`test_jede_websocket_route_ist_bekannt`).
+            continue
         namen = _namen(dependant)
         for d in extra:
             call = getattr(d, "dependency", None) or getattr(d, "call", None)
@@ -341,4 +346,38 @@ def test_die_liste_der_offenen_endpunkte_ist_aktuell(endpunkte):
     assert not inzwischen, (
         "Diese Endpunkte stehen in OEFFENTLICH, verlangen aber inzwischen eine "
         "Anmeldung — bitte aus der Liste streichen:\n  " + "\n  ".join(inzwischen)
+    )
+
+
+#: WebSocket-Routen und wie sie sich anmelden. Sie fallen durch die Prüfung
+#: oben (keine HTTP-Methode, keine Abhängigkeit) — deshalb steht jede hier,
+#: und eine neue ist eine bewusste Entscheidung, keine Lücke.
+WEBSOCKETS = {
+    # Einmal-Kennung aus POST /{note_id}/ticket (require_active + Mitgliedschaft),
+    # nicht das Cookie: Das öffnete jeder fremden Seite die Tür (CSWSH).
+    "/api/shared-notes/{note_id}/live": "ticket",
+}
+
+
+def test_jede_websocket_route_ist_bekannt():
+    from fastapi.routing import APIWebSocketRoute
+
+    from app.main import app
+
+    def laufen(routen):
+        for r in routen:
+            if isinstance(r, APIWebSocketRoute):
+                yield r.path
+            elif hasattr(r, "effective_route_contexts"):
+                for ctx in r.effective_route_contexts():
+                    if isinstance(ctx.original_route, APIWebSocketRoute):
+                        yield ctx.original_route.path
+            elif hasattr(r, "routes"):
+                yield from laufen(r.routes)
+
+    gefunden = set(laufen(app.routes))
+    assert gefunden == set(WEBSOCKETS), (
+        f"WebSocket-Routen ohne Eintrag: {sorted(gefunden - set(WEBSOCKETS))}; "
+        f"Einträge ohne Route: {sorted(set(WEBSOCKETS) - gefunden)}. Jede WebSocket-Route "
+        "steht mit ihrer Anmeldung in WEBSOCKETS (tests/test_endpunkt_schutz.py)."
     )

@@ -6855,6 +6855,67 @@ SEITENBILD_JPEG: dict[int | str, dict[str, Any]] = {
 }
 
 
+class SharedNoteMember(TypedDict):
+    """Ein Mitglied einer gemeinsamen Notiz — Anzeigename, keine Adresse."""
+    user_id: int
+    display_name: str
+    role: Literal["owner", "editor"]
+
+
+class SharedNote(TypedDict):
+    """Eine gemeinsame Notiz aus Sicht eines Mitglieds: der eigene, mit dem
+    eigenen Datenschlüssel verpackte Notizschlüssel und wer dabei ist. Den
+    Inhalt gibt es nur verschlüsselt über die Live-Verbindung."""
+    id: str
+    target_kind: Literal["agenda_item", "decision"]
+    target_key: str
+    role: Literal["owner", "editor"]
+    owner_id: int
+    key_iv: str
+    key_ct: str
+    key_version: int
+    members: list[SharedNoteMember]
+    created_at: str
+    updated_at: str
+
+
+class SharedNoteList(TypedDict):
+    notes: list[SharedNote]
+
+
+class SharedNoteInvite(TypedDict):
+    """Eine Einladung. Der Link entsteht im Browser: Kennung hier, Geheimnis
+    im Anker, den der Server nie sieht."""
+    id: str
+    expires_at: str
+    created_at: str
+
+
+class SharedNoteInvites(TypedDict):
+    invites: list[SharedNoteInvite]
+
+
+class NoteInviteInfo(TypedDict):
+    """Was die Seite einer Einladung zeigt — und der verpackte Notizschlüssel,
+    den nur der Anker des Links aufschließt."""
+    invite_id: str
+    note_id: str
+    target_kind: Literal["agenda_item", "decision"]
+    target_key: str
+    target_title: str | None
+    inviter_name: str
+    iv: str
+    ciphertext: str
+    expires_at: str
+    already_member: bool
+
+
+class LiveTicket(TypedDict):
+    """Einmal-Kennung für die Live-Verbindung, eine Minute gültig."""
+    ticket: str
+    expires_in: int
+
+
 class DocumentPages(TypedDict):
     """Wie viele Seiten eine Unterlage hat — für das Blättern in der Vorschau."""
     document_id: int

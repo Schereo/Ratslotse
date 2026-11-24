@@ -1038,6 +1038,61 @@ CREATE TABLE IF NOT EXISTS user_notes (
     updated_at  TEXT NOT NULL,
     UNIQUE(owner_id, target_kind, target_key, kind)
 );
+-- Gemeinsame Notizen (Schalter `notizen-teilen`, seit 11/2026): mehrere Konten
+-- schreiben live an einer Notiz. Ende-zu-Ende verschlüsselt wie die eigenen:
+-- Jede gemeinsame Notiz hat einen eigenen Notizschlüssel; jedes Mitglied hält
+-- ihn verpackt mit SEINEM Datenschlüssel (`shared_note_members.key_*`). Der
+-- Inhalt ist ein Yjs-Dokument: ein verschlüsselter Stand (`snapshot`) plus die
+-- verschlüsselten Änderungen danach (`shared_note_updates`, fortlaufend
+-- nummeriert). Eingeladen wird per Link: Der Notizschlüssel liegt verpackt
+-- mit einem Geheimnis, das nur im Link-Anker steht (`shared_note_invites`) —
+-- den Anker bekommt der Server nie zu sehen.
+CREATE TABLE IF NOT EXISTS shared_notes (
+    id           TEXT PRIMARY KEY,
+    owner_id     INTEGER NOT NULL,
+    target_kind  TEXT NOT NULL,
+    target_key   TEXT NOT NULL,
+    snapshot_iv  TEXT,
+    snapshot     TEXT,
+    snapshot_seq INTEGER NOT NULL DEFAULT 0,
+    next_seq     INTEGER NOT NULL DEFAULT 1,
+    created_at   TEXT NOT NULL,
+    updated_at   TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_shared_notes_target ON shared_notes(target_kind, target_key);
+CREATE TABLE IF NOT EXISTS shared_note_members (
+    note_id     TEXT NOT NULL,
+    user_id     INTEGER NOT NULL,
+    role        TEXT NOT NULL DEFAULT 'editor',
+    key_iv      TEXT NOT NULL,
+    key_ct      TEXT NOT NULL,
+    key_version INTEGER NOT NULL,
+    joined_at   TEXT NOT NULL,
+    PRIMARY KEY (note_id, user_id)
+);
+CREATE INDEX IF NOT EXISTS idx_shared_note_members_user ON shared_note_members(user_id);
+CREATE TABLE IF NOT EXISTS shared_note_updates (
+    note_id    TEXT NOT NULL,
+    seq        INTEGER NOT NULL,
+    author_id  INTEGER,
+    iv         TEXT NOT NULL,
+    ciphertext TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    PRIMARY KEY (note_id, seq)
+);
+CREATE TABLE IF NOT EXISTS shared_note_invites (
+    id         TEXT PRIMARY KEY,
+    note_id    TEXT NOT NULL,
+    owner_id   INTEGER NOT NULL,
+    iv         TEXT NOT NULL,
+    ciphertext TEXT NOT NULL,
+    -- SHA-256 eines Nachweises, den nur das Link-Geheimnis ergibt (HKDF mit
+    -- eigener Kennung): Beitreten verlangt ihn, die Kennung allein reicht nicht.
+    verifier_hash TEXT NOT NULL,
+    expires_at TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_shared_note_invites_note ON shared_note_invites(note_id);
 """
 
 # Alle Tabellen, die an einem Konto hängen — Grundlage von `delete_web_user`
@@ -1154,6 +1209,13 @@ USER_OWNED_TABLES: tuple[tuple[str, str], ...] = (
     ("web_passkeys", "owner_id"),
     ("webauthn_challenges", "owner_id"),
     ("user_notes", "owner_id"),
+    # Gemeinsame Notizen: Die Mitgliedschaft und die eigenen Einladungen gehen
+    # mit. Eine Notiz, die das Konto leitet, gibt `delete_web_user` VORHER an
+    # das älteste übrige Mitglied ab (oder löscht sie, wenn keins da ist) —
+    # sonst verschwände sie für alle, die noch daran schreiben.
+    ("shared_note_members", "user_id"),
+    ("shared_note_invites", "owner_id"),
+    ("shared_notes", "owner_id"),
 )
 
 
@@ -3920,6 +3982,7 @@ class Store:
             self._conn.execute(
                 "DELETE FROM prediction_standings WHERE player_id IN "
                 "(SELECT id FROM prediction_players WHERE owner_id = ?)", (user_id,))
+            self._shared_notes_hand_over(user_id)
             for table, column in USER_OWNED_TABLES:
                 self._conn.execute(f"DELETE FROM {table} WHERE {column} = ?", (user_id,))
             self._conn.execute("DELETE FROM web_users WHERE id = ?", (user_id,))
@@ -6995,6 +7058,229 @@ class Store:
             return self._conn.execute(
                 "DELETE FROM user_notes WHERE owner_id = ? AND target_kind = ? AND target_key = ? AND kind = ?",
                 (owner_id, target_kind, target_key, kind)).rowcount == 1
+
+    # ---- Gemeinsame Notizen (Schalter `notizen-teilen`) -------------------
+    # Der Server hält nur Blobs: verpackte Notizschlüssel, verschlüsselte
+    # Yjs-Stände und -Änderungen. Wer was darf, prüft der Router; hier stehen
+    # die Abfragen und die Reihenfolge der Änderungen (`next_seq`).
+
+    #: Grenzen gegen ein Skript, das Tabellen füllt — und gegen eine Notiz,
+    #: deren Änderungsliste nie zu einem Stand zusammengefasst wird.
+    SHARED_MAX_MEMBERS = 25
+    SHARED_MAX_NOTES = 200
+    SHARED_MAX_UPDATES = 5000
+
+    def _shared_notes_hand_over(self, user_id: int) -> None:
+        """Vor dem Löschen eines Kontos (in dessen Transaktion): Notizen, die es
+        leitet, gehen an das älteste übrige Mitglied; ohne Mitglied verschwinden
+        sie samt Änderungen und Einladungen. Eigene Änderungen verlieren ihren
+        Urheber — sie sind Teil des gemeinsamen Texts, nicht des Kontos."""
+        for (note_id,) in self._conn.execute(
+                "SELECT id FROM shared_notes WHERE owner_id = ?", (user_id,)).fetchall():
+            nach = self._conn.execute(
+                "SELECT user_id FROM shared_note_members WHERE note_id = ? AND user_id != ? "
+                "ORDER BY joined_at, user_id LIMIT 1", (note_id, user_id)).fetchone()
+            if nach:
+                self._conn.execute("UPDATE shared_notes SET owner_id = ? WHERE id = ?", (nach[0], note_id))
+                self._conn.execute("UPDATE shared_note_members SET role = 'owner' WHERE note_id = ? AND user_id = ?",
+                                   (note_id, nach[0]))
+            else:
+                self._delete_shared_note_rows(note_id)
+        self._conn.execute("UPDATE shared_note_updates SET author_id = NULL WHERE author_id = ?", (user_id,))
+
+    def _delete_shared_note_rows(self, note_id: str) -> None:
+        for table, column in (("shared_note_updates", "note_id"), ("shared_note_invites", "note_id"),
+                              ("shared_note_members", "note_id"), ("shared_notes", "id")):
+            self._conn.execute(f"DELETE FROM {table} WHERE {column} = ?", (note_id,))
+
+    def create_shared_note(self, owner_id: int, target_kind: str, target_key: str, *, key_iv: str, key_ct: str,
+                           key_version: int, snapshot_iv: str | None = None, snapshot: str | None = None) -> str | None:
+        """Neue gemeinsame Notiz, das Konto als erstes Mitglied. ``None`` über
+        der Grenze."""
+        if self._conn.execute("SELECT COUNT(*) FROM shared_note_members WHERE user_id = ?",
+                              (owner_id,)).fetchone()[0] >= self.SHARED_MAX_NOTES:
+            return None
+        note_id = secrets.token_hex(16)
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self._conn:
+            self._conn.execute(
+                "INSERT INTO shared_notes (id, owner_id, target_kind, target_key, snapshot_iv, snapshot, "
+                "created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                (note_id, owner_id, target_kind, target_key, snapshot_iv, snapshot, now, now))
+            self._conn.execute(
+                "INSERT INTO shared_note_members (note_id, user_id, role, key_iv, key_ct, key_version, joined_at) "
+                "VALUES (?, ?, 'owner', ?, ?, ?, ?)", (note_id, owner_id, key_iv, key_ct, key_version, now))
+        return note_id
+
+    def get_shared_note(self, note_id: str) -> dict | None:
+        r = self._conn.execute("SELECT * FROM shared_notes WHERE id = ?", (note_id,)).fetchone()
+        return dict(r) if r else None
+
+    def shared_note_member(self, note_id: str, user_id: int) -> dict | None:
+        r = self._conn.execute("SELECT * FROM shared_note_members WHERE note_id = ? AND user_id = ?",
+                               (note_id, user_id)).fetchone()
+        return dict(r) if r else None
+
+    def shared_note_members(self, note_id: str) -> list[dict]:
+        return [dict(r) for r in self._conn.execute(
+            "SELECT m.user_id, m.role, m.joined_at, COALESCE(NULLIF(u.display_name, ''), 'Mitglied') AS display_name "
+            "FROM shared_note_members m LEFT JOIN web_users u ON u.id = m.user_id "
+            "WHERE m.note_id = ? ORDER BY m.joined_at, m.user_id", (note_id,))]
+
+    def shared_notes_for(self, user_id: int, target_kind: str | None = None,
+                         target_key: str | None = None) -> list[dict]:
+        """Die gemeinsamen Notizen, in denen das Konto Mitglied ist — mit dem
+        eigenen verpackten Notizschlüssel und den Mitgliedern."""
+        sql = ("SELECT n.id, n.owner_id, n.target_kind, n.target_key, n.created_at, n.updated_at, "
+               "m.role, m.key_iv, m.key_ct, m.key_version FROM shared_notes n "
+               "JOIN shared_note_members m ON m.note_id = n.id AND m.user_id = ?")
+        args: list[object] = [user_id]
+        if target_kind:
+            sql += " WHERE n.target_kind = ?"
+            args.append(target_kind)
+            if target_key:
+                sql += " AND n.target_key = ?"
+                args.append(target_key)
+        out = [dict(r) for r in self._conn.execute(sql + " ORDER BY n.updated_at DESC", args)]
+        for n in out:
+            n["members"] = self.shared_note_members(n["id"])
+        return out
+
+    def add_shared_note_update(self, note_id: str, author_id: int, iv: str, ciphertext: str) -> int | None:
+        """Eine verschlüsselte Änderung anhängen; liefert ihre Nummer. ``None``,
+        wenn die Liste voll ist — dann muss erst ein Stand her."""
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self._conn:
+            r = self._conn.execute("SELECT next_seq, snapshot_seq FROM shared_notes WHERE id = ?",
+                                   (note_id,)).fetchone()
+            if not r or r["next_seq"] - 1 - r["snapshot_seq"] >= self.SHARED_MAX_UPDATES:
+                return None
+            seq = int(r["next_seq"])
+            self._conn.execute(
+                "INSERT INTO shared_note_updates (note_id, seq, author_id, iv, ciphertext, created_at) "
+                "VALUES (?, ?, ?, ?, ?, ?)", (note_id, seq, author_id, iv, ciphertext, now))
+            self._conn.execute("UPDATE shared_notes SET next_seq = ?, updated_at = ? WHERE id = ?",
+                               (seq + 1, now, note_id))
+        return seq
+
+    def shared_note_state(self, note_id: str, since: int = 0) -> dict:
+        """Was ein Client braucht, der bis ``since`` alles hat: den Stand (wenn
+        er hinter ihm liegt) und die Änderungen danach."""
+        n = self.get_shared_note(note_id)
+        if not n:
+            return {"snapshot": None, "updates": [], "next_seq": 1}
+        snap = None
+        ab = since
+        # `since == 0`: Wer neu kommt, braucht auch einen Stand vom Anlegen (Nummer 0).
+        if n["snapshot"] and (since < n["snapshot_seq"] or since == 0):
+            snap = {"seq": n["snapshot_seq"], "iv": n["snapshot_iv"], "ct": n["snapshot"]}
+            ab = n["snapshot_seq"]
+        updates = [{"seq": r["seq"], "iv": r["iv"], "ct": r["ciphertext"]} for r in self._conn.execute(
+            "SELECT seq, iv, ciphertext FROM shared_note_updates WHERE note_id = ? AND seq > ? ORDER BY seq",
+            (note_id, ab))]
+        return {"snapshot": snap, "updates": updates, "next_seq": n["next_seq"]}
+
+    def save_shared_note_snapshot(self, note_id: str, upto: int, iv: str, ciphertext: str) -> bool:
+        """Ein Stand, der alle Änderungen bis ``upto`` enthält, ersetzt sie.
+        Nur vorwärts: Ein älterer Stand als der gespeicherte zählt nicht."""
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self._conn:
+            r = self._conn.execute("SELECT next_seq, snapshot_seq FROM shared_notes WHERE id = ?",
+                                   (note_id,)).fetchone()
+            if not r or not (r["snapshot_seq"] < upto < r["next_seq"]):
+                return False
+            self._conn.execute("UPDATE shared_notes SET snapshot_iv = ?, snapshot = ?, snapshot_seq = ?, "
+                               "updated_at = ? WHERE id = ?", (iv, ciphertext, upto, now, note_id))
+            self._conn.execute("DELETE FROM shared_note_updates WHERE note_id = ? AND seq <= ?", (note_id, upto))
+        return True
+
+    def create_shared_note_invite(self, note_id: str, owner_id: int, iv: str, ciphertext: str,
+                                  expires_at: str, verifier_hash: str) -> str:
+        invite_id = secrets.token_urlsafe(16)
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self._conn:
+            # Abgelaufene räumen sich beim Anlegen einer neuen mit weg.
+            self._conn.execute("DELETE FROM shared_note_invites WHERE expires_at < ?", (now,))
+            self._conn.execute(
+                "INSERT INTO shared_note_invites (id, note_id, owner_id, iv, ciphertext, verifier_hash, expires_at, "
+                "created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                (invite_id, note_id, owner_id, iv, ciphertext, verifier_hash, expires_at, now))
+        return invite_id
+
+    def get_shared_note_invite(self, invite_id: str) -> dict | None:
+        """Eine gültige Einladung — abgelaufene gibt es nicht."""
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        r = self._conn.execute(
+            "SELECT i.*, COALESCE(NULLIF(u.display_name, ''), 'Jemand') AS inviter_name FROM shared_note_invites i "
+            "LEFT JOIN web_users u ON u.id = i.owner_id WHERE i.id = ? AND i.expires_at >= ?",
+            (invite_id, now)).fetchone()
+        return dict(r) if r else None
+
+    def shared_note_invites(self, note_id: str, owner_id: int | None = None) -> list[dict]:
+        """Offene Einladungen — mit ``owner_id`` nur die dieses Kontos."""
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        sql = "SELECT id, owner_id, expires_at, created_at FROM shared_note_invites WHERE note_id = ? AND expires_at >= ?"
+        args: list[object] = [note_id, now]
+        if owner_id is not None:
+            sql += " AND owner_id = ?"
+            args.append(owner_id)
+        return [dict(r) for r in self._conn.execute(sql + " ORDER BY created_at DESC", args)]
+
+    def delete_shared_note_invite(self, note_id: str, invite_id: str, owner_id: int | None = None) -> bool:
+        """Zurückziehen — mit ``owner_id`` nur eine eigene."""
+        sql = "DELETE FROM shared_note_invites WHERE id = ? AND note_id = ?"
+        args: list[object] = [invite_id, note_id]
+        if owner_id is not None:
+            sql += " AND owner_id = ?"
+            args.append(owner_id)
+        with self._conn:
+            return self._conn.execute(sql, args).rowcount == 1
+
+    def join_shared_note(self, note_id: str, user_id: int, *, key_iv: str, key_ct: str, key_version: int) -> str:
+        """Beitreten oder den eigenen Schlüssel erneuern. ``ok``, ``full``."""
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self._conn:
+            schon = self._conn.execute("SELECT role FROM shared_note_members WHERE note_id = ? AND user_id = ?",
+                                       (note_id, user_id)).fetchone()
+            if schon:
+                self._conn.execute("UPDATE shared_note_members SET key_iv = ?, key_ct = ?, key_version = ? "
+                                   "WHERE note_id = ? AND user_id = ?",
+                                   (key_iv, key_ct, key_version, note_id, user_id))
+                return "ok"
+            if self._conn.execute("SELECT COUNT(*) FROM shared_note_members WHERE note_id = ?",
+                                  (note_id,)).fetchone()[0] >= self.SHARED_MAX_MEMBERS:
+                return "full"
+            self._conn.execute(
+                "INSERT INTO shared_note_members (note_id, user_id, role, key_iv, key_ct, key_version, joined_at) "
+                "VALUES (?, ?, 'editor', ?, ?, ?, ?)", (note_id, user_id, key_iv, key_ct, key_version, now))
+        return "ok"
+
+    def leave_shared_note(self, note_id: str, user_id: int) -> None:
+        """Ein Mitglied geht (oder wird entfernt). Geht die Leitung, übernimmt
+        das älteste übrige Mitglied; ist niemand mehr da, verschwindet die Notiz."""
+        with self._conn:
+            n = self._conn.execute("SELECT owner_id FROM shared_notes WHERE id = ?", (note_id,)).fetchone()
+            if not n:
+                return
+            self._conn.execute("DELETE FROM shared_note_members WHERE note_id = ? AND user_id = ?", (note_id, user_id))
+            # ALLE offenen Einladungen fallen weg, nicht nur die eigenen: Wer
+            # geht, kennt die Links der anderen womöglich — und den alten
+            # Notizschlüssel. Mit einem Link wäre er sonst gleich wieder drin.
+            self._conn.execute("DELETE FROM shared_note_invites WHERE note_id = ?", (note_id,))
+            if n["owner_id"] != user_id:
+                return
+            nach = self._conn.execute("SELECT user_id FROM shared_note_members WHERE note_id = ? "
+                                      "ORDER BY joined_at, user_id LIMIT 1", (note_id,)).fetchone()
+            if nach:
+                self._conn.execute("UPDATE shared_notes SET owner_id = ? WHERE id = ?", (nach[0], note_id))
+                self._conn.execute("UPDATE shared_note_members SET role = 'owner' WHERE note_id = ? AND user_id = ?",
+                                   (note_id, nach[0]))
+            else:
+                self._delete_shared_note_rows(note_id)
+
+    def delete_shared_note(self, note_id: str) -> None:
+        with self._conn:
+            self._delete_shared_note_rows(note_id)
 
     # ---- persönliche Merkliste --------------------------------------------
 

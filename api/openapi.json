@@ -1,6 +1,38 @@
 {
   "components": {
     "schemas": {
+      "AcceptIn": {
+        "properties": {
+          "key_ct": {
+            "maxLength": 128,
+            "title": "Key Ct",
+            "type": "string"
+          },
+          "key_iv": {
+            "maxLength": 32,
+            "title": "Key Iv",
+            "type": "string"
+          },
+          "key_version": {
+            "minimum": 1.0,
+            "title": "Key Version",
+            "type": "integer"
+          },
+          "verifier": {
+            "maxLength": 64,
+            "title": "Verifier",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key_iv",
+          "key_ct",
+          "key_version",
+          "verifier"
+        ],
+        "title": "AcceptIn",
+        "type": "object"
+      },
       "AccountPasskey": {
         "description": "Ein Passkey zum Anmelden, wie das Konto ihn zeigt. ``notes``: Er\nschließt auch die Notizen auf (gleiche Kennung in ``note_passkeys``).",
         "properties": {
@@ -17648,6 +17680,39 @@
         "title": "ImportanceBreakdown",
         "type": "object"
       },
+      "InviteIn": {
+        "properties": {
+          "ciphertext": {
+            "maxLength": 128,
+            "title": "Ciphertext",
+            "type": "string"
+          },
+          "days": {
+            "default": 7,
+            "maximum": 30.0,
+            "minimum": 1.0,
+            "title": "Days",
+            "type": "integer"
+          },
+          "iv": {
+            "maxLength": 32,
+            "title": "Iv",
+            "type": "string"
+          },
+          "verifier_hash": {
+            "maxLength": 64,
+            "title": "Verifier Hash",
+            "type": "string"
+          }
+        },
+        "required": [
+          "iv",
+          "ciphertext",
+          "verifier_hash"
+        ],
+        "title": "InviteIn",
+        "type": "object"
+      },
       "ItemAmendment": {
         "description": "Ein Antrag am Punkt, gelesen von ``council/motions.py``. Ohne Auszug\n(``read`` false) nur Label, Antragsteller und Link. ``outcome`` und\n``decision_id`` stehen, wenn die Teilabstimmung im Protokoll eindeutig\nzugeordnet ist.",
         "properties": {
@@ -18836,6 +18901,25 @@
           "finished"
         ],
         "title": "LiveState",
+        "type": "object"
+      },
+      "LiveTicket": {
+        "description": "Einmal-Kennung für die Live-Verbindung, eine Minute gültig.",
+        "properties": {
+          "expires_in": {
+            "title": "Expires In",
+            "type": "integer"
+          },
+          "ticket": {
+            "title": "Ticket",
+            "type": "string"
+          }
+        },
+        "required": [
+          "ticket",
+          "expires_in"
+        ],
+        "title": "LiveTicket",
         "type": "object"
       },
       "LoanCoverage": {
@@ -21268,6 +21352,72 @@
           "version"
         ],
         "title": "NoteIn",
+        "type": "object"
+      },
+      "NoteInviteInfo": {
+        "description": "Was die Seite einer Einladung zeigt — und der verpackte Notizschlüssel,\nden nur der Anker des Links aufschließt.",
+        "properties": {
+          "already_member": {
+            "title": "Already Member",
+            "type": "boolean"
+          },
+          "ciphertext": {
+            "title": "Ciphertext",
+            "type": "string"
+          },
+          "expires_at": {
+            "title": "Expires At",
+            "type": "string"
+          },
+          "invite_id": {
+            "title": "Invite Id",
+            "type": "string"
+          },
+          "inviter_name": {
+            "title": "Inviter Name",
+            "type": "string"
+          },
+          "iv": {
+            "title": "Iv",
+            "type": "string"
+          },
+          "note_id": {
+            "title": "Note Id",
+            "type": "string"
+          },
+          "target_key": {
+            "title": "Target Key",
+            "type": "string"
+          },
+          "target_kind": {
+            "enum": [
+              "agenda_item",
+              "decision"
+            ],
+            "title": "Target Kind",
+            "type": "string"
+          },
+          "target_title": {
+            "title": "Target Title",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "invite_id",
+          "note_id",
+          "target_kind",
+          "target_key",
+          "target_title",
+          "inviter_name",
+          "iv",
+          "ciphertext",
+          "expires_at",
+          "already_member"
+        ],
+        "title": "NoteInviteInfo",
         "type": "object"
       },
       "NoteKeys": {
@@ -35487,6 +35637,222 @@
         "title": "SharePreview",
         "type": "object"
       },
+      "SharedNote": {
+        "description": "Eine gemeinsame Notiz aus Sicht eines Mitglieds: der eigene, mit dem\neigenen Datenschlüssel verpackte Notizschlüssel und wer dabei ist. Den\nInhalt gibt es nur verschlüsselt über die Live-Verbindung.",
+        "properties": {
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "key_ct": {
+            "title": "Key Ct",
+            "type": "string"
+          },
+          "key_iv": {
+            "title": "Key Iv",
+            "type": "string"
+          },
+          "key_version": {
+            "title": "Key Version",
+            "type": "integer"
+          },
+          "members": {
+            "items": {
+              "$ref": "#/components/schemas/SharedNoteMember"
+            },
+            "title": "Members",
+            "type": "array"
+          },
+          "owner_id": {
+            "title": "Owner Id",
+            "type": "integer"
+          },
+          "role": {
+            "enum": [
+              "owner",
+              "editor"
+            ],
+            "title": "Role",
+            "type": "string"
+          },
+          "target_key": {
+            "title": "Target Key",
+            "type": "string"
+          },
+          "target_kind": {
+            "enum": [
+              "agenda_item",
+              "decision"
+            ],
+            "title": "Target Kind",
+            "type": "string"
+          },
+          "updated_at": {
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "target_kind",
+          "target_key",
+          "role",
+          "owner_id",
+          "key_iv",
+          "key_ct",
+          "key_version",
+          "members",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "SharedNote",
+        "type": "object"
+      },
+      "SharedNoteIn": {
+        "properties": {
+          "key_ct": {
+            "maxLength": 128,
+            "title": "Key Ct",
+            "type": "string"
+          },
+          "key_iv": {
+            "maxLength": 32,
+            "title": "Key Iv",
+            "type": "string"
+          },
+          "key_version": {
+            "minimum": 1.0,
+            "title": "Key Version",
+            "type": "integer"
+          },
+          "snapshot": {
+            "maxLength": 2097152,
+            "title": "Snapshot",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "snapshot_iv": {
+            "maxLength": 32,
+            "title": "Snapshot Iv",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "target_key": {
+            "maxLength": 40,
+            "title": "Target Key",
+            "type": "string"
+          },
+          "target_kind": {
+            "enum": [
+              "agenda_item",
+              "decision"
+            ],
+            "title": "Target Kind",
+            "type": "string"
+          }
+        },
+        "required": [
+          "target_kind",
+          "target_key",
+          "key_iv",
+          "key_ct",
+          "key_version"
+        ],
+        "title": "SharedNoteIn",
+        "type": "object"
+      },
+      "SharedNoteInvite": {
+        "description": "Eine Einladung. Der Link entsteht im Browser: Kennung hier, Geheimnis\nim Anker, den der Server nie sieht.",
+        "properties": {
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "expires_at": {
+            "title": "Expires At",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "expires_at",
+          "created_at"
+        ],
+        "title": "SharedNoteInvite",
+        "type": "object"
+      },
+      "SharedNoteInvites": {
+        "properties": {
+          "invites": {
+            "items": {
+              "$ref": "#/components/schemas/SharedNoteInvite"
+            },
+            "title": "Invites",
+            "type": "array"
+          }
+        },
+        "required": [
+          "invites"
+        ],
+        "title": "SharedNoteInvites",
+        "type": "object"
+      },
+      "SharedNoteList": {
+        "properties": {
+          "notes": {
+            "items": {
+              "$ref": "#/components/schemas/SharedNote"
+            },
+            "title": "Notes",
+            "type": "array"
+          }
+        },
+        "required": [
+          "notes"
+        ],
+        "title": "SharedNoteList",
+        "type": "object"
+      },
+      "SharedNoteMember": {
+        "description": "Ein Mitglied einer gemeinsamen Notiz — Anzeigename, keine Adresse.",
+        "properties": {
+          "display_name": {
+            "title": "Display Name",
+            "type": "string"
+          },
+          "role": {
+            "enum": [
+              "owner",
+              "editor"
+            ],
+            "title": "Role",
+            "type": "string"
+          },
+          "user_id": {
+            "title": "User Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "user_id",
+          "display_name",
+          "role"
+        ],
+        "title": "SharedNoteMember",
+        "type": "object"
+      },
       "SimilarDecision": {
         "description": "Ein semantischer Nachbar (``CouncilStore.get_similar``).",
         "properties": {
@@ -46837,6 +47203,101 @@
         ]
       }
     },
+    "/api/note-invites/{invite_id}": {
+      "get": {
+        "operationId": "invite_info_api_note_invites__invite_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "invite_id",
+            "required": true,
+            "schema": {
+              "title": "Invite Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NoteInviteInfo"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Invite Info",
+        "tags": [
+          "notes"
+        ]
+      }
+    },
+    "/api/note-invites/{invite_id}/accept": {
+      "post": {
+        "description": "Beitreten: Der Browser hat den Schlüssel mit dem Anker ausgepackt und mit\ndem eigenen Datenschlüssel neu verpackt. Prüfen kann der Server das nicht —\nwer Unsinn schickt, sperrt nur sich selbst aus.",
+        "operationId": "accept_invite_api_note_invites__invite_id__accept_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "invite_id",
+            "required": true,
+            "schema": {
+              "title": "Invite Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AcceptIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SharedNote"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Accept Invite",
+        "tags": [
+          "notes"
+        ]
+      }
+    },
     "/api/notes": {
       "get": {
         "description": "Die Notizen einer Seite — ohne Filter alle (Export; entschlüsselt wird im Browser).",
@@ -48853,6 +49314,367 @@
         "summary": "Stats",
         "tags": [
           "quiz"
+        ]
+      }
+    },
+    "/api/shared-notes": {
+      "get": {
+        "operationId": "list_shared_api_shared_notes_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "target_kind",
+            "required": false,
+            "schema": {
+              "enum": [
+                "agenda_item",
+                "decision"
+              ],
+              "title": "Target Kind",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "target_key",
+            "required": false,
+            "schema": {
+              "title": "Target Key",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SharedNoteList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Shared",
+        "tags": [
+          "notes"
+        ]
+      },
+      "post": {
+        "operationId": "create_shared_api_shared_notes_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SharedNoteIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SharedNote"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Shared",
+        "tags": [
+          "notes"
+        ]
+      }
+    },
+    "/api/shared-notes/{note_id}": {
+      "delete": {
+        "description": "Nur die Leitung löscht die Notiz für alle; ein Mitglied verlässt sie\nüber ``DELETE /{id}/members/{eigene Kennung}``.",
+        "operationId": "delete_shared_api_shared_notes__note_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "note_id",
+            "required": true,
+            "schema": {
+              "title": "Note Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Gelöscht"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Shared",
+        "tags": [
+          "notes"
+        ]
+      }
+    },
+    "/api/shared-notes/{note_id}/invites": {
+      "get": {
+        "description": "Die Leitung sieht alle offenen Einladungen, ein Mitglied nur seine eigenen.",
+        "operationId": "list_invites_api_shared_notes__note_id__invites_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "note_id",
+            "required": true,
+            "schema": {
+              "title": "Note Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SharedNoteInvites"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Invites",
+        "tags": [
+          "notes"
+        ]
+      },
+      "post": {
+        "description": "Jedes Mitglied darf einladen: Den Notizschlüssel kennt es ohnehin.",
+        "operationId": "create_invite_api_shared_notes__note_id__invites_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "note_id",
+            "required": true,
+            "schema": {
+              "title": "Note Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InviteIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SharedNoteInvite"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Invite",
+        "tags": [
+          "notes"
+        ]
+      }
+    },
+    "/api/shared-notes/{note_id}/invites/{invite_id}": {
+      "delete": {
+        "operationId": "delete_invite_api_shared_notes__note_id__invites__invite_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "note_id",
+            "required": true,
+            "schema": {
+              "title": "Note Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "invite_id",
+            "required": true,
+            "schema": {
+              "title": "Invite Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Zurückgezogen"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Invite",
+        "tags": [
+          "notes"
+        ]
+      }
+    },
+    "/api/shared-notes/{note_id}/members/{member_id}": {
+      "delete": {
+        "description": "Selbst gehen darf jedes Mitglied; andere entfernen nur die Leitung.",
+        "operationId": "remove_member_api_shared_notes__note_id__members__member_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "note_id",
+            "required": true,
+            "schema": {
+              "title": "Note Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "member_id",
+            "required": true,
+            "schema": {
+              "title": "Member Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Entfernt"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Remove Member",
+        "tags": [
+          "notes"
+        ]
+      }
+    },
+    "/api/shared-notes/{note_id}/ticket": {
+      "post": {
+        "operationId": "live_ticket_api_shared_notes__note_id__ticket_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "note_id",
+            "required": true,
+            "schema": {
+              "title": "Note Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LiveTicket"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Live Ticket",
+        "tags": [
+          "notes"
         ]
       }
     },

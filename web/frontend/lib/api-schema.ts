@@ -5151,6 +5151,45 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/note-invites/{invite_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Invite Info */
+        get: operations["invite_info_api_note_invites__invite_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/note-invites/{invite_id}/accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Accept Invite
+         * @description Beitreten: Der Browser hat den Schlüssel mit dem Anker ausgepackt und mit
+         *     dem eigenen Datenschlüssel neu verpackt. Prüfen kann der Server das nicht —
+         *     wer Unsinn schickt, sperrt nur sich selbst aus.
+         */
+        post: operations["accept_invite_api_note_invites__invite_id__accept_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/notes": {
         parameters: {
             query?: never;
@@ -5991,6 +6030,123 @@ export interface paths {
         get: operations["stats_api_quiz_stats_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/shared-notes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Shared */
+        get: operations["list_shared_api_shared_notes_get"];
+        put?: never;
+        /** Create Shared */
+        post: operations["create_shared_api_shared_notes_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/shared-notes/{note_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete Shared
+         * @description Nur die Leitung löscht die Notiz für alle; ein Mitglied verlässt sie
+         *     über ``DELETE /{id}/members/{eigene Kennung}``.
+         */
+        delete: operations["delete_shared_api_shared_notes__note_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/shared-notes/{note_id}/invites": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Invites
+         * @description Die Leitung sieht alle offenen Einladungen, ein Mitglied nur seine eigenen.
+         */
+        get: operations["list_invites_api_shared_notes__note_id__invites_get"];
+        put?: never;
+        /**
+         * Create Invite
+         * @description Jedes Mitglied darf einladen: Den Notizschlüssel kennt es ohnehin.
+         */
+        post: operations["create_invite_api_shared_notes__note_id__invites_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/shared-notes/{note_id}/invites/{invite_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete Invite */
+        delete: operations["delete_invite_api_shared_notes__note_id__invites__invite_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/shared-notes/{note_id}/members/{member_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Remove Member
+         * @description Selbst gehen darf jedes Mitglied; andere entfernen nur die Leitung.
+         */
+        delete: operations["remove_member_api_shared_notes__note_id__members__member_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/shared-notes/{note_id}/ticket": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Live Ticket */
+        post: operations["live_ticket_api_shared_notes__note_id__ticket_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -7270,6 +7426,17 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** AcceptIn */
+        AcceptIn: {
+            /** Key Ct */
+            key_ct: string;
+            /** Key Iv */
+            key_iv: string;
+            /** Key Version */
+            key_version: number;
+            /** Verifier */
+            verifier: string;
+        };
         /**
          * AccountPasskey
          * @description Ein Passkey zum Anmelden, wie das Konto ihn zeigt. ``notes``: Er
@@ -14523,6 +14690,20 @@ export interface components {
                 [key: string]: number | null;
             };
         };
+        /** InviteIn */
+        InviteIn: {
+            /** Ciphertext */
+            ciphertext: string;
+            /**
+             * Days
+             * @default 7
+             */
+            days: number;
+            /** Iv */
+            iv: string;
+            /** Verifier Hash */
+            verifier_hash: string;
+        };
         /**
          * ItemAmendment
          * @description Ein Antrag am Punkt, gelesen von ``council/motions.py``. Ohne Auszug
@@ -14947,6 +15128,16 @@ export interface components {
             speaker: string | null;
             /** Updated At */
             updated_at: string;
+        };
+        /**
+         * LiveTicket
+         * @description Einmal-Kennung für die Live-Verbindung, eine Minute gültig.
+         */
+        LiveTicket: {
+            /** Expires In */
+            expires_in: number;
+            /** Ticket */
+            ticket: string;
         };
         /** LoanCoverage */
         LoanCoverage: {
@@ -15957,6 +16148,36 @@ export interface components {
             key_version: number;
             /** Version */
             version: number;
+        };
+        /**
+         * NoteInviteInfo
+         * @description Was die Seite einer Einladung zeigt — und der verpackte Notizschlüssel,
+         *     den nur der Anker des Links aufschließt.
+         */
+        NoteInviteInfo: {
+            /** Already Member */
+            already_member: boolean;
+            /** Ciphertext */
+            ciphertext: string;
+            /** Expires At */
+            expires_at: string;
+            /** Invite Id */
+            invite_id: string;
+            /** Inviter Name */
+            inviter_name: string;
+            /** Iv */
+            iv: string;
+            /** Note Id */
+            note_id: string;
+            /** Target Key */
+            target_key: string;
+            /**
+             * Target Kind
+             * @enum {string}
+             */
+            target_kind: "agenda_item" | "decision";
+            /** Target Title */
+            target_title: string | null;
         };
         /**
          * NoteKeys
@@ -21583,6 +21804,100 @@ export interface components {
             description: string;
             /** Title */
             title: string;
+        };
+        /**
+         * SharedNote
+         * @description Eine gemeinsame Notiz aus Sicht eines Mitglieds: der eigene, mit dem
+         *     eigenen Datenschlüssel verpackte Notizschlüssel und wer dabei ist. Den
+         *     Inhalt gibt es nur verschlüsselt über die Live-Verbindung.
+         */
+        SharedNote: {
+            /** Created At */
+            created_at: string;
+            /** Id */
+            id: string;
+            /** Key Ct */
+            key_ct: string;
+            /** Key Iv */
+            key_iv: string;
+            /** Key Version */
+            key_version: number;
+            /** Members */
+            members: components["schemas"]["SharedNoteMember"][];
+            /** Owner Id */
+            owner_id: number;
+            /**
+             * Role
+             * @enum {string}
+             */
+            role: "owner" | "editor";
+            /** Target Key */
+            target_key: string;
+            /**
+             * Target Kind
+             * @enum {string}
+             */
+            target_kind: "agenda_item" | "decision";
+            /** Updated At */
+            updated_at: string;
+        };
+        /** SharedNoteIn */
+        SharedNoteIn: {
+            /** Key Ct */
+            key_ct: string;
+            /** Key Iv */
+            key_iv: string;
+            /** Key Version */
+            key_version: number;
+            /** Snapshot */
+            snapshot?: string | null;
+            /** Snapshot Iv */
+            snapshot_iv?: string | null;
+            /** Target Key */
+            target_key: string;
+            /**
+             * Target Kind
+             * @enum {string}
+             */
+            target_kind: "agenda_item" | "decision";
+        };
+        /**
+         * SharedNoteInvite
+         * @description Eine Einladung. Der Link entsteht im Browser: Kennung hier, Geheimnis
+         *     im Anker, den der Server nie sieht.
+         */
+        SharedNoteInvite: {
+            /** Created At */
+            created_at: string;
+            /** Expires At */
+            expires_at: string;
+            /** Id */
+            id: string;
+        };
+        /** SharedNoteInvites */
+        SharedNoteInvites: {
+            /** Invites */
+            invites: components["schemas"]["SharedNoteInvite"][];
+        };
+        /** SharedNoteList */
+        SharedNoteList: {
+            /** Notes */
+            notes: components["schemas"]["SharedNote"][];
+        };
+        /**
+         * SharedNoteMember
+         * @description Ein Mitglied einer gemeinsamen Notiz — Anzeigename, keine Adresse.
+         */
+        SharedNoteMember: {
+            /** Display Name */
+            display_name: string;
+            /**
+             * Role
+             * @enum {string}
+             */
+            role: "owner" | "editor";
+            /** User Id */
+            user_id: number;
         };
         /**
          * SimilarDecision
@@ -28828,6 +29143,72 @@ export interface operations {
             };
         };
     };
+    invite_info_api_note_invites__invite_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                invite_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NoteInviteInfo"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    accept_invite_api_note_invites__invite_id__accept_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                invite_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AcceptIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SharedNote"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_notes_api_notes_get: {
         parameters: {
             query?: {
@@ -30276,6 +30657,257 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["QuizScore"];
+                };
+            };
+        };
+    };
+    list_shared_api_shared_notes_get: {
+        parameters: {
+            query?: {
+                target_kind?: "agenda_item" | "decision" | null;
+                target_key?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SharedNoteList"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_shared_api_shared_notes_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SharedNoteIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SharedNote"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_shared_api_shared_notes__note_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                note_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Gelöscht */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_invites_api_shared_notes__note_id__invites_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                note_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SharedNoteInvites"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_invite_api_shared_notes__note_id__invites_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                note_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InviteIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SharedNoteInvite"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_invite_api_shared_notes__note_id__invites__invite_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                note_id: string;
+                invite_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Zurückgezogen */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    remove_member_api_shared_notes__note_id__members__member_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                note_id: string;
+                member_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Entfernt */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    live_ticket_api_shared_notes__note_id__ticket_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                note_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LiveTicket"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -32255,4 +32887,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 352aee3ce543302ed1f0b36400235c2fd23281ecf450666d717c98027fffe321
+// vertrag-sha256: c554c80639df560823330295c24dd000025d7c5cd5ff48e3002b501610255cd3

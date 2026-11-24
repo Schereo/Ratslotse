@@ -662,7 +662,7 @@ OHNE_ERKLAERUNG: dict[str, str] = {
 #: kann. Die Wahlseiten stehen seit 10/2026 in ``PAGES``.
 OEFFENTLICH: frozenset[str] = frozenset({
     "/", "/login", "/register", "/forgot-password", "/reset-password",
-    "/verify-email", "/hilfe", "/impressum", "/datenschutz", "/oauth/freigeben",
+    "/verify-email", "/hilfe", "/impressum", "/datenschutz", "/oauth/freigeben", "/notiz-einladung",
     "/barrierefreiheit", "/changelog", "/g",
     "/kommunalwahl", "/kommunalwahl/check", "/kommunalwahl/methodik",
     "/kommunalwahl/naehe", "/kommunalwahl/liste/{slug}",

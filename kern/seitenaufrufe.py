@@ -58,7 +58,7 @@ PLATZHALTER = "{slug}"
 ROUTEN: frozenset[str] = frozenset({
     # öffentlich
     "/", "/login", "/register", "/forgot-password", "/reset-password",
-    "/verify-email", "/hilfe", "/impressum", "/datenschutz", "/oauth/freigeben",
+    "/verify-email", "/hilfe", "/impressum", "/datenschutz", "/oauth/freigeben", "/notiz-einladung",
     "/barrierefreiheit", "/changelog", "/g",
     "/kommunalwahl", "/kommunalwahl/check", "/kommunalwahl/methodik",
     "/kommunalwahl/naehe", f"/kommunalwahl/liste/{PLATZHALTER}",
