@@ -68,6 +68,7 @@
        unter WCAG AA. #ce4709 trägt Weiß mit 4,65 : 1 (Review 10/2026,
        DESIGNSPRACHE § 2). */
     --signal: 19 92% 42%;
+    --signal-ink: 19 92% 35%; /* Schrift in Signalfarbe: ≥ 4,5 : 1 auch auf getönten Flächen */
     --signal-foreground: 0 0% 100%;
     /* Starke Easing-Kurven (animations.dev): die CSS-Standardkurven sind zu
        schwach. out = Eintritte/Feedback, in-out = Bewegung auf dem Screen,
@@ -143,6 +144,7 @@
     --input: 211 36% 21%;
     --ring: 202 90% 60%;
     --signal: 19 95% 60%;
+    --signal-ink: 19 95% 60%;
     --signal-foreground: 213 60% 10%;
   }
 }
@@ -153,6 +155,25 @@
   }
   body {
     @apply bg-background text-foreground antialiased;
+  }
+  /* Fokus nicht verdeckt (WCAG 2.4.11). Mit Tab scrollt der Browser das
+     nächste Element gerade so weit herein, dass es an der Unterkante steht —
+     und dort liegt auf Telefon und Tablet die feste Tab-Leiste. Gemessen
+     11/2026 bei 390 px: auf sechs von neun Seiten verschwand das fokussierte
+     Element ganz darunter. Die Polsterung hält ihm die Leiste frei
+     (4rem = TABLEISTE_INHALT in lib/tableiste.ts). Nur unten: Oben würde sie
+     sich zu den `scroll-mt-*` der Sprungziele addieren. */
+  @media not ((pointer: fine) and (min-width: 1024px)) {
+    html {
+      scroll-padding-bottom: calc(env(safe-area-inset-bottom) + 4rem + 0.75rem);
+    }
+    /* Oben dasselbe für die Kopfleiste, aber NUR am fokussierten Element:
+       Ein Knopf, der im DOM nach seinem Inhalt steht und optisch darüber
+       (Teilen/Merken an den Tagesordnungspunkten), landete sonst unter ihr.
+       Als `scroll-padding-top` am html zählte es zu jedem Sprungziel dazu. */
+    :focus-visible {
+      scroll-margin-top: calc(env(safe-area-inset-top) + 3.8125rem + 0.75rem);
+    }
   }
   /* Sichtbarer Tastatur-Fokus für Links (Karten-Links, Nav, Footer) —
      Buttons/Inputs bringen ihren eigenen focus-visible-Ring mit. */
@@ -203,6 +224,14 @@
     height: 0;
     pointer-events: none;
     color: hsl(var(--muted-foreground));
+  }
+  /* Link mitten im Satz (WCAG 1.4.1): Die Farbe allein reicht nicht — das
+     Hafenblau steht zum Fließtext nur bei 1,0 : 1 Helligkeitsabstand, wer
+     Farben schlecht unterscheidet, sieht den Link also nicht. Deshalb ist er
+     immer unterstrichen, dezent, und beim Zeigen voll. Ein Link, der allein
+     auf seiner Zeile steht („Alle anzeigen →"), braucht das nicht. */
+  .textlink {
+    @apply text-primary underline decoration-primary/40 underline-offset-2 transition-colors hover:decoration-primary;
   }
   /* Scroll-Zeilen (Chip-Reihen, Segment-Schalter): Der Inhalt fadet am
      verdeckten Ende per Maske aus, statt hart abgeschnitten zu stehen
@@ -1034,6 +1063,7 @@ lotti-placeholder {
      Marke „71,1 AUS DER RÜCKLAGE" ist 9,5 px Mono und läge auf diesem Grund
      sonst bei 2,8 : 1. So sind es 3,6 : 1 — dieselbe Farbe, nur sitzend. */
   --signal: 19 90% 44%;
+  --signal-ink: 19 90% 35%;
   --signal-foreground: 0 0% 100%;
   --hh-raster: 205 52% 92%;
   --hh-schraffur: 19 90% 44%;
@@ -1074,6 +1104,7 @@ lotti-placeholder {
   --primary-foreground: 213 48% 9%;
   --ring: 202 88% 66%;
   --signal: 19 95% 70%;
+  --signal-ink: 19 95% 70%;
   --signal-foreground: 213 48% 9%;
   --hh-raster: 212 44% 12%;
   --hh-schraffur: 19 95% 64%;
@@ -1123,6 +1154,7 @@ lotti-placeholder {
   --primary-foreground: 204 45% 98%;
   --ring: 205 92% 34%;
   --signal: 19 92% 38%;
+  --signal-ink: 19 92% 35%;
   --signal-foreground: 0 0% 100%;
   --sb-voll: hsl(205 92% 34%);
   --sb-mittel: hsl(205 55% 58%);
@@ -1146,6 +1178,7 @@ lotti-placeholder {
   --primary-foreground: 213 48% 9%;
   --ring: 202 88% 64%;
   --signal: 19 95% 68%;
+  --signal-ink: 19 95% 68%;
   --signal-foreground: 213 48% 9%;
   --sb-voll: hsl(202 88% 64%);
   --sb-mittel: hsl(204 48% 46%);

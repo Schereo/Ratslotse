@@ -50,7 +50,7 @@ export default function ImpressumPage() {
             href={RIS_BASE}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-primary hover:underline"
+            className="textlink"
           >
             {RIS_HOST}
           </a>
@@ -70,7 +70,7 @@ export default function ImpressumPage() {
           <Section title="Kontakt">
             <p>
               E-Mail:{" "}
-              <a href={KONTAKT_MAILTO} className="text-primary hover:underline">{KONTAKT_EMAIL}</a>
+              <a href={KONTAKT_MAILTO} className="textlink">{KONTAKT_EMAIL}</a>
             </p>
           </Section>
 
@@ -104,7 +104,7 @@ export default function ImpressumPage() {
         </div>
 
         <footer className="mt-12 border-t border-border pt-6 text-sm text-muted-foreground">
-          <Link href="/datenschutz" className="text-primary hover:underline">Datenschutzerklärung</Link>
+          <Link href="/datenschutz" className="textlink">Datenschutzerklärung</Link>
           {" · "}
           <Link href="/" className="hover:text-foreground">Startseite</Link>
         </footer>

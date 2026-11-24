@@ -183,7 +183,7 @@ function GlanceCard({
       <GlanceRow first label="Betrag">
         {d.amount_eur != null ? (
           <>
-            <p className="mt-0.5 font-display text-[26px] font-extrabold leading-none tracking-tight text-signal">
+            <p className="mt-0.5 font-display text-[26px] font-extrabold leading-none tracking-tight text-signal-ink">
               {formatEuro(d.amount_eur)}
             </p>
             <p className="mt-1 text-[11px] text-muted-foreground">im Beschlusstext genannt (automatisch erkannt)</p>
@@ -231,7 +231,7 @@ function GlanceCard({
           links bleibt clean. */}
       {d.deviation === "strong" && d.official_text && (
         <GlanceDisclosure
-          icon={<GitCompareArrows className="h-3.5 w-3.5 text-signal" />}
+          icon={<GitCompareArrows className="h-3.5 w-3.5 text-signal-ink" />}
           label="Vom Vorschlag abgewichen"
         >
           Der Rat hat hier nicht den Beschlussvorschlag der Verwaltung übernommen,
@@ -449,7 +449,7 @@ function SubvoteTimeline({ d, subVotes }: { d: CouncilDecision; subVotes: Counci
               )}
               aria-hidden
             />
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-signal">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-signal-ink">
               {kind}{factions.length > 0 ? ` · ${factions.join(", ")}` : ""}
             </p>
             <p className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">

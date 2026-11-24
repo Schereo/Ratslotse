@@ -369,7 +369,7 @@ export function BadgesCard() {
               <span
                 className={cn(
                   "max-w-full hyphens-auto text-[10px] leading-tight [overflow-wrap:anywhere]",
-                  isNew ? "font-bold text-signal" : b.earned ? "font-medium text-foreground" : "font-medium text-muted-foreground",
+                  isNew ? "font-bold text-signal-ink" : b.earned ? "font-medium text-foreground" : "font-medium text-muted-foreground",
                 )}
               >
                 {b.title}

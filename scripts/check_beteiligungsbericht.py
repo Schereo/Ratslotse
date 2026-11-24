@@ -20,10 +20,17 @@ Was ein Lauf tut
    Jahrgängen (``Beteiligungsbericht_2021.pdf`` gegen
    ``Beteiligungsbericht_2024_kombiniert_final.pdf``), und eine geratene URL
    fände den nächsten Bericht nie.
-2. Jedes PDF nur holen, wenn es sich geändert hat (``If-Modified-Since``).
-   Sieben Berichte sind 25 MB; sie alle vier Wochen erneut zu ziehen wäre
-   Verschwendung auf einem fremden Server.
-3. Alle vorliegenden Berichte lesen, prüfen, den Bestand ersetzen
+2. Jedes PDF nur holen, wenn es sich geändert hat (``If-Modified-Since`` /
+   ``If-None-Match``). Die Kopfzeilen der letzten Fassung stehen neben ihr im
+   Archiv (``data/archiv/beteiligungsbericht/<datei>/.quelle.json``); bei
+   ``304`` wird die archivierte Fassung gelesen. Bis 11/2026 versprach dieser
+   Absatz das, ohne dass der Lauf je eine Kopfzeile mitschickte.
+3. Jede neu geholte Fassung landet im Archiv (``council/archiv.py``). Scheitert
+   ein Download oder verschwindet ein Link, liest der Lauf die gesicherte
+   Fassung, statt den Jahrgang wegzulassen. Gibt es keine, hält
+   ``beteiligungsbericht.einlesen`` den ganzen Bestand fest — vorher ersetzte
+   ein Lauf mit zwei von drei Berichten still den Bestand mit dreien.
+4. Alle vorliegenden Berichte lesen, prüfen, den Bestand ersetzen
    (``council/beteiligungsbericht.einlesen``). Immer alle — die
    Überlappungsprobe vergleicht Berichte miteinander.
 
@@ -67,7 +74,9 @@ from __future__ import annotations
 import argparse
 import html
 import io
+import json
 import os
+import re
 import sys
 from datetime import date
 from pathlib import Path
@@ -78,7 +87,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 load_dotenv(ROOT / ".env")
 
-from council import beteiligungsbericht, finanzquellen, stadtdownload  # noqa: E402
+from council import archiv, beteiligungsbericht, finanzquellen, stadtdownload  # noqa: E402
 from council.store import CouncilStore  # noqa: E402
 
 COUNCIL_DB = ROOT / "data" / "council.sqlite"
@@ -90,6 +99,52 @@ JOB = "check_beteiligungsbericht"
 #: der Seite gelesen.
 UEBERSICHT = (f"{stadtdownload.BASE}/startseite/politik/verwaltung-finanzen/"
               f"finanzen/beteiligungsbericht.html")
+
+#: Bereich im Archiv der Quelldateien (``council/archiv.py``).
+ARCHIV_BEREICH = "beteiligungsbericht"
+
+#: Die Seitendatei je Archivordner: Adresse und Kopfzeilen der zuletzt
+#: geholten Fassung. Mit Punkt davor, damit ``archiv.fassungen`` sie nicht für
+#: eine Fassung hält.
+QUELLE = ".quelle.json"
+
+
+def _quelle(ordner: Path) -> dict:
+    try:
+        daten = json.loads((ordner / QUELLE).read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+    return daten if isinstance(daten, dict) else {}
+
+
+def _sichern(archiv_dir: Path, dok: stadtdownload.Dokument, heute: date) -> bool:
+    """Eine frisch geholte Fassung ablegen. ``True``, wenn sie neu war."""
+    name = archiv.dateiname(dok.url)
+    _pfad, neu = archiv.version_ablegen(archiv_dir, ARCHIV_BEREICH, name,
+                                        dok.inhalt or b"", heute)
+    ordner = archiv_dir / ARCHIV_BEREICH / name
+    (ordner / QUELLE).write_text(json.dumps(
+        {"url": dok.url, "last_modified": dok.last_modified, "etag": dok.etag,
+         "geprueft": heute.isoformat()}, ensure_ascii=False, indent=1),
+        encoding="utf-8")
+    return neu
+
+
+def _archiv_je_jahr(archiv_dir: Path) -> dict[int, tuple[Path, dict]]:
+    """Je Berichtsjahr die neueste gesicherte Fassung samt Seitendatei.
+
+    Das Jahr kommt wie in ``stadtdownload.berichtslinks`` aus der ersten
+    Jahreszahl des Dateinamens. Tragen zwei Ordner dasselbe Jahr (die Stadt hat
+    umbenannt), gewinnt die jüngere Fassung."""
+    aus: dict[int, tuple[Path, dict]] = {}
+    for pfad in archiv.neueste_je_datei(archiv_dir, ARCHIV_BEREICH, "*.pdf"):
+        m = re.search(r"(20\d\d)", pfad.parent.name)
+        if not m:
+            continue
+        year = int(m.group(1))
+        if year not in aus or pfad.name > aus[year][0].name:
+            aus[year] = (pfad, _quelle(pfad.parent))
+    return aus
 
 
 def _schon_gemeldet(befund: list[str]) -> bool:
@@ -162,9 +217,13 @@ def _hinweis_text(fehlend: list[int], fehler: list[str], widersprueche: int,
 def main(db: str | None = None, heute: date | None = None, trocken: bool = False,
          still: bool = False, schuetzen: bool = True,
          protokoll: finanzquellen.Protokoll | None = None,
-         uebersicht_html: str | None = None) -> dict:
-    """Ein Lauf. ``uebersicht_html`` und ``protokoll`` nur für Tests."""
+         uebersicht_html: str | None = None,
+         archiv_pfad: str | Path | None = None) -> dict:
+    """Ein Lauf. ``uebersicht_html``, ``protokoll`` und ``archiv_pfad`` nur für
+    Tests (sonst ``ARCHIV_DIR`` bzw. ``data/archiv``)."""
     heute = heute or date.today()
+    archiv_dir = archiv.archivpfad(archiv_pfad)
+    aus_archiv: list[int] = []
     p = protokoll or finanzquellen.Protokoll(still=still)
     store = CouncilStore(Path(db or COUNCIL_DB))
     fehler: list[str] = []
@@ -199,6 +258,8 @@ def main(db: str | None = None, heute: date | None = None, trocken: bool = False
             if trocken:
                 p.sagen(f"  {year}: würde {url} laden")
                 continue
+            gesichert = archiv.neueste(archiv_dir, ARCHIV_BEREICH, archiv.dateiname(url))
+            quelle = _quelle(gesichert.parent) if gesichert else {}
             try:
                 if sitzung is not None:
                     stadtdownload.warte()
@@ -206,19 +267,61 @@ def main(db: str | None = None, heute: date | None = None, trocken: bool = False
 
                 sitzung = sitzung or requests.Session()
                 sitzung.headers["User-Agent"] = stadtdownload.USER_AGENT
-                dok = stadtdownload.hole(url, session=sitzung)
+                # Kopfzeilen nur, wenn die Fassung dazu wirklich im Archiv
+                # liegt — ein 304 ohne Datei hätte nichts zu lesen.
+                dok = stadtdownload.hole(
+                    url, session=sitzung,
+                    last_modified=quelle.get("last_modified") if gesichert else None,
+                    etag=quelle.get("etag") if gesichert else None)
             except stadtdownload.DownloadFehler as exc:
                 # Ein Dokument, das gerade nicht zu holen ist, beendet den Lauf
-                # nicht: Die übrigen sind trotzdem lesbar, und der Bestand
-                # bleibt vollständig, solange die Proben aufgehen.
+                # nicht. Liegt eine gesicherte Fassung vor, wird sie gelesen;
+                # sonst fehlt der Jahrgang, und einlesen() hält den Bestand.
                 p.warnen(f"  {year}: {exc}")
                 fehler.append(str(exc))
-                continue
+                if gesichert is None:
+                    continue
+                inhalt = gesichert.read_bytes()
+                aus_archiv.append(year)
+                p.sagen(f"  {year}: gelesen aus der gesicherten Fassung {gesichert.name}")
+            else:
+                if dok.unveraendert and gesichert is not None:
+                    inhalt = gesichert.read_bytes()
+                    p.sagen(f"  {year}: unverändert (304) — gesicherte Fassung")
+                else:
+                    inhalt = dok.inhalt or b""
+                    if _sichern(archiv_dir, dok, heute):
+                        p.sagen(f"  {year}: neue Fassung gesichert")
             dokumente[year] = {
-                "seiten": _seiten(dok.inhalt), "url": url,
+                "seiten": _seiten(inhalt), "url": url,
                 "label": f"Beteiligungsbericht {year} (oldenburg.de)"}
-            p.sagen(f"  {year}: {len(dok.inhalt) / 1e6:.1f} MB, "
+            p.sagen(f"  {year}: {len(inhalt) / 1e6:.1f} MB, "
                     f"{len(dokumente[year]['seiten'])} Seiten")
+
+        # Ein Jahrgang im Bestand, dessen Link verschwunden ist: aus dem
+        # Archiv lesen, mit der Adresse, unter der er zuletzt stand. Fehlt er
+        # auch dort, bleibt er weg — und einlesen() hält dann den Bestand.
+        if not trocken:
+            verlinkt_jahre = {j for j, _ in links}
+            gesichert_je_jahr = _archiv_je_jahr(archiv_dir)
+            for year in beteiligungsbericht.fehlende_jahrgaenge(
+                    store.beteiligungsbericht_jahre(), dokumente):
+                if year in verlinkt_jahre:
+                    continue  # schon oben behandelt (Download gescheitert)
+                treffer = gesichert_je_jahr.get(year)
+                if treffer is None or not treffer[1].get("url"):
+                    p.warnen(f"  {year}: steht im Bestand, aber nicht mehr auf der "
+                             f"Seite und nicht im Archiv")
+                    fehler.append(f"Beteiligungsbericht {year}: nicht mehr verlinkt, "
+                                  f"keine gesicherte Fassung")
+                    continue
+                pfad, quelle = treffer
+                dokumente[year] = {
+                    "seiten": _seiten(pfad.read_bytes()), "url": quelle["url"],
+                    "label": f"Beteiligungsbericht {year} (oldenburg.de)"}
+                aus_archiv.append(year)
+                p.sagen(f"  {year}: nicht mehr verlinkt — gelesen aus der "
+                        f"gesicherten Fassung {pfad.name}")
 
         if dokumente and not trocken:
             result = beteiligungsbericht.einlesen(store, dokumente, p, schuetzen)
@@ -274,6 +377,7 @@ def main(db: str | None = None, heute: date | None = None, trocken: bool = False
         "Auch im Gesamtabschluss": result.get("konzernvergleich", 0),
         "Bestand geschützt": result["bestand_geschuetzt"],
         "Download-Fehler": len(fehler),
+        "Aus dem Archiv gelesen": len(aus_archiv),
         "Hinweis verschickt": 1 if gemeldet else 0,
         "Zeilen ohne Herkunft": sum(ohne_herkunft.values()),
         "befund": befund,

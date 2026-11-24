@@ -133,7 +133,7 @@ export function Vollzug({ daten, year, onYear, beleg }: {
           <span className="tabular-nums">{deMioSigned(kern.budgeted)}&nbsp;Mio.&nbsp;€</span>
           {abw != null && Math.abs(abw) >= 50_000 && (
             <>, also{" "}
-              <span className={cn("tabular-nums", abw !== 0 && "text-signal")}>
+              <span className={cn("tabular-nums", abw !== 0 && "text-signal-ink")}>
                 {deMio(Math.abs(abw) / 1e6)}&nbsp;Mio.&nbsp;€ {abw > 0 ? "mehr" : "weniger"}
               </span>
               {" "}als im Plan</>
@@ -232,7 +232,7 @@ export function VollzugKarte({ daten, beleg }: {
         {" "}statt der geplanten{" "}
         <span className="tabular-nums">{deMioSigned(kern.budgeted)}&nbsp;Mio.&nbsp;€</span>
         {Math.abs(abw) >= 50_000 && (
-          <> — <span className="tabular-nums text-signal">{deMio(Math.abs(abw) / 1e6)}&nbsp;Mio.&nbsp;€ {abw > 0 ? "mehr" : "weniger"}</span></>
+          <> — <span className="tabular-nums text-signal-ink">{deMio(Math.abs(abw) / 1e6)}&nbsp;Mio.&nbsp;€ {abw > 0 ? "mehr" : "weniger"}</span></>
         )}.
       </p>
       <a href="/haushalt/plan-ist#vollzug"

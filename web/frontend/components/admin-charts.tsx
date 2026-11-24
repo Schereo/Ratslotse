@@ -34,7 +34,7 @@ export function ChartAxis({
   const ticks = [...new Set(Array.from({ length: count }, (_, k) => Math.round((k * (n - 1)) / (count - 1))))];
   return (
     <div
-      className={cn("relative mt-1.5 h-3.5 text-[10.5px] leading-none tabular-nums text-muted-foreground/70", className)}
+      className={cn("relative mt-1.5 h-3.5 text-[10.5px] leading-none tabular-nums text-muted-foreground", className)}
       aria-hidden
     >
       {ticks.map((i, k) => {

@@ -51,7 +51,7 @@ export function ThesenListe({ thesen }: { thesen: ProfilThese[] }) {
             </strong>{" "}
             »{offene.beleg}«{" "}
             {offene.href && (
-              <a href={offene.href} target="_blank" rel="noopener noreferrer" className="whitespace-nowrap text-primary">
+              <a href={offene.href} target="_blank" rel="noopener noreferrer" className="whitespace-nowrap textlink">
                 {offene.seitenLabel} im Programm ↗
               </a>
             )}

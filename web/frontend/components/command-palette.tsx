@@ -323,7 +323,7 @@ export function CommandPalette() {
             )}
             {sections.map((section) => (
               <div key={section}>
-                <p className="px-3 pb-1 pt-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/60">
+                <p className="px-3 pb-1 pt-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                   {section}
                 </p>
                 {items.filter((i) => i.section === section).map((item) => {
@@ -351,7 +351,7 @@ export function CommandPalette() {
                         <span className="block truncate font-medium">{item.label}</span>
                         {item.sub && <span className="block truncate text-xs text-muted-foreground">{item.sub}</span>}
                       </span>
-                      {isActive && <CornerDownLeft className="h-3.5 w-3.5 shrink-0 text-muted-foreground/60" />}
+                      {isActive && <CornerDownLeft className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />}
                     </button>
                   );
                 })}

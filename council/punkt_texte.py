@@ -35,9 +35,10 @@ def steckbrief(label: str | None, seiten: list[str], text: str) -> dict:
     }
 
 
-def nachladen(store, *, tage_zurueck: int = 7, limit: int = 30, pause: float = 1.0) -> dict:
+def nachladen(store, *, tage_zurueck: int = 7, limit: int = 30, pause: float = 1.0,
+              bis_heute: bool = False) -> dict:
     seit = (date.today() - timedelta(days=tage_zurueck)).isoformat()
-    offen = store.punkt_anlagen_ohne_text(seit)
+    offen = store.punkt_anlagen_ohne_text(seit, date.today().isoformat() if bis_heute else None)
     gesehen: set[int] = set()
     geladen = fehler = antraege = 0
     for a in offen:

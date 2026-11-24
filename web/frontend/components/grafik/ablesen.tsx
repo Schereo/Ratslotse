@@ -226,7 +226,7 @@ export function Ablesekarte({
                   {/* `whitespace-nowrap`: Der Betrag trägt seine Einheit, und
                       die darf NIE von ihrer Zahl abreißen. */}
                   <span className={cn("whitespace-nowrap font-semibold tabular-nums",
-                                      w.signal ? "text-signal" : "text-foreground")}>{w.value}</span>
+                                      w.signal ? "text-signal-ink" : "text-foreground")}>{w.value}</span>
                 </span>
               ))}
             </p>
@@ -239,7 +239,7 @@ export function Ablesekarte({
         <div className="max-w-[60%] flex-none text-right">
           <p className={cn(
             "whitespace-nowrap font-display text-[20px] font-bold leading-none tracking-tight tabular-nums",
-            wertSignal ? "text-signal" : "text-foreground",
+            wertSignal ? "text-signal-ink" : "text-foreground",
           )}>
             {wert}
           </p>

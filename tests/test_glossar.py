@@ -183,8 +183,11 @@ def test_im_fachumfeld_bleibt_das_wort_erklaert():
 def test_spaetere_nennung_im_fachsinn_zaehlt_noch():
     texte = ["Das dient der Entlastung des Teams.", "Dem Aufsichtsrat wird Entlastung erteilt."]
     begriffe = glossar.fuer_seite(texte)
-    assert [b["term"] for b in begriffe] == ["Entlastung"]
-    assert begriffe[0]["snippet"] in texte[1]
+    # „Aufsichtsrat" ist seit 11/2026 selbst ein Glossar-Begriff; hier zählt nur,
+    # dass die Entlastung einmal kommt — und zwar aus dem Satz im Fachsinn.
+    entlastung = [b for b in begriffe if b["term"] == "Entlastung"]
+    assert len(entlastung) == 1
+    assert entlastung[0]["snippet"] in texte[1]
 
 
 def test_bindestrich_ist_auch_ein_kompositum():

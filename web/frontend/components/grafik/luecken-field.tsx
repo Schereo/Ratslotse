@@ -45,7 +45,7 @@ export function LueckenFeld({ label, reason, date, className }: {
         className="hh-schraffur mt-[3px] h-3.5 w-5 flex-none rounded-[2px] border border-dashed border-signal/70"
       />
       <p className="min-w-0 text-[12px] leading-relaxed text-foreground/85">
-        <span className="font-mono text-[11px] font-semibold tracking-wide text-signal">
+        <span className="font-mono text-[11px] font-semibold tracking-wide text-signal-ink">
           {label}
         </span>
         {" — "}

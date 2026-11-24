@@ -185,7 +185,7 @@ export function TopicSheet({ topic, nameEditable = false, onClose, onSaved }: {
         <div className="mb-1.5 mt-4 flex items-center justify-between">
           <p className="text-xs font-semibold text-muted-foreground">Beschreibung</p>
           <button type="button" onClick={regenerate} disabled={checking}
-            className="inline-flex items-center gap-1.5 text-xs font-medium text-signal disabled:opacity-50">
+            className="inline-flex items-center gap-1.5 text-xs font-medium text-signal-ink disabled:opacity-50">
             <Sparkles className="h-3 w-3" /> Neu generieren
           </button>
         </div>

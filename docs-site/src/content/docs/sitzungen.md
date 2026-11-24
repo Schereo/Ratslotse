@@ -87,7 +87,8 @@ mehrerer ist rund 70 % günstiger.
 Davor steht eine Vor-Ernte ohne Modell (`council/dossier_harvest.py`):
 
 - die **Form** der Vorlage aus Vorlagenart, Titelendung und den Typen der
-  Anlagen. Das Modell bekommt nur das Schema seiner Form.
+  Anlagen. Sie steht als feste Tatsache im Prompt; Berichte und Anfragen (F7)
+  bekommen dazu einen eigenen Auftrag (s. u.).
 - **Kandidaten mit Seite**: Beträge, Daten, Paragrafen. Sie stehen als feste
   Fakten im Prompt, und ein Betrag oder Datum im Dossier muss unter ihnen sein.
 
@@ -97,6 +98,11 @@ Aussage bleibt nur, wenn alles gilt:
 1. Die Quelle ist bekannt (`V1`, `A1` …).
 2. Das Zitat steht wörtlich in der Quelle, mindestens 30 Zeichen lang. Die
    Seitenzahl wird aus der Fundstelle berichtigt, nicht vom Modell übernommen.
+   Verglichen wird ohne Leerraum, Trennstriche, Anführungs- und
+   Aufzählungszeichen, Ligaturen aufgelöst. Trägt eine Ligatur im PDF gar kein
+   Zeichen („bestägt“), gilt im zweiten Versuch ein Zitat, das bis auf die
+   Ligatur-Paare (`ti`, `tt`, `ft` …) stimmt; Ziffern müssen weiter genau
+   stimmen.
 3. Jede Mengenangabe des Satzes steht im Zitat.
 4. Wertungs- und Ergebniswörter nur, wenn das Zitat sie trägt.
 5. Keine Aktenzeichen in Klammern, höchstens 220 Zeichen.
@@ -107,12 +113,66 @@ Ein Abschnitt, dessen Aussagen alle fallen, steht auf `unsupported` und nie
 auf „steht nicht drin“. Das ist ein Unterschied: Das eine heißt „wir konnten
 es nicht belegen“, das andere wäre eine Behauptung über die Vorlage.
 
+**Berichte (Form F7).** Ein Bericht beschließt nichts, sein Inhalt sind seine
+Befunde. Ohne eigenen Auftrag hatte er im Schema keinen Ort dafür: „Zahlen“
+schloss Geld aus, „Kosten“ meint nur den Beschluss. Beim Quartalsbericht der
+Beteiligungen (26/0818) standen deshalb drei Zahlen und Sätze über den
+Vorgang da, wo elf Gesellschaften und Betriebe mit Plan und Hochrechnung
+berichten. Seit 11/2026 hängt an der Eingabe einer F7-Vorlage der Zusatz
+`template_dossier_report` (`kern/prompts.py`): unter „Was berichtet wird“
+(bis 8) erst der Auftrag, dann das Gesamtergebnis, dann die Kernbefunde mit
+ihrer Zahl; Folgen und Ursachen unter „Was sich daraus ergibt“; unter „Zahlen“
+auch Geld (bis 10); Termine einer Terminliste (bis 8, `GRENZEN_FORM`). Die
+Kandidaten einer Anlage reichen bei Berichten bis 80 je Art statt 25 — vorher
+endete die Liste des Quartalsberichts auf Seite 4 von 14. Nur die Prüfsumme der
+F7-Dossiers ändert sich (`BERICHT_VERSION`), der übrige Bestand läuft nicht neu.
+
+Gemessen am 23.11.2026 an 25 Berichten, je zwei Läufe alt und neu, blind
+verglichen von Gutachter-Agenten gegen die Quelltexte: neu besser in 37 von 50
+Vergleichen, alt in 12; Kernabdeckung im Mittel 2,2 → 2,9 von 5, Füllstoff
+3,2 → 2,3. Bei Finanz- und Quartalsberichten gewann neu alle 14 Vergleiche.
+Der Preis: mehr Aussagen, mehr Fehler — bestätigt 10 gegen 5, fast immer eine
+Zahl, die einem Teil gehört und dem Ganzen zugeschrieben wird.
+
+**Viele Anlagen: Vorrang statt reihum.** Das Lesebudget (110.000 Zeichen) geht
+reihum an die Lese-Anlagen, die kürzeste zuerst. Beim Haushaltsentwurf 2027
+(26/0835: 30 Anlagen, 2,2 Mio. Zeichen, 20 davon Lesestoff) bekamen so die
+kleinen Änderungslisten ihren Anteil und der Vorbericht nichts. Reicht das
+Budget nicht für `ANLAGE_MIN` je Anlage, lesen seit 11/2026 nur die mit dem
+höchsten `vorrang` — Label (Vorbericht, Zusammenfassung, Konzept,
+Änderungsliste …) plus Anteil an Fließtext; Teilhaushalte sind Tabellen —,
+so viele, dass jede `ANLAGE_KNAPP` (15.000) bekommt. Die übrigen stehen mit
+ihrem Kopf im Belegmaterial. Ergebnis am Haushaltsentwurf: Fehlbedarf
+170.145.721 € aus dem Vorbericht statt Randzahlen aus den Teilhaushalten.
+
+**Inhaltssätze für jede Anlage mit Text**, auch fürs Belegmaterial (aus dem
+Kopf). Belegt werden dürfen sie mit dem Titel der Titelseite
+(`GIST_QUOTE_MIN`, 15 statt 30 Zeichen). Die Gegenlese-Liste zeigt sie unter
+dem Namen der Unterlage, mit KI-Stern. `max_tokens` wächst mit der Zahl der
+Unterlagen (je 150, höchstens 16.000).
+
+**Eine leere Antwort ist kein Dossier.** Trägt die Antwort keinen einzigen
+Abschnitt (leer oder kein JSON), endet der Aufruf mit `LeeresDossier` und die
+Zeile auf `failed`; der nächste Lauf holt sie nach. Bis 11/2026 entstand
+daraus ein Dossier aus lauter „steht nicht drin“ (im Messlauf 3 von 50
+Antworten).
+
+**Vergangene Stationen.** Eine Sitzung, die vorbei ist, zeigt das Dossier
+zum Sitzungstag — keine Unterlage, die erst danach kam. Wurde dasselbe Material
+später nur neu gelesen (gleiche Dokumente, neuer Auftrag oder reparierter
+Text), gilt die neuere Lesung (`item_dossier_view`).
+
 Gespeichert wird je Quellenlage eine Zeile in `template_dossiers`
 (Schlüssel: Gegenstand plus Hash der Quellen). Kommt eine Anlage dazu,
 entsteht eine neue Fassung, die alte bleibt als Geschichte stehen.
 
-Der Cron `scripts/vorlagen_dossiers.py` baut die Dossiers für die Vorlagen der
-nächsten 21 Tage, mit einer Kostengrenze je Lauf (`DOSSIER_MAX_USD`). Mit dem
+Der Cron `scripts/vorlagen_dossiers.py` baut die Dossiers für die Vorlagen von
+drei Tagen zurück bis 21 Tage voraus, mit einer Kostengrenze je Lauf
+(`DOSSIER_MAX_USD`). Vorher holt er Vorlagen und Punkt-Texte nach, die erst
+nach dem Morgenlauf auf die Tagesordnung kamen: Der Haushaltsentwurf 2027
+(26/0835) wurde am Sitzungstag nachgetragen, die Vorlage holte nur
+`check_protocols` am nächsten Morgen — dann lag die Sitzung schon außerhalb
+des Fensters, und es entstand nie ein Dossier. Mit dem
 Schalter `folgetexte-aus-dossier` lesen auch Kartentext und Tragweite die
 belegten Dossier-Zeilen statt des Rohtexts der Vorlage.
 
@@ -232,6 +292,37 @@ Stufe 4 gibt es wegen einer Messung an zwölf Punkten: Zu „Preiswerte
 Wohnungen“ fand Stufe 2 bei acht von neun Listen ein „dafür“, weil jedes
 Programm günstigen Wohnraum will. Das ist keine Aussage zu dieser Maßnahme.
 Die Kosten je Cron-Lauf deckelt `PROGRAM_MAX_USD`.
+
+### Was der Haushaltsentwurf zeigt
+
+Am Punkt zum Haushaltsentwurf stehen bis zu zehn Befunde aus den Grafiken des
+Vorberichts: je ein Titel, die eine Zahl, ein Satz, die neu gezeichnete
+Grafik und der Weg zur Seite im PDF. Säulen tragen ihre Art sichtbar (Ist
+voll, Prognose schraffiert, Plan mit Rand, Finanzplanung hell), damit ein
+Planwert für 2030 nicht wie ein Ergebnis aussieht.
+
+Drei Stufen, jede kann einen Befund kippen:
+
+1. **Lesen ohne Modell** (`council/budget_charts.py`): Jede „Grafik n-m“
+   des Vorberichts wird zu Daten. Tabellen liest PyMuPDF zellgenau; bei
+   Diagrammen gehört jeder beschriftete Wert zu der Kategorie, über der er
+   steht — die Textebene führt die Werte nicht in Jahresfolge. Diagramme ohne
+   Wertbeschriftung und Bilder bleiben Lücken.
+2. **Vorschlagen** mit dem kleinen Modell (`COUNCIL_FINDINGS_MODEL`) und
+   **prüfen im Code**: Jede Zahl in Titel, Satz, Kennzahl und Grafik steht in
+   der genannten Grafik (auch in Mio. € umgerechnet), im wörtlichen Zitat,
+   oder ist Summe bzw. Differenz von Werten derselben Grafik. Die Art jeder
+   Säule setzt der Code aus Kopf und Bildunterschrift.
+3. **Prüfen mit dem größeren Modell** (`COUNCIL_FINDINGS_VERIFY_MODEL`):
+   Trägt die Grafik die Deutung? Im Prototyp hielten 20 von 40 Funden nicht
+   stand, fast immer wegen der Deutung, nicht der Zahl — etwa eine Teilzahl,
+   die dem ganzen Haushalt zugeschrieben wurde.
+
+Gespeichert wird je Vorbericht (`budget_draft_findings`, Schlüssel ist die
+Dokumentnummer); er hängt oft an mehreren Punkten. Erzeugt werden die
+Befunde im Lauf `vorlagen_dossiers` für Vorberichte an Punkten im selben
+Fenster wie die Dossiers, gedeckelt von `FINDINGS_MAX_USD`. Für den Bestand:
+`scripts/vorlagen_dossiers.py --bestand --haushaltsentwurf [--schreiben]`.
 
 ### Frag den Rat am Punkt
 

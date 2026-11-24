@@ -320,6 +320,24 @@ export const GLOSSARY: Record<string, string> = {
     "Gestaltungsregeln der Stadt für ein Baugebiet — etwa Dachform, Fassadenmaterial, Zäune oder Werbeanlagen. Sie werden meist zusammen mit dem Bebauungsplan beschlossen.",
   "örtliche Bauvorschriften":
     "Gestaltungsregeln der Stadt für ein Baugebiet — etwa Dachform, Fassadenmaterial, Zäune oder Werbeanlagen. Sie werden meist zusammen mit dem Bebauungsplan beschlossen.",
+  "Aufsichtsrat":
+    "Das Gremium, das die Geschäftsführung einer Gesellschaft berät und überwacht. Seine Mitglieder sind dem Wohl des Unternehmens verpflichtet; die Sitze der Stadt besetzt der Rat.",
+  "Verwaltungsrat":
+    "Das Aufsichtsgremium einer Anstalt des öffentlichen Rechts oder einer Sparkasse — die Entsprechung zum Aufsichtsrat einer Gesellschaft. In Oldenburg hat ihn zum Beispiel das Klinikum.",
+  "Beteiligungsmanagement":
+    "Die Stelle der Stadtverwaltung, die die städtischen Unternehmen begleitet: Sie prüft Wirtschaftspläne und Berichte, betreut die städtischen Mitglieder in den Gremien und erstellt den Beteiligungsbericht.",
+  "Beteiligungsbericht":
+    "Der jährliche Bericht der Stadt über ihre Unternehmen: was sie tun, wem sie gehören, wer sie beaufsichtigt, wie das Jahr lief und was sie den Haushalt kosten. Vorgeschrieben im Kommunalverfassungsgesetz.",
+  "Bestätigungsvermerk":
+    "Das Urteil der Abschlussprüfung unter einem Jahresabschluss: Die Prüfer bestätigen, dass er ordnungsgemäß aufgestellt ist — oder schränken das ein.",
+  "Feststellungsvermerk":
+    "Die Bemerkungen des städtischen Rechnungsprüfungsamts zum Prüfbericht über einen Jahresabschluss. Erst damit ist die Prüfung abgeschlossen.",
+  "Abschlussprüfer":
+    "Die Wirtschaftsprüferin oder der Wirtschaftsprüfer, die einen Jahresabschluss prüfen und ihr Urteil darüber im Bestätigungsvermerk festhalten.",
+  "Hochrechnung":
+    "Eine Schätzung, wie ein Ergebnis am Ende ausfallen wird, gerechnet aus dem Stand, der schon bekannt ist — etwa das Jahresergebnis eines Unternehmens aus den ersten Monaten.",
+  "Gesellschaftsvertrag":
+    "Die Satzung einer GmbH oder KG: Er legt fest, wozu die Gesellschaft da ist, wem sie gehört und welche Gremien was entscheiden.",
   "Betriebsausschuss":
     "Der Ausschuss des Rats, der einen städtischen Betrieb begleitet und kontrolliert — etwa die Abfallwirtschaft oder die Gebäudewirtschaft.",
   "Gesellschafterversammlung":
@@ -360,4 +378,4 @@ export const GLOSSARY: Record<string, string> = {
     "Laufende Ausgaben, die niedriger ausfallen als im Haushalt geplant. Das gesparte Geld kann zusätzliche Ausgaben an anderer Stelle decken.",
 };
 
-// glossar-sha256: e5da168cc4808bb066e122fdd79a399bab6ecefb1372ed3387278889a6e8a199
+// glossar-sha256: 0d42ebba657d72fc637eac98b6be31f6cd531bb949633f812742ae9ec7b74108

@@ -228,8 +228,8 @@ export function TopicsView() {
                 className="inline-flex h-[30px] items-center gap-1.5 rounded-full border border-border bg-card px-3 text-[12.5px] font-medium text-foreground transition-colors hover:border-signal/50 hover:bg-signal/[0.04] disabled:opacity-50"
               >
                 {beschreibungMutation.isPending
-                  ? <Loader2 className="h-3 w-3 animate-spin text-signal" />
-                  : <Sparkles className="h-3 w-3 text-signal" />}
+                  ? <Loader2 className="h-3 w-3 animate-spin text-signal-ink" />
+                  : <Sparkles className="h-3 w-3 text-signal-ink" />}
                 {beschreibungMutation.isPending ? "Formuliere Vorschlag …" : "Beschreibung vorschlagen"}
               </button>
               {kiText && <span className="text-[10.5px] text-muted-foreground">{kiText}</span>}
@@ -308,7 +308,7 @@ export function TopicsView() {
                     („Fliegerhorst" hier 12, dort 40+). Zwei verschiedene Zahlen
                     dürfen nicht dasselbe Wort tragen — sonst steht die nächste
                     Verwirrung schon fertig da (Tims Befund 16.08.). */}
-                <span className="text-primary/60">· {s.n} im letzten Jahr</span>
+                <span className="text-muted-foreground">· {s.n} im letzten Jahr</span>
               </button>
             ))}
           </div>

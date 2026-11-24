@@ -97,7 +97,7 @@ export function FieldBadge({ field, className }: { field: string | null; classNa
       type="button"
       title="Beschlüsse dieses Themenfelds"
       onClick={(e) => { e.preventDefault(); e.stopPropagation(); router.push(`/council?tab=decisions&field=${field}`); }}
-      className={cn("inline-flex items-center rounded-md bg-secondary px-2 py-0.5 text-xs font-medium text-secondary-foreground transition-colors hover:bg-secondary/70", className)}
+      className={cn("inline-flex min-h-6 items-center rounded-md bg-secondary px-2 py-0.5 text-xs font-medium text-secondary-foreground transition-colors hover:bg-secondary/70", className)}
     >
       {POLICY_FIELD_LABELS[field] ?? field}
     </button>
@@ -119,8 +119,10 @@ export function ImportanceBadge({ score, minShow = 55, className }: {
       title={`Wichtigkeit ${score}/100 — ${IMPORTANCE_HINT}`}
       className={cn(
         "inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs font-semibold",
-        strong ? "bg-amber-500/15 text-amber-700 dark:text-amber-300"
-               : "bg-amber-500/10 text-amber-700/80 dark:text-amber-300/70",
+        // Die Abstufung trägt die Fläche, nicht die Schrift: Mit
+        // `text-amber-700/80` stand der schwächere Chip bei 3,3 : 1 (axe, 11/2026).
+        strong ? "bg-amber-500/20 text-amber-800 dark:text-amber-200"
+               : "bg-amber-500/10 text-amber-800 dark:text-amber-300",
         className,
       )}
     >
@@ -188,7 +190,7 @@ export function ImportanceMeter({ score, signals, contributions, baseScore, impa
                   <li key={k} className="flex items-center gap-2 text-xs">
                     <span className="min-w-0 flex-1 truncate text-muted-foreground">{IMPORTANCE_SIGNAL_LABEL[k]}</span>
                     {raw == null ? (
-                      <span className="shrink-0 italic text-muted-foreground/60">keine Daten</span>
+                      <span className="shrink-0 italic text-muted-foreground">keine Daten</span>
                     ) : (
                       <>
                         <span className="h-1.5 w-14 shrink-0 overflow-hidden rounded-full bg-muted sm:w-20">
@@ -330,16 +332,19 @@ export function OutcomeDot({ outcome }: { outcome: DecisionOutcome | null }) {
 // chip for each faction. Not the trademarked logo artwork: just the party colour +
 // its own short name, which keeps it legally clean and covers every faction. Local
 // groups without an established brand colour fall back to the neutral badge.
+// Jedes Paar trägt mindestens 4,5 : 1 (WCAG 1.4.3): Grün und Blau sind dafür
+// eine Stufe dunkler als die Markenfarbe — Weiß auf #46962b stand bei 3,7 : 1,
+// auf #009ee0 bei 3,0 : 1 —, Piraten-Orange trägt dunkle Schrift (axe, 11/2026).
 const PARTY_BRAND: Record<string, { bg: string; fg: string }> = {
   "SPD": { bg: "#E3000F", fg: "#ffffff" },
   "CDU": { bg: "#16181d", fg: "#ffffff" },
-  "Grüne": { bg: "#46962b", fg: "#ffffff" },
+  "Grüne": { bg: "#3a7f24", fg: "#ffffff" },
   "FDP": { bg: "#ffd400", fg: "#1a1a1a" },
-  "AfD": { bg: "#009ee0", fg: "#ffffff" },
+  "AfD": { bg: "#0078ad", fg: "#ffffff" },
   "Volt": { bg: "#562883", fg: "#ffffff" },
   "Die Linke": { bg: "#be3075", fg: "#ffffff" },
   "BSW": { bg: "#7a1f2b", fg: "#ffffff" },
-  "Piraten": { bg: "#ff7a00", fg: "#ffffff" },
+  "Piraten": { bg: "#ff7a00", fg: "#1a1a1a" },
 };
 
 // Map a raw or normalised faction name to the canonical short label (mirrors
@@ -372,7 +377,10 @@ export function PartyBadge({ party, className }: { party: string; className?: st
       onClick={(e) => { e.preventDefault(); e.stopPropagation(); router.push(`/council?tab=decisions&party=${encodeURIComponent(party)}`); }}
       style={brand ? { backgroundColor: brand.bg, color: brand.fg } : undefined}
       className={cn(
-        "inline-flex items-center rounded-md px-2 py-0.5 text-xs font-semibold transition-opacity hover:opacity-85",
+        // Beim Zeigen dunkler statt blasser: `hover:opacity-85` drückte Weiß
+        // auf Grün unter 4,5 : 1 — ein dunkler Schleier hebt den Kontrast.
+        "inline-flex items-center rounded-md px-2 py-0.5 text-xs font-semibold",
+        brand && "transition-shadow hover:shadow-[inset_0_0_0_999px_rgb(0_0_0/0.12)]",
         !brand && "border border-border font-medium text-foreground transition-colors hover:bg-muted",
         className,
       )}

@@ -150,7 +150,14 @@ export default function HaushaltPage() {
   }, [loading, data]);
 
   if (loading || !data || !aktJahr) {
-    return <div className="py-16 text-center text-sm text-muted-foreground">Haushalt wird geladen …</div>;
+    return (
+      <div className="py-16 text-center text-sm text-muted-foreground">
+        {/* Die Hauptüberschrift steht sonst auf der Tafel — ohne sie hätte die
+            Seite beim Laden (und ohne Daten) gar keine (axe-Wächter 11/2026). */}
+        <h1 className="sr-only">Haushalt der Stadt Oldenburg</h1>
+        Haushalt wird geladen …
+      </div>
+    );
   }
 
   // Der Kassenzettel braucht die amtliche Einwohnerzahl und läuft nur fürs

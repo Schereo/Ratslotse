@@ -464,7 +464,7 @@ export function BetriebeAbschnitt({ data, loading }: {
             die Summen erst liest und dann erfährt, dass er sie nicht addieren
             darf, hat es schon getan. */}
         <div className="rounded-2xl border border-signal/40 bg-card p-4 shadow-sm">
-          <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-signal">
+          <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-signal-ink">
             Warum diese Zahlen nicht addiert werden
           </p>
           <p className="mt-2 max-w-[68ch] text-[13px] leading-relaxed text-foreground/85">

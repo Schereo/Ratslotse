@@ -25,7 +25,8 @@ from council.store import CouncilStore
 from council.topics import POLICY_FIELDS
 from council.goals import GOALS
 from council.example_questions import TOP_QUESTIONS
-from council import gesellschaft_abschluss
+from council import gesellschaft_abschluss, holding_quarterly
+from council import shareholding_handbook
 from council.parties import faction_label, order_key
 from council import expense_series as ausgabenreihe_mod
 from council import indicators as kennzahlen_mod
@@ -1050,16 +1051,41 @@ def _beteiligungen(store: CouncilStore) -> BudgetHoldings:
     # auch nichts falsch zuzuordnen.
     gerissen = {p["company"] for p in personen if not p["roles_assignable"]}
     verzeichnis = _lexikon_zuordnung(store, personen)
+    mit_personen = {p["company"] for p in personen}
 
+    # Das Handbuch Beteiligungen (council/shareholding_handbook.py): Gilt es
+    # für die Gesellschaft, und aus welcher Ratsperiode stammt die Besetzung?
+    # Beides gerechnet hier, nicht in der Seite (Logik ins Backend).
+    namen = {g["name"].strip().lower() for g in gesellschaften}
+
+    def _scope(g: dict) -> dict | None:
+        eigner = [e for e in eigentuemer if e["company"] == g["company"]]
+        stadt = next((e["share_pct"] for e in eigner
+                      if re.match(r"Stadt Oldenburg\b", (e["name"] or "").strip())), None)
+        tochter = any(re.sub(r"\s*\(.*?\)\s*$", "", (e["name"] or "")).strip().lower() in namen
+                      for e in eigner)
+        return shareholding_handbook.scope(g.get("classification"), stadt, tochter)
+
+    # Plan und Hochrechnungen aus den Quartalsberichten (council/holding_quarterly.py);
+    # das Ist steht nur dann daneben, wenn ein Abschluss das Jahr nennt.
+    quartal = holding_quarterly.laufendes_jahr(store)
+    quartal_ids = {i for f in quartal
+                   for i in ([s["herkunft_id"] for s in f["stations"]]
+                             + [(f["actual"] or {}).get("herkunft_id")])
+                   if i is not None}
     ids = sorted({z["herkunft_id"]
                   for z in (*gesellschaften, *texte, *indicators, *personen,
                             *eigentuemer)
-                  if z["herkunft_id"] is not None})
+                  if z["herkunft_id"] is not None} | quartal_ids)
     return {
         "report_years": berichtsjahre,
+        "forecasts": quartal,
         "years": sorted({z["year"] for z in indicators}),
         "companies": [{**g, "roles_assignable":
-                       g["company"] not in gerissen}
+                       g["company"] not in gerissen,
+                       "board_term": (shareholding_handbook.board_term_note(g["report_year"])
+                                      if g["company"] in mit_personen else None),
+                       "handbook_scope": _scope(g)}
                       for g in gesellschaften],
         "texts": texte,
         "people": [{**p, "roles_assignable":
@@ -1069,6 +1095,7 @@ def _beteiligungen(store: CouncilStore) -> BudgetHoldings:
         "indicators": indicators,
         "group_comparison": vergleich,
         "provenance": {str(h["id"]): h for h in store.get_herkunft(ids)},
+        "handbook": shareholding_handbook.page_summary(),
     }
 
 
@@ -2147,6 +2174,13 @@ def session_item(
                 punkt["surroundings"] = umfeld
         except Exception:  # noqa: BLE001 — Zusatz, nie ein 500er der Punkt-Seite
             _log.exception("Umfeld fehlgeschlagen für %s %s", ksinr, nr)
+    if features.an("haushaltsentwurf-befunde"):
+        try:
+            befunde = store.item_budget_findings(ksinr, nr)
+            if befunde:
+                punkt["budget_findings"] = befunde
+        except Exception:  # noqa: BLE001 — Zusatz, nie ein 500er der Punkt-Seite
+            _log.exception("Haushalts-Befunde fehlgeschlagen für %s %s", ksinr, nr)
     if features.an("haushalt-am-punkt"):
         try:
             from council import punkt_haushalt  # noqa: PLC0415

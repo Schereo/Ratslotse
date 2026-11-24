@@ -173,7 +173,7 @@ export function EntitiesTab() {
         <>
           {top.length > 0 && (
             <>
-              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground/70">Gerade aktiv</p>
+              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Gerade aktiv</p>
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {top.map((e) => <TopEntityCard key={e.slug} e={e} maxRecent={maxRecent} />)}
               </div>

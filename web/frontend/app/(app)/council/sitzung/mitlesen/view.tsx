@@ -76,7 +76,7 @@ function MitlesenInner() {
   if (!an || !data.course) {
     return (
       <div className="mx-auto max-w-2xl py-10 text-center">
-        <p className="text-foreground">Mitlesen gibt es für diese Sitzung nicht.</p>
+        <h1 className="text-foreground">Mitlesen gibt es für diese Sitzung nicht.</h1>
         <Link href={sitzungHref(ksinr)} className="mt-3 inline-flex min-h-11 items-center gap-1.5 font-medium text-primary hover:underline">
           Zur Tagesordnung <ArrowRight className="h-4 w-4" aria-hidden /></Link>
       </div>

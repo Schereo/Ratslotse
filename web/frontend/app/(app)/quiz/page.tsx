@@ -67,7 +67,7 @@ function SetupLabel({ children, hint }: { children: React.ReactNode; hint?: stri
   return (
     <p className="mt-5 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
       {children}
-      {hint && <span className="ml-1.5 font-medium normal-case tracking-normal text-muted-foreground/80">{hint}</span>}
+      {hint && <span className="ml-1.5 font-medium normal-case tracking-normal text-muted-foreground">{hint}</span>}
     </p>
   );
 }
@@ -278,7 +278,7 @@ function QuizSetup({ catalog, starting, onStart, onCancel }: {
                     </span>
                   )}
                   <span className={cn("block font-display text-[15px] font-bold", active && "text-primary")}>WB {w.key}</span>
-                  <span className={cn("block text-[10.5px]", active ? "text-primary/80" : "text-muted-foreground")}>
+                  <span className={cn("block text-[10.5px]", active ? "text-primary" : "text-muted-foreground")}>
                     {w.questions} {w.questions === 1 ? "Frage" : "Fragen"}{w.points ? ` · ${w.points} P` : ""}
                   </span>
                 </button>
@@ -672,7 +672,7 @@ function QuizInner() {
                 <>
                   <span className="text-border" aria-hidden>·</span>
                   <span className="inline-flex items-center gap-1">
-                    <Flame className="h-3.5 w-3.5 text-signal" />
+                    <Flame className="h-3.5 w-3.5 text-signal-ink" />
                     <strong className="font-bold tabular-nums text-foreground">{stats.streak}</strong> Tage-Serie
                   </span>
                 </>

@@ -686,6 +686,60 @@ def test_aufsichtsorgane_ohne_funktionsspalte_ist_kein_befund():
     assert personen[0].name.startswith("Vertreter/in der TGO")
 
 
+#: Die Gesellschafterversammlung der Bäderbetriebsgesellschaft im Bericht 2024
+#: (S. 119–120, gekürzt auf die Spalten): Die Liste läuft über einen
+#: Seitenwechsel, und pypdf liest jede Seite für sich spaltenweise aus — erst
+#: Namen und Funktionen der einen Seite, dann die der nächsten. Bis 11/2026
+#: endete Abschnitt 3 am ersten Seitenkopf; gespeichert waren fünf der zwölf.
+SEITENWECHSEL_BBGO_2024 = (
+    "3) Besetzung der Aufsichtsorgane \n"
+    "Mitglieder der Gesellschafterversammlung Funktion/Legitimierung \n"
+    "Dr. Julia Figura, Vorsitzende \nMargrit Conty \nPetra Averbeck \n"
+    "Claudia Küpker \nRita Schilling \n"
+    "Stadtkämmerin \nRatsmitglied \nRatsmitglied \nRatsmitglied \nRatsmitglied \n"
+    "Stadt Oldenburg – Beteiligungsbericht 2024 \n"
+    "_________________________________________________________________  \n"
+    " \n- 119/215 - \n"
+    "Tom Schröder \nDr. Florian Fortmann \nNicolai Beerheide \n"
+    "Jana Kieper (bis 24. Juni 2024) \nUlrike Buse-Pieloth (bis 24. Juni 2024) \n"
+    "Fabian Großklaus (ab 25. Juni 2024) \nDennis Nickel (ab 25. Juni 2024) \n"
+    "Ratsmitglied \nRatsmitglied \nRatsmitglied \nBeschäftigtenvertreterin \n"
+    "Beschäftigtenvertreterin \nBeschäftigtenvertreterin \nBeschäftigtenvertreterin \n"
+    "4) Beteiligungen \n"
+    "Die Gesellschaft ist an keinen anderen Unternehmen oder Einrichtungen beteiligt. \n"
+    "5) Grundzüge des Geschäftsverlaufs/Lage des Unternehmens und Ausblick \n"
+    "Text des Lageberichts. \n"
+    "8) Auswirkungen auf die Haushalts- und Finanzwirtschaft der Stadt Oldenburg \n"
+    "Die Stadt gleicht den Fehlbetrag aus. \n"
+    "Stadt Oldenburg – Beteiligungsbericht 2024 \n"
+    "Die nächste Gesellschaft beginnt hier. \n")
+
+
+def test_abschnitt_laeuft_ueber_den_seitenwechsel():
+    a = bb.abschnitte(SEITENWECHSEL_BBGO_2024)
+    personen, zuordenbar = bb.aufsichtsorgane(a["supervisory_bodies"])
+    assert zuordenbar
+    assert len(personen) == 12
+    assert personen[5].name == "Tom Schröder" and personen[5].position == "Ratsmitglied"
+    assert personen[-1].name == "Dennis Nickel"
+    assert personen[-1].position == "Beschäftigtenvertreterin"
+    assert personen[-1].note == "ab 25. Juni 2024"
+    # Gespeichert wird der Abschnitt als Fließtext: ohne Seitenkopf, ohne
+    # Seitenzahl, ohne die Marke des Seitenwechsels.
+    text = bb.ohne_seitenwechsel(a["supervisory_bodies"])
+    assert "Dennis Nickel" in text
+    assert bb.SEITENWECHSEL not in text and "119/215" not in text
+    assert "Beteiligungsbericht 2024" not in text
+
+
+def test_letzter_abschnitt_endet_weiter_am_seitenkopf():
+    """Hinter dem letzten Abschnitt kann die nächste Gesellschaft beginnen —
+    dort bleibt es beim Schnitt am Seitenkopf."""
+    a = bb.abschnitte(SEITENWECHSEL_BBGO_2024)
+    assert "gleicht den Fehlbetrag aus" in a["budget_impact"]
+    assert "nächste Gesellschaft" not in a["budget_impact"]
+
+
 # --- Abschnitt 2: Beteiligungsverhältnisse ----------------------------------
 
 #: Großleitstelle — sechs gleiche Anteile. 6 × 16,67 % sind 100,02 %, und das

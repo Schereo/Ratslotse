@@ -316,7 +316,7 @@ export function Labor({ daten, produkte, produktJahr, vergleich, programm, schul
     <div className={cn("rounded-2xl border border-signal/40 bg-card p-4",
       kompakt ? "shadow-[0_6px_16px_-10px_rgba(2,32,71,0.5)]" : "shadow-sm")}>
       <div className="flex items-baseline justify-between gap-2">
-        <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-signal">
+        <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-signal-ink">
           Dein Haushalt {basis.year}
         </p>
         {etwasGeaendert && (

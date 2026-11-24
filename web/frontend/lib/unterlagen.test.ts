@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ohneDatum, teileListe, angabenWort, aussagenGruppen } from "./unterlagen";
+import { ohneDatum, teileListe, angabenWort, aussagenGruppen, belegEinklappen, kurzeTitel } from "./unterlagen";
 
 describe("ohneDatum", () => {
   it("nimmt das Datumspräfix ab", () => {
@@ -14,7 +14,25 @@ describe("ohneDatum", () => {
   });
 });
 
+describe("belegEinklappen", () => {
+  it("klappt erst ab drei Stücken Belegmaterial ein, und nur hinter Lesestoff", () => {
+    expect(belegEinklappen(1, 1)).toBe(false);   // Vorlage + Quartalsbericht: beide sichtbar
+    expect(belegEinklappen(1, 2)).toBe(false);
+    expect(belegEinklappen(1, 3)).toBe(true);
+    expect(belegEinklappen(0, 5)).toBe(false);   // sonst stünde die Liste zugeklappt leer da
+  });
+});
+
 describe("teileListe", () => {
+  it("ein Bericht ist Lesestoff (wie im Dossier)", () => {
+    const t = teileListe([
+      { kind: "template", doc_type: "template", label: "Vorlage 26/0818" },
+      { kind: "attachment", doc_type: "report", label: "Quartalsbericht 30.09.2026" },
+    ]);
+    expect(t.lesestoff.map((d) => d.label)).toEqual(["Vorlage 26/0818", "Quartalsbericht 30.09.2026"]);
+    expect(t.beleg).toEqual([]);
+  });
+
   it("Lesestoff vorn, Belegmaterial und Protokolle getrennt", () => {
     const t = teileListe([
       { kind: "template", doc_type: "template", label: "Vorlage" },
@@ -91,5 +109,35 @@ describe("angabenWort", () => {
   it("zählt in Einzahl und Mehrzahl", () => {
     expect(angabenWort(1)).toBe("1 Angabe");
     expect(angabenWort(5)).toBe("5 Angaben");
+  });
+});
+
+describe("kurzeTitel", () => {
+  it("nimmt den gemeinsamen Teil weg (Haushaltsentwurf 2027, 26/0835)", () => {
+    const labels = [
+      "Vorlage",
+      "2027 030 Vw Änderungsliste Verwaltung I EHH",
+      "2027 001 Vw Vorbericht Haushalt 2027 Verwaltungsentwurf",
+      "2027 007 Vw THH01 Haushalt 2027 Verwaltungsentwurf",
+      "2027 008 Vw THH02 Haushalt 2027 Verwaltungsentwurf",
+      "2027 021 Vw WP EGH Haushalt 2027 Verwaltungsentwurf",
+      "2027 027 Vw Konsolidierungskonzept 2027",
+    ];
+    expect(kurzeTitel(labels)).toEqual([
+      "Vorlage",
+      "Änderungsliste Verwaltung I Ergebnishaushalt",
+      "Vorbericht",
+      "Teilhaushalt 01",
+      "Teilhaushalt 02",
+      "Wirtschaftsplan EGH",
+      "Konsolidierungskonzept 2027",
+    ]);
+  });
+  it("lässt kurze und verschiedene Listen, wie sie sind", () => {
+    expect(kurzeTitel(["Vorlage 26/0818", "Quartalsbericht 30.09.2026"])).toEqual(["Vorlage 26/0818", "Quartalsbericht 30.09.2026"]);
+    expect(kurzeTitel(["Lageplan", "Begründung", "Stellungnahme CDU"])).toEqual(["Lageplan", "Begründung", "Stellungnahme CDU"]);
+  });
+  it("lässt nie einen leeren Titel stehen", () => {
+    expect(kurzeTitel(["Anlage 1", "Anlage 2", "Anlage 3"])).toEqual(["Anlage 1", "Anlage 2", "Anlage 3"]);
   });
 });

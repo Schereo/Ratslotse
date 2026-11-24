@@ -71,6 +71,11 @@ export default function KommunalwahlSeite() {
     <>
       <KwKopf crumb={<KwCrumb />} />
 
+      {/* Ein `main` um Kopf UND Gerüst: Die Hauptüberschrift steht im Kopf,
+          und Inhalt außerhalb jeder Landmarke überspringt ein Screenreader
+          beim Sprung „zum Hauptinhalt" (axe 11/2026). Die Rail ist deshalb
+          eine `nav` der Abschnitte statt einer `aside` im `main`. */}
+      <main>
       {/* Hero */}
       <section className="flex flex-col items-center px-4 pt-7 text-center sm:px-6">
         <Mascot pose="wave" className="h-20 w-20 sm:h-[108px] sm:w-[108px]" />
@@ -128,7 +133,7 @@ export default function KommunalwahlSeite() {
 
       {/* Zweispaltiges Gerüst: Rail + Inhalt */}
       <div className="mx-auto grid w-full max-w-[1280px] gap-11 px-4 pb-16 pt-9 sm:px-6 lg:grid-cols-[230px_1fr] lg:px-10">
-        <aside className="hidden lg:block">
+        <nav aria-label="Abschnitte" className="hidden lg:block">
           <div className="sticky top-20 flex flex-col gap-0.5">
             <CountdownKarte />
             {RAIL.map(([href, label]) => (
@@ -158,9 +163,9 @@ export default function KommunalwahlSeite() {
               </a>
             </div>
           </div>
-        </aside>
+        </nav>
 
-        <main className="min-w-0">
+        <div className="min-w-0">
           {/* Drei Stimmen */}
           <section id="stimmen" className="scroll-mt-24">
             <div className="flex flex-col items-start gap-5 rounded-[20px] bg-primary p-6 text-primary-foreground sm:flex-row sm:items-center sm:p-7">
@@ -296,7 +301,7 @@ export default function KommunalwahlSeite() {
                           href={a.href}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="whitespace-nowrap text-primary"
+                          className="whitespace-nowrap textlink"
                         >
                           {a.seitenLabel} ↗
                         </a>
@@ -473,8 +478,9 @@ export default function KommunalwahlSeite() {
               ]}
             />
           </div>
-        </main>
+        </div>
       </div>
+      </main>
     </>
   );
 }

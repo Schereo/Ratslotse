@@ -348,7 +348,7 @@ export default function VergleichSeite() {
 
         {/* --- Teil 2: Der Kern — warum die Ausgaben fehlen --- */}
         <section className="@container/kern rounded-2xl border border-border border-l-[3px] border-l-signal bg-card p-4 shadow-sm">
-          <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-signal">
+          <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-signal-ink">
             Warum hier keine Ausgaben stehen
           </p>
           <h2 className="mt-1.5 font-display text-lg font-bold tracking-tight">

@@ -134,6 +134,7 @@ die es nicht zeigen:
 | `council_investments` | Investitionen des **Finanz**haushalts je Teilhaushalt, 2020–2025 (**Plan**) — Ein- und Auszahlungen, dazu die Summenzeile und der Gesamtbetrag des Finanzhaushalts als Bezugsgröße | Open-Data-Portal, Datensatz 1101, Tabellenblatt „Finanzhaushalt" | dito |
 | `council_investment_measures` | **Einzelne Vorhaben** je Teilhaushalt, 2019–2026 (**Plan**) — IPSP-Element, Bezeichnung und Gesamtinvestitionssumme; `ebene` (`massnahme` / `teilhaushalt` / `gesamt`). Ohne Jahresraten, s. u. | Investitionsprogramm (Anlage 004 des Haushaltsplans) — **Anlagen im RIS** | `scripts/ingest_finanzberichte.py` |
 | `council_budget_execution` | Haushaltsvollzug: Ansatz, Prognose zum Jahresende und Abweichung je Teilhaushalt, 2018–2026, viermal jährlich — für Ergebnis- **und** Finanzhaushalt. `plan_basis` sagt, ob die Ansatz-Spalte die Ermächtigungsübertragungen enthält (bis 2020) oder nicht (ab 2021) | Finanz- und Leistungsberichte — **Anlagen im RIS** | `scripts/ingest_haushaltsvollzug.py` |
+| `council_holding_forecasts` | Quartalsberichte der Beteiligungen: je Unternehmen, Jahr und Stichtag Plan (mit Art) und Hochrechnung, Euro auch bei TEUR-Berichten, `prior_reported` nur als Prüfwert, **nie ein Ist** — 2018–2026, 24 Berichte | Anlagen der Sammelvorlagen „Bericht zum n. Quartal … Beteiligungsunternehmen“ — **Anlagentext im RIS** | `scripts/ingest_holding_quarterly.py` |
 | `council_loan_notices`, `council_loan_items` | Kredite und Zinsen: je Unterrichtung des Rates nach der Kreditrichtlinie der Berichtszeitraum und die Zinsersparnis der Umschuldung, je Posten Art (Kreditaufnahme, Umschuldung, Prolongation, Ausleihung), Schuldner, Betrag, Zinssatz, Zinsbindung und Datum der Kreditentscheidung, 2018–2026 | Vorlagen „Unterrichtung des Rates über Kreditaufnahmen, Derivatabschlüsse und Umschuldungen“ — **Volltexte im RIS** | `scripts/ingest_kredite.py` |
 | `council_liquidity` | Liquiditätsstand: je Monatsende der Kontostand der Stadt in Euro seit 2015, jüngster Beleg je Monat, Wertzahl- und Überlappungsprobe | Grafiken „Liquiditätsstand zum Monatsende“ — **Anlagen der Monatsvorlagen im RIS** (der Ingest lädt sie selbst) | `scripts/ingest_liquiditaet.py` |
 | `council_enterprise_accounts` | Jahresabschlüsse der Eigenbetriebe: je Betrieb, Jahr und Kennzahl eine Zahl (Umsatzerlöse, Jahresergebnis, Bilanzsumme, Eigenkapital, Abschreibungen, Investitionen, Cashflow …) aus dem jüngsten Bericht, bezeugt von den Vorjahresspalten der folgenden; EGH und Hafen aus der Mehrjahresübersicht des RPA-Berichts, AWB aus dem Wirtschaftsprüfer-Bericht, Bäderbetrieb aus GuV und Bilanz | Vorlagen „Jahresabschluss und Lagebericht … für den Eigenbetrieb …“ — **Anlagen im RIS** (Prüfberichte, GuV, Bilanz) | `scripts/ingest_eigenbetriebe_abschluss.py` |
@@ -565,12 +566,12 @@ auswählen und die Auswahl vorhandener Quellen nicht unbeabsichtigt ändern.
 
 ## Aktualisierung der Haushaltsdaten
 
-Alle **dreiunddreißig** Datenschichten wurden anfangs manuell eingelesen.
+Alle **vierunddreißig** Datenschichten wurden anfangs manuell eingelesen.
 `check_finanzdaten.py` überwacht die Aktualität am Sonntag. Für **zehn**
 Schichten verarbeitet der Job bereits gespeicherte Anlagen aus dem
-Ratsinformationssystem. Bei den übrigen **dreiundzwanzig** meldet er fällige Jahrgänge
+Ratsinformationssystem. Bei den übrigen **vierundzwanzig** meldet er fällige Jahrgänge
 und nennt Quelle und Skript. Elf stammen aus externen Quellen. Die anderen
-zwölf liegen im Ratsinformationssystem und haben eigene Importskripte.
+dreizehn liegen im Ratsinformationssystem und haben eigene Importskripte.
 Der Job lädt selbst keine Dateien herunter. Maßgeblich für die Liste ist
 `finanzquellen.REIHENFOLGE`.
 
@@ -1985,6 +1986,17 @@ folgenden Prüfungen.
 - **Kennung im Request.** Der `User-Agent` enthält Namen, Adresse und Zweck.
 - **Bedingter Abruf.** `If-Modified-Since` und `If-None-Match` vermeiden
   bei `304` eine erneute Übertragung. Sieben Berichte umfassen zusammen 25 MB.
+  Die Kopfzeilen der letzten Fassung stehen neben ihr im Archiv
+  (`data/archiv/beteiligungsbericht/<datei>/.quelle.json`); bis 11/2026 stand
+  dieser Punkt hier, ohne dass der Job je eine Kopfzeile mitschickte.
+- **Archiv statt Lücke.** Jede geholte Fassung liegt versioniert im Archiv
+  der Quelldateien (`council/archiv.py`, Bereich `beteiligungsbericht`; das
+  Backup spiegelt es mit). Scheitert ein Download oder verschwindet ein Link,
+  liest der Job die gesicherte Fassung. Gibt es keine, hält
+  `beteiligungsbericht.einlesen` den ganzen Bestand fest
+  (`fehlende_jahrgaenge`). Vorher ersetzte ein Lauf mit zwei von drei
+  Berichten still den Bestand: Ohne den Bericht 2024 fielen alle 26 Werte für
+  2024 weg, und die Schrumpf-Schranke (80 %) merkte es nicht.
 - **Abrufabstand und Dateiprüfung.** Der Job wartet zwischen den Abrufen.
   Er akzeptiert nur Dateien bis 40 MB mit PDF als `Content-Type` und
   `%PDF` am Dateianfang. Ein CMS kann auch für Fehlerseiten `200 OK`
@@ -2159,6 +2171,105 @@ steht im Cron-Protokoll sowie auf der Seite — als **Einordnung**, nicht als
 Urteil. Springt eine Abweichung, die jahrelang null war, auf Millionen, ist das
 den Blick wert.
 :::
+
+## Quartalsberichte der Beteiligungen: das laufende Jahr
+
+Das Handbuch Beteiligungen (Seite 32) verlangt von den Geschäftsführungen
+Berichte zum 30.06., 30.09. und 31.12., in der Regel binnen drei Wochen. Die
+Verwaltung bündelt sie zu einer Sammelvorlage „Bericht zum n. Quartal JJJJ der
+städtischen Beteiligungsunternehmen und Eigenbetriebe“ im Ausschuss für
+Finanzen und Beteiligungen; der Inhalt steht allein in der Anlage, das
+Protokoll hält nur fest, dass der Bericht zur Kenntnis genommen wird. Die
+Schicht `council_holding_forecasts` (`council/holding_quarterly.py`,
+Ingest `scripts/ingest_holding_quarterly.py`) liest daraus je Unternehmen und
+Stichtag **Plan und Hochrechnung** — 24 Berichte seit dem 4. Quartal 2018,
+Klinikum, Verkehr und Wasser, Bäder, Weser-Ems-Halle, Tourismus, Technologie-
+und Gründerzentrum, Volkshochschule, Stadion und die Eigenbetriebe.
+
+**Gelesen wird aus dem gespeicherten Anlagentext, ohne PDF-Download.** Der
+Textauszug liefert die Tabelle je nach Extraktor zeilenweise oder Zelle für
+Zelle; der Leser zerlegt den Text deshalb in Wörter und sucht Kopfzeile und
+Zeilen („Kürzel plus drei oder vier Zahlen“). Einheit (Euro oder TEUR) und
+Vorzeichen der gedruckten Abweichung gelten **je Bericht** und werden
+gerechnet: Das 4. Quartal 2018 rechnet in TEUR, gerundet, mit der Abweichung
+als Plan − HR; alle späteren in Euro mit HR − Plan.
+
+Drei Stationen, **nie verrechnet und nie bewertet**:
+
+| Station | Quelle | Anmerkung |
+|---|---|---|
+| **Plan** | Tabelle und Abschnitt des Unternehmens | mit seiner Art: `original` (nicht als geändert bezeichnet) oder `adjusted`; „Plan“ in der Spaltenüberschrift meint je Unternehmen mal das eine, mal das andere |
+| **Hochrechnung** | je Stichtag eine Zeile | mehrere Hochrechnungen eines Jahres stehen nebeneinander — keine ersetzt die andere |
+| **Ist** | nur der Jahresabschluss | kommt ein bis zwei Jahre später; die Spalte „Vorjahr Ist“ des Berichts ist **nicht** das Ist (teils vorläufig, teils falsch übertragen, teils andere Basis) und wird nur als Prüfwert `prior_reported` gehalten |
+
+**Proben.** (1) Die gedruckte Abweichung ist je Zeile Hochrechnung minus Plan
+(bzw. umgekehrt, je nach Vorzeichenregel des Berichts). (2) Das Quartal im
+Titel, der Stichtag im Text und das Jahr in der Kopfzeile nennen denselben
+Zeitpunkt. (3) Der Plan steht auch im Abschnitt des Unternehmens. Was die
+erste Probe reißt, wird **nicht gespeichert** und im Lauf genannt (etwa ein
+verlorenes Minuszeichen beim Klinikum im 3. Quartal 2024, eine Hochrechnung,
+die im Seitentext anders lautet als in der Tabelle). Kleine Widersprüche —
+Klinikum 77 €, Weser-Ems-Halle 3 € — bleiben mit Konfliktmarke stehen, beide
+Werte sichtbar. Der Abgleich mit Wirtschaftsplan (`council_business_plans`)
+und Jahresabschluss ist Messzahl im Protokoll, kein Ausschlusskriterium: Der
+Bestand hält je Betrieb nur einen Plan, und eine Anpassung ersetzt den Stand.
+
+**Was die Quelle nicht hat:** das kumulierte Ist zum Stichtag, die
+Vermögens- und Investitionsplanung (beides verlangt das Handbuch, der
+öffentliche Bericht führt sie nicht), die Ad-hoc-Berichte zu Corona (anderes
+Format) und die Gesellschaften unter 50 % Anteil (GSG, GOL, TGO Besitz). Die
+VWG meldet statt des Jahresergebnisses den Gesamtzuschussbedarf
+(`basis = subsidy_need`), ihr Abschluss weist eine andere Größe aus — dort steht
+kein Ist daneben.
+
+**Fälligkeit.** Einheit ist der Bericht `(Jahr, Stichtag)`, nicht das Jahr:
+Der Bericht zum 30.06. liegt im September im Ausschuss, der zum 30.09. im
+Dezember, der zum 31.12. im Februar oder März des Folgejahres. Eine Ampel
+gegen die Drei-Wochen-Frist gibt es nicht — sie gilt gegenüber den Organen.
+
+In der KI-Frage antwortet die Facette `holding_forecasts`, sobald „Hochrechnung“
+oder „Quartalsbericht“ mit einem Unternehmen zusammentreffen; der
+Haushaltsvollzug der Kernverwaltung (`execution`) antwortet dann nicht mehr
+allein. Die API führt die Stationen unter `forecasts` in
+`/api/council/budget/shareholdings`.
+
+## Handbuch Beteiligungen: wie die Stadt ihre Gesellschaften steuert
+
+Der Beteiligungsbericht sagt, **was** eine Gesellschaft tut und erwirtschaftet.
+Wie die Stadt sie **steuert** — wer bestimmt, wer kontrolliert, was öffentlich
+ist, wer prüft, welche Berichte wann fällig sind —, steht im *Handbuch
+Beteiligungen* der Stadt: drei Richtlinien (Oldenburger Corporate Governance
+Kodex, Beteiligungsmanagement, Korruptionsvorbeugung), vom Rat am 27.11.2023
+beschlossen (Vorlage 23/0599/1), Broschüre Stand Januar 2025. Finanzzahlen
+enthält es keine.
+
+`council/shareholding_handbook.py` führt elf Regeln als **belegte
+Kurzfassungen**, jede mit ihren Seiten der Broschüre — kein Wortlaut, nichts
+aus dem Gedächtnis ergänzt. Sie erreichen die Antworten über eine eigene
+Geld-Facette (`council/geld/handbook.py`) und damit auf einen Schlag KI-Frage,
+Lotti, Lottis Werkzeuge, MCP und die ausführliche Recherche; außerhalb des
+Haushalts-Bereichs darf Lotti sie ebenfalls ziehen (`GELD_AUSSERHALB`).
+
+- **Auslöser an der Frage, deterministisch.** Fachwörter („Aufsichtsrat",
+  „Gesellschafterversammlung", „Feststellungsvermerk") ziehen allein;
+  allgemeine Wörter („öffentlich", „Vergütung", „wann") nur zusammen mit einer
+  Gesellschaft — dieselbe Erkennung wie die Facette `companies`, ohne die
+  „Beteiligung der Öffentlichkeit" am Bebauungsplan. Höchstens zwei Regeln je
+  Frage, die engere zuerst.
+- **Kein Prüfergebnis.** Der Baustein sagt dem Modell, dass es Vorgaben sind:
+  Ob eine Gesellschaft sie einhält, steht nicht darin, und niemandem wird ein
+  Verstoß unterstellt. Eine öffentliche „Ampel" über fehlende
+  Vergütungsberichte auf Websites ist deshalb bewusst nicht gebaut — dass
+  etwas auf einer Website fehlt, lässt sich nicht beweisen.
+- **Die Besetzung trägt ihre Ratsperiode.** Der Beteiligungsbericht nennt die
+  Gremien im Berichtsjahr; die städtischen Aufsichtsratssitze enden mit der Ratsperiode
+  (Handbuch S. 22). `board_term_note` rechnet die Periode aus (§ 47
+  NKomVG: fünf Jahre ab 1. November), und die Facette `companies` sagt dazu,
+  wenn sie abgelaufen ist. Am 23.11.2026 stand dort sonst die Besetzung von
+  2024 samt einem Oberbürgermeister im Vorsitz, der seit 01.11.2026 nicht mehr
+  im Amt ist. Die Gremien zählt sie seitdem einzeln: Bei der GSG stand vorher
+  „Aufsichtsorgan: 24 Mitglieder" — Aufsichtsrat (18) und
+  Gesellschafterversammlung (6) zusammengezählt.
 
 ## Städtevergleich: was sich vergleichen lässt — und was nicht
 

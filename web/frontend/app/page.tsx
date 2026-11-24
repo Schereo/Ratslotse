@@ -167,7 +167,7 @@ export default function LandingPage() {
                     >
                       <Icon className="h-5 w-5" />
                     </span>
-                    <h3 className="mt-3 font-semibold text-foreground">{f.title}</h3>
+                    <h2 className="mt-3 font-semibold text-foreground">{f.title}</h2>
                     <p className="mt-1 max-w-prose text-sm leading-relaxed text-muted-foreground">{f.desc}</p>
                   </div>
                 );
