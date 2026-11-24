@@ -50,5 +50,11 @@ FACETTE = geld.Facette(
     name=NAME, methode="handbook_context", erkennen=recognize, block=block,
     # Zwei Regeln (MAX_RULES) samt Kopf: über alle Paare gemessen höchstens
     # 2.379 Zeichen (Berichte + Aufsichtsrat), s. tests/test_shareholding_handbook.py.
-    mixin=Store, rang=45, grenze=2450,
+    # Rang 38, also VOR dem Steckbrief (`companies`, 40): Das Handbuch zieht nur
+    # bei Regelfragen, und dort ist die Regel die Antwort. Mit Rang 45 fiel es
+    # bei MCP und Lottis Werkzeugen (Deckel `lotti_werkzeuge.BLOCK_MAX`) jedes
+    # Mal hinter einen Steckbrief aus dem Deckel — gemessen 24.11.2026 an „Was
+    # macht ein Aufsichtsrat bei einer städtischen Gesellschaft?": Bäderbetrieb
+    # und Klinikum, keine Regel.
+    mixin=Store, rang=38, grenze=2450,
     probefrage="Was macht ein Aufsichtsrat bei einer städtischen Gesellschaft?")
