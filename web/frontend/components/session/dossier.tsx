@@ -16,9 +16,12 @@ import { ErklaerBereich, Erklaert } from "@/components/session/begriffe";
 export type Dossier = NonNullable<ApiAntwort<"/council/session/{ksinr}/item">["dossier"]>;
 type Aussage = Dossier["sections"][number]["statements"][number];
 
-/** Was ein Beleg braucht — eine Dossier-Aussage trägt es, ein Satz aus dem
- *  Gesamtbild des Haushaltsentwurfs auch (`haushaltsentwurf-befunde.tsx`). */
-export type BelegDaten = Pick<Aussage, "quote"> & {
+/** Was ein Beleg braucht — eine Dossier-Aussage trägt es, ein Verweis aus
+ *  „Was der Haushaltsentwurf zeigt“ auch (`haushaltsentwurf-befunde.tsx`).
+ *  Ohne Zitat (eine Grafik, ein Satz, der selbst das Zitat ist) zeigt der
+ *  Tipp nur Dokument, Seite und den Weg ins PDF. */
+export type BelegDaten = {
+  quote?: Aussage["quote"] | null;
   list_no?: number | null; doc_label?: string | null; page?: number | null; url?: string | null;
 };
 
@@ -34,8 +37,8 @@ export function Beleg({ a }: { a: BelegDaten }) {
       </button>
       {offen && (
         <span className="mt-1.5 block rounded-lg border border-border bg-muted/40 p-2.5 text-sm">
-          <span className="block border-l-2 border-primary/50 pl-2.5 text-foreground/90">„{a.quote.trim()}“</span>
-          <span className="mt-1.5 flex flex-wrap items-center gap-x-2 text-meta text-muted-foreground">
+          {a.quote && <span className="mb-1.5 block border-l-2 border-primary/50 pl-2.5 text-foreground/90">„{a.quote.trim()}“</span>}
+          <span className="flex flex-wrap items-center gap-x-2 text-meta text-muted-foreground">
             {a.doc_label}{a.page ? ` · S. ${a.page}` : ""}
             {a.url && (
               <a href={a.url} target="_blank" rel="noreferrer"

@@ -21,7 +21,7 @@
    Glossar am Wort. */
 
 import { useState, type CSSProperties } from "react";
-import { ChevronDown, ExternalLink } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import { Aufklapp } from "@/components/aufklapp";
 import { Bruecke } from "@/components/grafik/bruecke";
 import { deZahl } from "@/components/grafik/format";
@@ -29,8 +29,8 @@ import { RanglisteSchiene } from "@/components/grafik/rangliste-schiene";
 import { ArtLegende, VorzeichenSaeulen } from "@/components/grafik/vorzeichen-saeulen";
 import { KiStern } from "@/components/ki-stern";
 import { ErklaerBereich, Erklaert } from "@/components/session/begriffe";
-import { Beleg } from "@/components/session/dossier";
-import { ABSCHNITT, KARTENTITEL, META, ZITAT } from "@/components/session/unterlagen-typo";
+import { Beleg, type BelegDaten } from "@/components/session/dossier";
+import { ABSCHNITT, KARTENTITEL, META } from "@/components/session/unterlagen-typo";
 import type { ApiAntwort } from "@/lib/vertrag";
 import { cn } from "@/lib/utils";
 
@@ -41,6 +41,19 @@ type Hinweis = NonNullable<HaushaltsBefunde["notice"]>;
 
 const OFFEN = 4;
 const HINWEIS = "Automatisch aus den Grafiken des Vorberichts erstellt: jede Zahl gegen die Grafik geprüft, jede Deutung von einem zweiten Modell. Verbindlich ist der Vorbericht im Ratsinfo.";
+
+/** Ein Verweis in den Vorbericht — Nummer am Satz, der Tipp zeigt Grafik,
+ *  Seite, Zitat und springt ins PDF. Alle Verweise der Karte tragen diese
+ *  eine Form, durchnummeriert (Tim, 24.11.2026: „warum können nicht alles
+ *  die zahlen referenzen sein?“). */
+function verweis(url: string | null, n: number, page: number | null, chart?: string | null,
+                 quote?: string | null): BelegDaten {
+  return {
+    list_no: n, page, quote,
+    doc_label: chart ? `Vorbericht, Grafik ${chart}` : "Vorbericht",
+    url: url ? (page ? `${url}#page=${page}` : url) : null,
+  };
+}
 
 function nachkomma(v: number) {
   return Number.isInteger(v) || Math.abs(v) >= 1000 ? 0 : 1;
@@ -90,10 +103,10 @@ function Grafik({ b }: { b: Befund }) {
   return null;
 }
 
-function BefundKarte({ b, url }: { b: Befund; url: string | null }) {
+function BefundKarte({ b, url, n }: { b: Befund; url: string | null; n: number }) {
   const k = b.key_figure;
-  const stelle = [b.chart && `Grafik ${b.chart}`, b.page && `Vorbericht, S. ${b.page}`].filter(Boolean).join(" · ");
-  const ziel = url && b.page ? `${url}#page=${b.page}` : url;
+  // Steht das Zitat auf einer anderen Seite als die Grafik, trägt es eine eigene Nummer.
+  const zitatEigen = !!b.quote && !!b.quote_page && b.quote_page !== b.page;
   return (
     <li className="border-t border-border pt-5 first:border-t-0 first:pt-0">
       <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-2">
@@ -109,60 +122,50 @@ function BefundKarte({ b, url }: { b: Befund; url: string | null }) {
         </p>
       </div>
       <ErklaerBereich className="mt-2">
-        <p className="text-lese text-foreground"><Erklaert text={b.text} /></p>
+        <p className="text-lese text-foreground">
+          <Erklaert text={b.text} />
+          <Beleg a={verweis(url, n, b.page, b.chart, zitatEigen ? null : b.quote)} />
+          {zitatEigen && <Beleg a={verweis(url, n + 1, b.quote_page ?? null, null, b.quote)} />}
+        </p>
       </ErklaerBereich>
       <div className="mt-3">
         <Grafik b={b} />
       </div>
-      {b.quote && (
-        <blockquote className={cn(ZITAT, "mt-3")}>
-          „{b.quote}“
-          {b.quote_page && b.quote_page !== b.page && <span className={cn(META, "ml-1.5 whitespace-nowrap")}>S. {b.quote_page}</span>}
-        </blockquote>
-      )}
-      {stelle && (
-        <p className={cn(META, "mt-2")}>
-          {ziel ? (
-            <a href={ziel} target="_blank" rel="noreferrer"
-              className="inline-flex min-h-8 items-center gap-1 underline decoration-dashed underline-offset-2 hover:text-foreground">
-              {stelle} <ExternalLink className="h-3 w-3 flex-none" aria-hidden />
-            </a>
-          ) : stelle}
-        </p>
-      )}
     </li>
   );
 }
 
-function Seite({ url, page, chart }: { url: string | null; page: number | null; chart?: string | null }) {
-  const text = [chart && `Grafik ${chart}`, page && `S. ${page}`].filter(Boolean).join(" · ");
-  if (!text) return null;
-  if (!url) return <span className={META}>{text}</span>;
-  return (
-    <a href={page ? `${url}#page=${page}` : url} target="_blank" rel="noreferrer"
-      className={cn(META, "whitespace-nowrap underline decoration-dashed underline-offset-2 hover:text-foreground")}>
-      {text}
-    </a>
-  );
+/** Die Nummern der Verweise, in der Folge der Karte: Hinweis, Gesamtbild,
+ *  Eckzahlen, dann je Befund eine (zwei, wenn sein Zitat woanders steht). */
+function nummern(b: HaushaltsBefunde) {
+  let n = 1;
+  const hinweis = b.notice ? n++ : 0;
+  const saetze = (b.overview?.statements ?? []).map(() => n++);
+  const zahlen = (b.overview?.facts ?? []).map(() => n++);
+  const befunde = b.findings.map((f) => {
+    const eigen = n;
+    n += f.quote && f.quote_page && f.quote_page !== f.page ? 2 : 1;
+    return eigen;
+  });
+  return { hinweis, saetze, zahlen, befunde };
 }
 
-function Abriss({ about, gesamt, hinweis, url }: {
+function Abriss({ about, gesamt, hinweis, url, nr }: {
   about: string; gesamt?: Gesamtbild | null; hinweis?: Hinweis | null; url: string | null;
+  nr: ReturnType<typeof nummern>;
 }) {
   return (
     <div className="mt-2">
       <p className={META}>
         <span className={cn(ABSCHNITT, "mr-1.5")}>Worum es geht</span>{about}
       </p>
-      {/* Wörtlich aus dem Vorbericht, ohne Modell — darum ohne Stern, mit
-          Anführungszeichen und Seite (council/budget_findings.py::notice). */}
+      {/* Wörtlich aus dem Vorbericht, ohne Modell — darum in
+          Anführungszeichen (council/budget_findings.py::notice). */}
       {hinweis && (
         <ErklaerBereich className="mt-4">
           <blockquote className="rounded-lg border-l-[3px] border-primary bg-primary/[0.07] px-3 py-2.5 text-lese text-foreground">
             „<Erklaert text={hinweis.text} />“
-            <span className="mt-1 block text-meta text-muted-foreground">
-              Aus dem Vorbericht · <Seite url={url} page={hinweis.page} />
-            </span>
+            <Beleg a={verweis(url, nr.hinweis, hinweis.page)} />
           </blockquote>
         </ErklaerBereich>
       )}
@@ -177,8 +180,7 @@ function Abriss({ about, gesamt, hinweis, url }: {
               <li key={i} className="text-lese text-foreground">
                 <ErklaerBereich>
                   <Erklaert text={s.text} />
-                  <Beleg a={{ quote: s.quote, list_no: i + 1, page: s.page, doc_label: "Vorbericht",
-                    url: url ? (s.page ? `${url}#page=${s.page}` : url) : null }} />
+                  <Beleg a={verweis(url, nr.saetze[i], s.page, null, s.quote)} />
                 </ErklaerBereich>
               </li>
             ))}
@@ -194,8 +196,10 @@ function Abriss({ about, gesamt, hinweis, url }: {
                     {deZahl(f.value, nachkomma(f.value))}
                     <span className="ml-1 font-sans text-xs font-medium text-muted-foreground">{f.unit}</span>
                   </span>
-                  <span className="mt-1.5 text-meta leading-snug text-foreground">{f.label}</span>
-                  <span className="mt-auto pt-1.5"><Seite url={url} page={f.page} chart={f.chart} /></span>
+                  <span className="mt-1.5 text-meta leading-snug text-foreground">
+                    {f.label}
+                    <Beleg a={verweis(url, nr.zahlen[i], f.page, f.chart, f.quote)} />
+                  </span>
                 </li>
               ))}
             </ul>
@@ -209,6 +213,7 @@ function Abriss({ about, gesamt, hinweis, url }: {
 export function HaushaltsentwurfBefunde({ befunde }: { befunde?: HaushaltsBefunde | null }) {
   const [alle, setAlle] = useState(false);
   if (!befunde?.findings.length) return null;
+  const nr = nummern(befunde);
   const vorne = befunde.findings.slice(0, OFFEN);
   const rest = befunde.findings.slice(OFFEN);
   return (
@@ -217,16 +222,16 @@ export function HaushaltsentwurfBefunde({ befunde }: { befunde?: HaushaltsBefund
         Was der Haushaltsentwurf zeigt
         <KiStern text={HINWEIS} />
       </h2>
-      <Abriss about={befunde.about} gesamt={befunde.overview} hinweis={befunde.notice} url={befunde.url} />
+      <Abriss about={befunde.about} gesamt={befunde.overview} hinweis={befunde.notice} url={befunde.url} nr={nr} />
       <h3 className={cn(ABSCHNITT, "mt-6 border-t border-border pt-5")}>Aus den Grafiken</h3>
       <ul className="mt-4 flex flex-col gap-5">
-        {vorne.map((b, i) => <BefundKarte key={`${b.chart}-${i}`} b={b} url={befunde.url} />)}
+        {vorne.map((b, i) => <BefundKarte key={`${b.chart}-${i}`} b={b} url={befunde.url} n={nr.befunde[i]} />)}
       </ul>
       {rest.length > 0 && (
         <>
           <Aufklapp offen={alle}>
             <ul className="mt-5 flex flex-col gap-5 border-t border-border pt-5">
-              {rest.map((b, i) => <BefundKarte key={`${b.chart}-${i}`} b={b} url={befunde.url} />)}
+              {rest.map((b, i) => <BefundKarte key={`${b.chart}-${i}`} b={b} url={befunde.url} n={nr.befunde[OFFEN + i]} />)}
             </ul>
           </Aufklapp>
           <button type="button" onClick={() => setAlle((a) => !a)} aria-expanded={alle}
