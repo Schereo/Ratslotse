@@ -12,6 +12,7 @@
 import { OUTCOME_DOT_CLS } from "@/components/decision-ui";
 import { Konflikt } from "@/components/notiz/meine-notiz";
 import { Fuss, Karte, NotizSchloss, SperrenKnopf, type Offen } from "@/components/notiz/notiz-schloss";
+import { NoteField } from "@/components/notiz/note-field";
 import { statusText, useVerschluesselt } from "@/components/notiz/use-verschluesselt";
 import type { TranscriptDoc } from "@/lib/notizen";
 import { cn } from "@/lib/utils";
@@ -67,11 +68,9 @@ function Editor({ o, ksinr, itemNumber, titel, onOutcome }: {
           })}
         </div>
       </fieldset>
-      <label htmlFor="mitschrieb-text" className="sr-only">Mein Mitschrieb</label>
-      <textarea id="mitschrieb-text" value={v.doc.text} disabled={v.stand === "lädt"} rows={4} maxLength={8000}
-        onChange={(e) => setze({ ...v.doc, text: e.target.value })} onBlur={() => { void v.jetztSpeichern(); }}
-        placeholder="Was wurde gesagt, was ist offen?"
-        className="mt-3 w-full resize-y rounded-xl border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
+      <NoteField id="mitschrieb-text" label="Mein Mitschrieb" value={v.doc.text} disabled={v.stand === "lädt"} rows={4}
+        onChange={(text) => setze({ ...v.doc, text })} onBlur={() => { void v.jetztSpeichern(); }}
+        placeholder="Was wurde gesagt, was ist offen?" className="mt-3" />
       {v.stand === "konflikt" && (
         <Konflikt text={v.konflikt?.doc?.text ?? ""} was="Mitschrieb"
           onUebernehmen={() => { v.uebernehmen(); onOutcome?.(itemNumber, v.konflikt?.doc?.outcome ?? null); }}

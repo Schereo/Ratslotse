@@ -7,7 +7,7 @@
  * der echte nur Blobs hält (Form und Version prüft `tests/test_notizen.py`).
  * So läuft der Test auch gegen das Backend der CI, das den Schalter nicht kennt.
  */
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type BrowserContext, type Locator, type Page } from "@playwright/test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { zustandsDatei } from "./konten";
@@ -26,6 +26,20 @@ async function schein(page: Page, ablage: Ablage) {
 }
 
 const karte = (page: Page) => page.locator("section", { has: page.locator("#meine-notiz") });
+/** Die Notiz ist ein Reiter der Lesespalte — neben dem Chat, nicht unter ihm. */
+const zurNotiz = (page: Page) => page.getByRole("tab", { name: "Meine Notiz" }).click();
+/** Das Feld: ein Editor, der gleich formatiert zeigt, was man schreibt. */
+const notiz = (k: Locator) => k.getByRole("textbox", { name: /Meine Notiz/ });
+
+/** Ein virtueller Authenticator mit PRF — so, wie ein iPhone oder Mac ihn mitbringt. */
+async function passkeyGeraet(page: Page, context: BrowserContext) {
+  const cdp = await context.newCDPSession(page);
+  await cdp.send("WebAuthn.enable");
+  await cdp.send("WebAuthn.addVirtualAuthenticator", { options: {
+    protocol: "ctap2", ctap2Version: "ctap2_1", transport: "internal", hasResidentKey: true,
+    hasUserVerification: true, isUserVerified: true, hasPrf: true, automaticPresenceSimulation: true,
+  } });
+}
 
 test.describe("Meine Notiz", () => {
   test.setTimeout(90_000);
@@ -34,6 +48,7 @@ test.describe("Meine Notiz", () => {
     const ablage: Ablage = { keys: null, notes: new Map() };
     await schein(page, ablage);
     await page.goto(URL);
+    await zurNotiz(page);
     const k = karte(page);
     await k.getByRole("button", { name: "Notizen einrichten" }).click();
     await passphraseWeg(k);
@@ -47,7 +62,7 @@ test.describe("Meine Notiz", () => {
     await k.locator("input").first().fill(code.toLowerCase());
     await k.getByRole("button", { name: "Notizen einrichten" }).click();
 
-    await k.locator("textarea").fill("Verwaltung nach Unfallzahlen fragen.");
+    await notiz(k).fill("Verwaltung nach Unfallzahlen fragen.");
     await expect(k.getByText(/Gespeichert um/)).toBeVisible({ timeout: 10_000 });
     // Beim Server liegt nur Geheimtext.
     const gespeichert = [...ablage.notes.values()][0];
@@ -55,56 +70,54 @@ test.describe("Meine Notiz", () => {
     expect(Buffer.from(String(gespeichert.ciphertext), "base64").toString("latin1")).not.toContain("Unfallzahlen");
 
     await page.reload();
+    // Der Notiz-Reiter bleibt gewählt — wer mitschreibt, schreibt weiter.
+    await expect(page.getByRole("tab", { name: "Meine Notiz" })).toHaveAttribute("aria-selected", "true");
     await expect(k.getByText("Gesperrt", { exact: true })).toBeVisible();
-    await expect(k.locator("textarea")).toHaveCount(0);
+    await expect(notiz(k)).toHaveCount(0);
     await k.locator("input[type=password]").fill(PASS);
     await k.getByRole("button", { name: /Entsperren/ }).click();
-    await expect(k.locator("textarea")).toHaveValue("Verwaltung nach Unfallzahlen fragen.");
+    await expect(notiz(k)).toHaveText("Verwaltung nach Unfallzahlen fragen.");
 
     // Ein zweites Gerät mit falscher Passphrase sieht nichts.
     const ctx2 = await browser.newContext({ storageState: zustandsDatei("nutzerin") });
     const p2 = await ctx2.newPage();
     await schein(p2, ablage);
     await p2.goto(URL);
+    await zurNotiz(p2);
     const k2 = karte(p2);
     await k2.locator("input[type=password]").fill("eine ganz andere Passphrase");
     await k2.getByRole("button", { name: /Entsperren/ }).click();
     await expect(k2.getByText("Diese Passphrase passt nicht.")).toBeVisible();
-    await expect(k2.locator("textarea")).toHaveCount(0);
+    await expect(notiz(k2)).toHaveCount(0);
     // … mit dem Code aber schon, und danach gilt die neue Passphrase.
     await k2.getByRole("button", { name: "Passphrase vergessen?" }).click();
     await k2.locator("input").nth(0).fill(code);
     await k2.locator("input[type=password]").fill("neue Passphrase 2027");
     await k2.getByRole("button", { name: "Neue Passphrase setzen" }).click();
-    await expect(k2.locator("textarea")).toHaveValue("Verwaltung nach Unfallzahlen fragen.");
+    await expect(notiz(k2)).toHaveText("Verwaltung nach Unfallzahlen fragen.");
 
     // Ein ECHT fremder Stand fragt weiterhin nach, statt still zu überschreiben.
-    await k2.locator("textarea").fill("Verwaltung nach Unfallzahlen fragen. Ortstermin?");
-    await k2.locator("textarea").blur();
+    await notiz(k2).fill("Verwaltung nach Unfallzahlen fragen. Ortstermin?");
+    await notiz(k2).blur();
     await expect.poll(() => [...ablage.notes.values()][0]?.version, { timeout: 10_000 }).toBe(2);
-    await k.locator("textarea").fill("Verwaltung nach Unfallzahlen fragen. Und die Kosten?");
-    await k.locator("textarea").blur();
+    await notiz(k).fill("Verwaltung nach Unfallzahlen fragen. Und die Kosten?");
+    await notiz(k).blur();
     await expect(k.getByText("Auf einem anderen Gerät wurde diese Notiz inzwischen geändert.")).toBeVisible({ timeout: 10_000 });
-    await expect(k.getByText("Verwaltung nach Unfallzahlen fragen. Ortstermin?")).toBeVisible();
+    await expect(k.getByText("Verwaltung nach Unfallzahlen fragen. Ortstermin?").first()).toBeVisible();
     expect([...ablage.notes.values()][0]?.version).toBe(2);
     await ctx2.close();
   });
 
   test("mit Passkey einrichten, sperren und wieder entsperren — ohne Passphrase, ohne Code", async ({ page, context }) => {
-    // Ein virtueller Authenticator mit PRF — so, wie ein iPhone oder Mac ihn mitbringt.
-    const cdp = await context.newCDPSession(page);
-    await cdp.send("WebAuthn.enable");
-    await cdp.send("WebAuthn.addVirtualAuthenticator", { options: {
-      protocol: "ctap2", ctap2Version: "ctap2_1", transport: "internal", hasResidentKey: true,
-      hasUserVerification: true, isUserVerified: true, hasPrf: true, automaticPresenceSimulation: true,
-    } });
+    await passkeyGeraet(page, context);
     const ablage: Ablage = { keys: null, notes: new Map() };
     await schein(page, ablage);
     await page.goto(URL);
+    await zurNotiz(page);
     const k = karte(page);
     await k.getByRole("button", { name: "Notizen einrichten" }).click();
     await k.getByRole("button", { name: "Mit Passkey einrichten" }).click();
-    await k.locator("textarea").fill("Kosten 2027 nachfragen.");
+    await notiz(k).fill("Kosten 2027 nachfragen.");
     await expect(k.getByText(/Gespeichert um/)).toBeVisible({ timeout: 10_000 });
     // Kein Code zum Abtippen, keine Passphrase — beim Server liegt nur die Verpackung des Passkeys.
     expect(ablage.keys?.wrapped_passphrase ?? null).toBeNull();
@@ -117,19 +130,14 @@ test.describe("Meine Notiz", () => {
     await expect(k.getByText("Gesperrt", { exact: true })).toBeVisible();
     await expect(k.getByRole("button", { name: "Mit Passphrase" })).toHaveCount(0);
     await k.getByRole("button", { name: "Mit Passkey entsperren" }).click();
-    await expect(k.locator("textarea")).toHaveValue("Kosten 2027 nachfragen.");
+    await expect(notiz(k)).toHaveText("Kosten 2027 nachfragen.");
   });
 
   test("weiterschreiben, während gespeichert wird, ist kein Konflikt", async ({ page, context }) => {
     // Tims Befund 23.11.2026: Mitten im Tippen stand „Auf einem anderen Gerät
     // wurde diese Notiz inzwischen geändert“ — mit dem EIGENEN Text von eben.
     // Das zweite Speichern trug die Version von vor dem ersten.
-    const cdp = await context.newCDPSession(page);
-    await cdp.send("WebAuthn.enable");
-    await cdp.send("WebAuthn.addVirtualAuthenticator", { options: {
-      protocol: "ctap2", ctap2Version: "ctap2_1", transport: "internal", hasResidentKey: true,
-      hasUserVerification: true, isUserVerified: true, hasPrf: true, automaticPresenceSimulation: true,
-    } });
+    await passkeyGeraet(page, context);
     const ablage: Ablage = { keys: null, notes: new Map() };
     await schein(page, ablage);
     // Ein langsamer Server: So überholt das Tippen seine Antwort.
@@ -138,10 +146,12 @@ test.describe("Meine Notiz", () => {
       await r.fallback();
     });
     await page.goto(URL);
+    await zurNotiz(page);
     const k = karte(page);
     await k.getByRole("button", { name: "Notizen einrichten" }).click();
     await k.getByRole("button", { name: "Mit Passkey einrichten" }).click();
-    const feld = k.locator("textarea");
+    const feld = notiz(k);
+    await feld.click();
     await feld.pressSequentially("Defizit 182 Millionen €");
     await expect(k.getByText("Speichert …")).toBeVisible({ timeout: 5_000 });
     await feld.pressSequentially(", kann Oldenburg nicht selber schließen");
@@ -150,7 +160,77 @@ test.describe("Meine Notiz", () => {
     await expect(k.getByText(/Gespeichert um/)).toBeVisible({ timeout: 10_000 });
     await expect(k.getByText(/anderen Gerät/)).toHaveCount(0);
     await page.reload();
-    await expect(k.locator("textarea")).toHaveValue("Defizit 182 Millionen €, kann Oldenburg nicht selber schließen");
+    await expect(notiz(k)).toHaveText("Defizit 182 Millionen €, kann Oldenburg nicht selber schließen");
+  });
+
+  test("formatiert gleich beim Schreiben: Liste, fett, Checkliste — und bleibt so", async ({ page, context }) => {
+    await passkeyGeraet(page, context);
+    const ablage: Ablage = { keys: null, notes: new Map() };
+    await schein(page, ablage);
+    await page.goto(URL);
+    await zurNotiz(page);
+    const k = karte(page);
+    await k.getByRole("button", { name: "Notizen einrichten" }).click();
+    await k.getByRole("button", { name: "Mit Passkey einrichten" }).click();
+    const feld = notiz(k);
+    const leiste = k.getByRole("toolbar", { name: "Formatierung" });
+    const punkte = feld.locator("ul:not([data-type]) > li");
+
+    await feld.click();
+    // Überschrift aus der Leiste — im Dokument ein h3, die Karte ist schon ein h2.
+    await leiste.getByRole("button", { name: "Überschrift", exact: true }).click();
+    await feld.pressSequentially("Haushalt 2027");
+    await expect(feld.getByRole("heading", { level: 3, name: "Haushalt 2027" })).toBeVisible();
+    await expect(leiste.getByRole("button", { name: "Überschrift", exact: true })).toHaveAttribute("aria-pressed", "true");
+    await feld.press("Enter");
+    // „## “ wie in Markdown: die kleinere.
+    await feld.pressSequentially("## Fragen");
+    await expect(feld.getByRole("heading", { level: 4, name: "Fragen" })).toBeVisible();
+    await feld.press("Enter");
+    // Wie in Markdown getippt: „1. “ am Zeilenanfang wird eine nummerierte Liste.
+    await feld.pressSequentially("1. Ortstermin");
+    await expect(feld.locator("ol > li")).toHaveText("Ortstermin");
+    await feld.press("Enter");
+    await feld.press("Enter");
+    await feld.pressSequentially("Unfallzahlen");
+    await leiste.getByRole("button", { name: "Aufzählung" }).click();
+    await expect(punkte).toHaveCount(1);
+    // Der Knopf zeigt, wo der Cursor steht — und nimmt dem Feld den Fokus nicht.
+    await expect(leiste.getByRole("button", { name: "Aufzählung" })).toHaveAttribute("aria-pressed", "true");
+    await expect(feld).toBeFocused();
+    // ↩ setzt die Liste fort, ↩ auf dem leeren Punkt beendet sie.
+    await feld.press("Enter");
+    await feld.pressSequentially("Kosten");
+    await feld.press("Enter");
+    await feld.press("Enter");
+    await feld.pressSequentially("Wichtig");
+    await expect(punkte).toHaveCount(2);
+    await expect(feld.locator(":scope > p").last()).toHaveText("Wichtig");
+    await expect(leiste.getByRole("button", { name: "Aufzählung" })).toHaveAttribute("aria-pressed", "false");
+    // Kein Markdown zu sehen: Fett ist fett.
+    await feld.locator(":scope > p").last().dblclick();
+    await leiste.getByRole("button", { name: "Fett" }).click();
+    await expect(feld.locator("strong")).toHaveText("Wichtig");
+    await expect(feld).not.toContainText("**");
+    // Als Aufgabe — mit Kästchen zum Abhaken.
+    await leiste.getByRole("button", { name: "Checkliste" }).click();
+    const kasten = feld.getByRole("checkbox", { name: "Aufgabe: Wichtig" });
+    await expect(kasten).not.toBeChecked();
+    await kasten.check();
+    await expect(kasten).toBeChecked();
+    await feld.blur();
+    await expect(k.getByText(/Gespeichert um/)).toBeVisible({ timeout: 10_000 });
+
+    // Gespeichert ist Text, gezeigt wird er wieder formatiert.
+    await k.getByRole("button", { name: "Sperren" }).click();
+    await page.reload();
+    await k.getByRole("button", { name: "Mit Passkey entsperren" }).click();
+    await expect(punkte).toHaveCount(2);
+    await expect(feld.locator("strong")).toHaveText("Wichtig");
+    await expect(feld.getByRole("checkbox", { name: "Aufgabe: Wichtig" })).toBeChecked();
+    await expect(feld.locator("ol > li")).toHaveText("Ortstermin");
+    await expect(feld.getByRole("heading", { level: 3, name: "Haushalt 2027" })).toBeVisible();
+    await expect(feld.getByRole("heading", { level: 4, name: "Fragen" })).toBeVisible();
   });
 
   test("ohne Schalter keine Karte", async ({ page }) => {
@@ -158,6 +238,7 @@ test.describe("Meine Notiz", () => {
     await page.route("**/api/council/session/4654/item**", (r) => r.fulfill({ json: PUNKT }));
     await page.goto(URL);
     await expect(page.getByRole("heading", { name: "Weißenmoorstraße", level: 1 })).toBeVisible();
+    await expect(page.getByRole("tab", { name: "Meine Notiz" })).toHaveCount(0);
     await expect(page.locator("#meine-notiz")).toHaveCount(0);
   });
 });

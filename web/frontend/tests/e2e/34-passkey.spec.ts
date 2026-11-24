@@ -98,8 +98,9 @@ test.describe("Mit Passkey anmelden", () => {
     expect((await (await page.request.get("/api/auth/me")).json()).email).toBe(email);
     // Gleich offen, ohne zweite Abfrage und ohne neues Einrichten.
     await page.goto(PUNKT_URL);
+    await page.getByRole("tab", { name: "Meine Notiz" }).click();
     const karte = page.locator("section", { has: page.locator("#meine-notiz") });
-    await expect(karte.locator("textarea")).toBeVisible({ timeout: 10_000 });
+    await expect(karte.getByRole("textbox", { name: /Meine Notiz/ })).toBeVisible({ timeout: 10_000 });
     await expect(karte.getByText("Gesperrt", { exact: true })).toHaveCount(0);
     expect(ablage.passkeys).toHaveLength(1);
   });

@@ -47,7 +47,7 @@ test.describe("Mein Mitschrieb", () => {
 
     await k.getByRole("button", { name: "Angenommen" }).click();
     await expect(k.getByRole("button", { name: "Angenommen" })).toHaveAttribute("aria-pressed", "true");
-    await k.locator("textarea").fill("Verwaltung will im Dezember berichten.");
+    await k.getByRole("textbox", { name: "Mein Mitschrieb" }).fill("Verwaltung will im Dezember berichten.");
     await expect(k.getByText(/Gespeichert um/)).toBeVisible({ timeout: 10_000 });
     // Die Boje im eigenen Kurs trägt das eigene Ergebnis, ausdrücklich als Mitschrieb.
     await expect(page.getByRole("button", { name: /^Ö 9 · Soziales D-Ticket.*Angenommen \(mein Mitschrieb\)/ })).toBeVisible();
@@ -60,7 +60,7 @@ test.describe("Mein Mitschrieb", () => {
     await expect(k.getByText("Gesperrt", { exact: true })).toBeVisible();
     await k.locator("input[type=password]").fill(PASS);
     await k.getByRole("button", { name: /Entsperren/ }).click();
-    await expect(k.locator("textarea")).toHaveValue("Verwaltung will im Dezember berichten.");
+    await expect(k.getByRole("textbox", { name: "Mein Mitschrieb" })).toHaveText("Verwaltung will im Dezember berichten.");
     await expect(page.getByRole("button", { name: /^Ö 9 · Soziales D-Ticket.*\(mein Mitschrieb\)/ })).toBeVisible();
   });
 

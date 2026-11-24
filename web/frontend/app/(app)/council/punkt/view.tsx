@@ -7,11 +7,12 @@
    Hinweis mit Link zur Beschluss-Seite — der Inhalt bleibt lesbar, niemand
    landet woanders als erwartet (Plan 3.9). */
 
-import { Suspense, useState, type CSSProperties } from "react";
+import { Suspense, useState } from "react";
 import { notFound, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, ArrowRight, Printer } from "lucide-react";
 import { DetailSkeleton, formatDate } from "@/components/ui";
+import { ReiterLeiste, ReiterTafel, type Reiter } from "@/components/ui/reiter";
 import { AbrufFehler } from "@/components/abruf-fehler";
 import { BookmarkButton } from "@/components/bookmark-button";
 import { ShareButton } from "@/components/share-button";
@@ -73,7 +74,28 @@ function PunktInner() {
   return <PunktView p={data} />;
 }
 
-type Reiter = "arguments" | "factions" | "history" | "documents";
+/** Die linke Spalte in Reitern (Tims Wunsch 23.11.2026): Notiz und Chat
+ *  sollen nebeneinander stehen können — „Meine Notiz" ist deshalb ein Reiter
+ *  der Lesespalte, der Chat bleibt rechts daneben. Vorher stand die Notiz
+ *  ganz unten in der Seitenspalte, unter Chat, Steckbrief und Karte. */
+type Tab = "overview" | "arguments" | "factions" | "history" | "documents" | "note";
+
+/** Nur der Notiz-Reiter wird gemerkt: Wer eine Sitzung Punkt für Punkt
+ *  mitschreibt, will mit „Weiter" nicht jedes Mal zurück auf den Überblick.
+ *  Die übrigen Reiter sind Ansichten — ein neuer Punkt beginnt vorn. Ohne
+ *  Speicher (privates Fenster) eben ohne Gedächtnis. */
+const NOTE_TAB_KEY = "ratslotse:punkt-reiter";
+
+function rememberedTab(): Tab | null {
+  try { return sessionStorage.getItem(NOTE_TAB_KEY) === "note" ? "note" : null; } catch { return null; }
+}
+
+function rememberTab(t: Tab) {
+  try {
+    if (t === "note") sessionStorage.setItem(NOTE_TAB_KEY, "note");
+    else sessionStorage.removeItem(NOTE_TAB_KEY);
+  } catch { /* privat */ }
+}
 
 function PunktView({ p }: { p: Punkt }) {
   const it = p.item;
@@ -92,14 +114,28 @@ function PunktView({ p }: { p: Punkt }) {
   const ausDenUnterlagen = useFeature("aus-den-unterlagen");
   const mitAntraegen = useFeature("aenderungsantraege");
   const args = mitArgumenten ? p.arguments ?? null : null;
-  const reiter: { key: Reiter; label: string; n: number }[] = [
-    { key: "arguments" as const, label: "Argumente", n: args?.show_arguments ? args.pro_count + args.contra_count : 0 },
-    { key: "factions" as const, label: "Fraktionen", n: args?.show_factions ? args.factions.length : 0 },
-    { key: "history" as const, label: "Vorgeschichte", n: p.history.length },
-    { key: "documents" as const, label: "Unterlagen", n: p.documents.length },
-  ].filter((r) => r.n > 0);
-  const [aktiv, setAktiv] = useState<Reiter | null>(null);
-  const zeige = aktiv ?? reiter[0]?.key ?? null;
+  const similar = p.surroundings?.similar ?? [];
+  const hasOverview = Boolean(kurz) || Boolean(p.budget_context?.blocks.length) || Boolean(p.program_stances?.parties.length)
+    || similar.length > 0 || (ausDenUnterlagen && Boolean(p.template_fields || p.dossier))
+    || (mitAntraegen && Boolean(p.amendments?.length));
+  const tabs: Reiter<Tab>[] = [
+    hasOverview ? { id: "overview" as const, label: "Überblick" } : null,
+    args?.show_arguments ? { id: "arguments" as const, label: "Argumente", count: args.pro_count + args.contra_count } : null,
+    args?.show_factions && args.factions.length ? { id: "factions" as const, label: "Fraktionen", count: args.factions.length } : null,
+    p.history.length ? { id: "history" as const, label: "Vorgeschichte", count: p.history.length } : null,
+    p.documents.length ? { id: "documents" as const, label: "Unterlagen", count: p.documents.length } : null,
+    mitNotizen ? { id: "note" as const, label: "Meine Notiz" } : null,
+  ].filter((r): r is NonNullable<typeof r> => r !== null);
+  const [chosen, setChosen] = useState<Tab | null>(rememberedTab);
+  const current = tabs.find((r) => r.id === chosen)?.id ?? tabs[0]?.id ?? null;
+  const choose = (t: Tab) => { setChosen(t); rememberTab(t); };
+  const mitReitern = tabs.length > 1;
+  const panel = (id: Tab, children: React.ReactNode, className?: string) => {
+    if (current !== id) return null;
+    return mitReitern
+      ? <ReiterTafel id={id} aktiv={current} className={cn("mt-4", className)}>{children}</ReiterTafel>
+      : <div className={className}>{children}</div>;
+  };
   const seit = p.history.length > 1 ? p.history[0].session_date.slice(0, 4) : null;
   const partei = ci.applicant ? normalizeParty(ci.applicant) : null;
   const brand = partei ? partyBrand(partei) : null;
@@ -156,67 +192,65 @@ function PunktView({ p }: { p: Punkt }) {
       </header>
 
       <div className="mt-6 grid grid-cols-[minmax(0,1fr)] items-start gap-6 [overflow-wrap:anywhere] breit:grid-cols-[minmax(0,1fr)_360px]">
-        <div className="min-w-0">
+        {/* Im Notiz-Reiter bleibt die Notiz beim Scrollen neben einem langen
+            Chat stehen (`sticky`) — das geht nur, wenn ihre Spalte so hoch ist
+            wie die Seitenspalte. In den anderen Reitern nicht: Dort risse das
+            Strecken eine Lücke über „Zurück/Weiter". */}
+        <div className={cn("min-w-0", current === "note" && "breit:flex breit:flex-col breit:self-stretch")}>
           <BeteiligungsHinweis b={p.surroundings?.participation ?? null} />
-          {kurz && (
-            <section aria-labelledby="kurz" className="rounded-2xl border border-border bg-card p-5 shadow-sm">
-              {/* Eine Überschrift statt Kicker „Kurzfassung" plus „Das Wichtigste
-                  in Kürze" — beides sagte dasselbe (Tim, 12.11.2026). Dass der
-                  Text automatisch entstand, sagt der Stern an seinem Ende. */}
-              <h2 id="kurz" className="font-display text-base font-semibold text-foreground">Das Wichtigste in Kürze</h2>
-              <ErklaerBereich className="mt-2">
-                <p className="text-lese text-foreground">
-                  <Erklaert text={kurz} />
-                  <KiStern className="ml-1" text="Automatische Kurzfassung. Verbindlich sind die Unterlagen im Ratsinfo." />
-                </p>
-              </ErklaerBereich>
-              {ci.important && ci.important_reason && (
-                <ErklaerBereich className="mt-3">
-                  <p className="rounded-lg border-l-[3px] border-primary bg-primary/[0.07] px-3 py-2 text-hinweis text-foreground">
-                    <strong className="font-semibold text-primary">Warum wichtig:</strong> <Erklaert text={ci.important_reason} />
-                  </p>
-                </ErklaerBereich>
-              )}
-            </section>
-          )}
+          <div className={cn(current === "note" && "breit:flex-1")}>
+            {mitReitern && current && (
+              <ReiterLeiste reiter={tabs} aktiv={current} onChange={choose} label="Zu diesem Punkt" />
+            )}
 
-          {(ausDenUnterlagen || mitAntraegen) && (
-            <AusDenUnterlagen f={ausDenUnterlagen ? p.template_fields : null}
-              antraege={mitAntraegen ? p.amendments : undefined} dossier={ausDenUnterlagen ? p.dossier : null} />
-          )}
+            {panel("overview", (
+              <div className="[&>*:first-child]:mt-0">
+                {kurz && (
+                  <section aria-labelledby="kurz" className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+                    {/* Eine Überschrift statt Kicker „Kurzfassung" plus „Das Wichtigste
+                        in Kürze" — beides sagte dasselbe (Tim, 12.11.2026). Dass der
+                        Text automatisch entstand, sagt der Stern an seinem Ende. */}
+                    <h2 id="kurz" className="font-display text-base font-semibold text-foreground">Das Wichtigste in Kürze</h2>
+                    <ErklaerBereich className="mt-2">
+                      <p className="text-lese text-foreground">
+                        <Erklaert text={kurz} />
+                        <KiStern className="ml-1" text="Automatische Kurzfassung. Verbindlich sind die Unterlagen im Ratsinfo." />
+                      </p>
+                    </ErklaerBereich>
+                    {ci.important && ci.important_reason && (
+                      <ErklaerBereich className="mt-3">
+                        <p className="rounded-lg border-l-[3px] border-primary bg-primary/[0.07] px-3 py-2 text-hinweis text-foreground">
+                          <strong className="font-semibold text-primary">Warum wichtig:</strong> <Erklaert text={ci.important_reason} />
+                        </p>
+                      </ErklaerBereich>
+                    )}
+                  </section>
+                )}
 
-          <HaushaltsentwurfBefunde befunde={p.budget_findings} />
-          <ImHaushalt kontext={p.budget_context} />
-          <Wahlprogramme bezug={p.program_stances} />
+                {(ausDenUnterlagen || mitAntraegen) && (
+                  <AusDenUnterlagen f={ausDenUnterlagen ? p.template_fields : null}
+                    antraege={mitAntraegen ? p.amendments : undefined} dossier={ausDenUnterlagen ? p.dossier : null} />
+                )}
 
-          {reiter.length > 1 && (
-            <div role="tablist" aria-label="Zu diesem Punkt"
-              className={cn("mt-6 grid gap-1 rounded-xl bg-muted p-1", reiter.length > 2 ? "grid-cols-2 sm:grid-cols-[repeat(var(--n),minmax(0,1fr))]" : "grid-cols-2")}
-              style={{ "--n": reiter.length } as CSSProperties}>
-              {reiter.map((r) => (
-                <button key={r.key} role="tab" type="button" aria-selected={zeige === r.key} onClick={() => setAktiv(r.key)}
-                  className={cn("min-h-11 rounded-lg px-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                    zeige === r.key ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}>
-                  {r.label} <span className="ml-1 text-xs text-muted-foreground">{r.n}</span>
-                </button>
-              ))}
-            </div>
-          )}
-
-          <div className="mt-4" role={reiter.length > 1 ? "tabpanel" : undefined}>
-            {zeige === "arguments" && args && <Argumente args={args} ksinr={p.ksinr} itemNumber={it.item_number} />}
-            {zeige === "factions" && args && <Fraktionen args={args} />}
-            {zeige === "history" && <Vorgeschichte p={p} titel={reiter.length > 1 ? null : "Vorgeschichte"} />}
-            {zeige === "documents" && <Unterlagen p={p} titel={reiter.length > 1 ? null : "Unterlagen"} />}
-            {!zeige && (
+                <HaushaltsentwurfBefunde befunde={p.budget_findings} />
+                <ImHaushalt kontext={p.budget_context} />
+                <Wahlprogramme bezug={p.program_stances} />
+                <AehnlicheBeschluesse liste={similar} />
+              </div>
+            ))}
+            {panel("arguments", args && <Argumente args={args} ksinr={p.ksinr} itemNumber={it.item_number} />)}
+            {panel("factions", args && <Fraktionen args={args} />)}
+            {panel("history", <Vorgeschichte p={p} titel={mitReitern ? null : "Vorgeschichte"} />)}
+            {panel("documents", <Unterlagen p={p} titel={mitReitern ? null : "Unterlagen"} />)}
+            {panel("note", (
+              <MeineNotiz targetKind="agenda_item" targetKey={`${p.ksinr}|${it.item_number}`} rows={14} />
+            ), "breit:sticky breit:top-[calc(env(safe-area-inset-top)+4.75rem)] desk:top-6")}
+            {!current && (
               <p className="rounded-xl border border-dashed border-border p-4 text-hinweis text-muted-foreground">
                 Zu diesem Punkt liegen noch keine früheren Stationen und keine Unterlagen vor.
               </p>
             )}
           </div>
-
-
-          <AehnlicheBeschluesse liste={p.surroundings?.similar ?? []} />
 
           <nav aria-label="Weitere Punkte der Sitzung" className="mt-8 flex flex-wrap gap-3 border-t border-border pt-4">
             {p.previous && (
@@ -240,7 +274,6 @@ function PunktView({ p }: { p: Punkt }) {
           <FragDenRat p={p} />
           <AufEinenBlick p={p} />
           <WoDasIst orte={p.surroundings?.places ?? []} />
-          {mitNotizen && <MeineNotiz targetKind="agenda_item" targetKey={`${p.ksinr}|${it.item_number}`} />}
         </aside>
       </div>
     </div>
