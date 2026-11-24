@@ -64,8 +64,10 @@ N6_WOCHE = "n6_woche"
 N7_NEWS = "n7_news"
 #: Jemand lädt dich zu einer gemeinsamen Notiz ein (Schalter ``notizen-teilen``).
 #: Kein Ratsvorgang, sondern eine Person, die wartet — deshalb ``wichtig``
-#: (an der Tagesgrenze vorbei, nie in der Nachtruhe) und sofort zugestellt
-#: (``zustellen_an``), nicht erst beim nächsten Cron-Lauf.
+#: (an der Tagesgrenze vorbei, nie in der Nachtruhe), sofort zugestellt
+#: (``zustellen_an``) und per Mail auch bei ausgeschalteten Benachrichtigungen
+#: (``IMMER_PER_MAIL``, Tims Entscheidung 24.11.2026) — abbestellen lässt sie
+#: sich nur über ihren eigenen Schalter.
 N8_NOTIZ_EINLADUNG = "n8_note_invite"
 
 #: Anlässe, die an einen Termin gebunden sind: Kommen sie einen Tag später, sind
@@ -165,7 +167,8 @@ NOTIFY_LABELS: dict[str, tuple[str, str]] = {
               "Was eine neue Version bringt — ein paar Mal im Jahr, per Mail auch dann, "
               "wenn die übrigen Benachrichtigungen aus sind"),
     N8_NOTIZ_EINLADUNG: ("Einladungen zu gemeinsamen Notizen",
-                         "Wenn dich jemand einlädt, eine Notiz zu einem Punkt gemeinsam zu schreiben"),
+                         "Wenn dich jemand einlädt, eine Notiz gemeinsam zu schreiben — per Mail auch dann, "
+                         "wenn die übrigen Benachrichtigungen aus sind"),
 }
 
 #: Anlässe hinter einem Feature-Schalter: Ihr Schalter in den Einstellungen
@@ -195,7 +198,7 @@ KANAL_AUS = "off"
 #: Version kommt ein paar Mal im Jahr, und genau die, die sonst nichts
 #: bekommen, sollen von ihr hören. Ihre Fußzeile sagt das und verlinkt den
 #: Schalter (``kern.digest_email``).
-IMMER_PER_MAIL = (N7_NEWS,)
+IMMER_PER_MAIL = (N7_NEWS, N8_NOTIZ_EINLADUNG)
 
 
 def kanal_fuer(kanal: str | None, art: str | None) -> str | None:

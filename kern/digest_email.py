@@ -327,7 +327,7 @@ def render_html_email(
         f"<div style='margin-top:{abstand}px;white-space:pre-wrap;font-size:15px;line-height:1.55'>"
         f"{body_html_or_text}</div>"
         "</div></div>"
-        f"{_fuss(fusszeile if fusszeile is not None or anlass != 'n7_news' else _news_hinweis())}"
+        f"{_fuss(fusszeile if fusszeile is not None or anlass not in _IMMER_HINWEIS else _IMMER_HINWEIS[anlass]())}"
         "</div></div>"
     ), anlass, APP_BASE_URL)
 
@@ -365,6 +365,24 @@ def _news_hinweis() -> str:
         f"style='color:{_LEISE};text-decoration:underline'>„Neu bei Ratslotse“</a> "
         "in deinen Einstellungen ab."
     )
+
+
+def _einladung_hinweis() -> str:
+    """Fußzeile der Einladung zu einer gemeinsamen Notiz — sie kommt wie die
+    Release-Ankündigung auch bei ausgeschalteten Benachrichtigungen
+    (``kern.notify.IMMER_PER_MAIL``) und führt zu ihrem einen Schalter."""
+    return (
+        "Du erhältst diese Mail, weil dich jemand persönlich eingeladen hat — deshalb auch dann, "
+        "wenn deine übrigen Benachrichtigungen aus sind. Möchtest du keine Einladungen per Mail, schalte "
+        f"<a href='{APP_BASE_URL}/account?zeig=n8_note_invite' "
+        f"style='color:{_LEISE};text-decoration:underline'>„Einladungen zu gemeinsamen Notizen“</a> "
+        "in deinen Einstellungen ab."
+    )
+
+
+#: Fußzeilen der Anlässe aus ``IMMER_PER_MAIL``: Die gewöhnliche sagte „weil du
+#: den Mailversand aktiviert hast“ — genau das stimmt bei ihnen nicht.
+_IMMER_HINWEIS = {"n7_news": _news_hinweis, "n8_note_invite": _einladung_hinweis}
 
 
 def _abmelde_hinweis() -> str:

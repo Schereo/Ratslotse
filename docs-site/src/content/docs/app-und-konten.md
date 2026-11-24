@@ -753,7 +753,9 @@ immer dieselbe, ob es zu der Adresse ein Konto gibt oder nicht; Einladung und
 Meldung entstehen erst nach der Antwort, damit auch die Dauer nichts verrät.
 Gibt es das Konto, bekommt es den Anlass `n8_note_invite` über
 `notify.einreihen` (an der Tagesgrenze vorbei, nie in der Nachtruhe, sofort
-zugestellt; wer Benachrichtigungen aus hat, bekommt keine Mail) und sieht die
+zugestellt; per Mail auch bei ausgeschalteten Benachrichtigungen, wie „Neu bei
+Ratslotse“ über `IMMER_PER_MAIL` — abbestellbar nur über den eigenen
+Schalter, auf den die Fußzeile der Mail führt) und sieht die
 Einladung an der Notiz des Punkts sowie unter `/notiz-einladung?a=<Kennung>`.
 Annehmen braucht ein Schlüsselpaar, das der Browser beim ersten Öffnen einer
 gemeinsamen Notiz oder beim Annehmen anlegt. Danach übergibt der Browser eines

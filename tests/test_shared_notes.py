@@ -555,15 +555,35 @@ def test_annehmen_sagt_den_mitgliedern_in_der_notiz_bescheid(leitung):
         assert _bis(wa, "pending") == {"t": "pending"}
 
 
-def test_ohne_zustellweg_keine_mail_aber_die_einladung_steht_am_punkt():
-    """Wer Benachrichtigungen aus hat, bekommt auch keine Einladung per Mail —
-    sie wartet an der Notiz des Punkts."""
+def test_einladungen_kommen_auch_ohne_zustellweg_per_mail():
+    """Tims Entscheidung 24.11.2026: Eine Einladung ist persönlich — sie kommt
+    per Mail auch an Konten, die Benachrichtigungen aus haben. Abbestellen
+    lässt sie sich nur über ihren eigenen Schalter."""
     anna, ben = _konto("anna@example.org", "Anna"), _konto("ben@example.org", "Ben")
     note = _anlegen(anna)
     anna.post(f"/api/shared-notes/{note['id']}/address-invites", json={"email": "ben@example.org", "token": TOKEN})
-    assert _post_an(_ich(ben)) == []
+    assert [p["kind"] for p in _post_an(_ich(ben))] == ["n8_note_invite"]
     an_punkt = ben.get(f"/api/shared-notes?target_kind={ZIEL['target_kind']}&target_key={ZIEL['target_key']}")
     assert [i["note_id"] for i in an_punkt.json()["invitations"]] == [note["id"]]
+    # Der eigene Schalter aus: keine Mail mehr — die Einladung steht trotzdem an der Notiz.
+    store = Store(RATSLOTSE_DB)
+    try:
+        store.set_notify_prefs(_ich(ben), {"n8_note_invite": False})
+    finally:
+        store.close()
+    carla = _konto("carla@example.org", "Carla")
+    zweite = _anlegen(carla)
+    carla.post(f"/api/shared-notes/{zweite['id']}/address-invites", json={"email": "ben@example.org", "token": TOKEN})
+    assert len(_post_an(_ich(ben))) == 1
+    assert len(ben.get("/api/shared-notes").json()["invitations"]) == 2
+
+
+def test_die_einladungsmail_sagt_warum_sie_trotz_aus_kommt():
+    from kern import digest_email
+    html = digest_email.render_html_email("Einladung", "<p>x</p>", anlass="n8_note_invite")
+    assert "persönlich eingeladen" in html and "zeig=n8_note_invite" in html
+    assert "Mailversand aktiviert" not in html
+
 
 
 def test_ohne_kennung_keine_einladung_per_adresse():
