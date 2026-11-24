@@ -23,8 +23,12 @@ STEUERN = bc.Chart(
     caption="(Grafik 2.2-1)", header=["Ist 2025", "Plan 2027"],
     rows=[{"label": "Gewerbesteuer", "values": [240_912_000.0, 153_400_000.0]},
           {"label": "Grundsteuer B", "values": [52_810_000.0, 54_650_000.0]}])
-SEITEN = ["Vorbericht"] * 9 + ["Der Ergebnishaushalt schließt 2027 mit einem Fehlbetrag ab, weil die "
-                                "Gewerbesteuer deutlich hinter den Erwartungen zurückbleibt."]
+SEITEN = ["Vorbericht"] * 4 + [
+    "Nach Abzug des prognostizierten Fehlbedarfs 2026 von 64,9 Millionen Euro verbleibt eine Rücklage. "
+    "Die Stadt Oldenburg wird sich daher ab dem Jahr 2027 in die Haushaltssicherung begeben müssen und hat "
+    "ein entsprechendes Haushaltskonsolidierungskonzept aufgestellt."] + ["Vorbericht"] * 4 + [
+    "Der Ergebnishaushalt schließt 2027 mit einem Fehlbetrag ab, weil die "
+    "Gewerbesteuer deutlich hinter den Erwartungen zurückbleibt."]
 
 
 def _befund(**anders):
@@ -152,7 +156,7 @@ def test_erzeugen_prueft_zahlen_dann_deutung(monkeypatch):
         aufrufe.append(kw["_feature"])
         if kw["_feature"] == "budget_findings":
             assert "HAUSHALTSJAHR: 2027" in kw["messages"][1]["content"]
-            return _antwort({"findings": [_befund(), zweiter, erfunden, deutung_falsch]})
+            return _antwort({"findings": [_befund(), zweiter, erfunden, deutung_falsch], "overview": {}})
         ok = "bricht ein" not in kw["messages"][1]["content"].split("MATERIAL")[0]
         return _antwort({"correct": ok, "reason": "" if ok else "Wertung „bricht ein“"})
 
@@ -164,6 +168,70 @@ def test_erzeugen_prueft_zahlen_dann_deutung(monkeypatch):
         ("numbers", "Zahl 999.0 in Titel oder Satz nicht belegt"),
         ("reading", "Wertung „bricht ein“")]
     assert aufrufe.count("budget_findings_verify") == 2 and kosten > 0
+
+
+def test_gesamtbild_satz_braucht_woertliches_zitat_und_seine_zahlen():
+    """Tim, 24.11.2026: „dass die Stadt in die Haushaltskonsolidierung rutscht“
+    gehört an den Anfang — steht im Vorbericht 2027 auf S. 5."""
+    zitat = "Die Stadt Oldenburg wird sich daher ab dem Jahr 2027 in die Haushaltssicherung begeben müssen"
+    s, grund = bf.check_statement({"text": "Ab 2027 muss die Stadt in die Haushaltssicherung.", "quote": zitat,
+                                   "page": 2}, SEITEN)
+    assert grund is None and s["page"] == 5                    # die Seite berichtigt
+    assert bf.check_statement({"text": "Ab 2027 Haushaltssicherung.", "quote": None}, SEITEN)[1] == "Satz ohne Zitat"
+    assert bf.check_statement({"text": "Die Rücklage ist weg.", "quote": "Die Rücklage ist vollständig aufgebraucht worden"},
+                              SEITEN)[1] == "Zitat steht nicht im Text"
+    # Eine Zahl im Satz, die nicht im Zitat steht — auch wenn sie anderswo stimmen mag.
+    assert bf.check_statement({"text": "2026 fehlen 70 Mio. €, danach folgt die Haushaltssicherung.",
+                               "quote": "Nach Abzug des prognostizierten Fehlbedarfs 2026 von 64,9 Millionen Euro"},
+                              SEITEN)[1] == "Zahl 70.0 im Satz steht nicht im Zitat"
+
+
+def test_haushaltssicherung_steht_woertlich_oben():
+    """Ohne Modell: der erste ganze Satz der Überblicksseiten, der sie nennt."""
+    assert bf.notice(SEITEN) == {"page": 5, "text": (
+        "Die Stadt Oldenburg wird sich daher ab dem Jahr 2027 in die Haushaltssicherung begeben müssen und hat "
+        "ein entsprechendes Haushaltskonsolidierungskonzept aufgestellt.")}
+    # „31.12.“ beendet keinen Satz.
+    assert bf.notice(["Bis zum 31. 12. 2026 reicht die Rücklage. Danach folgt die Haushaltssicherung für die Stadt."]) \
+        == {"page": 1, "text": "Danach folgt die Haushaltssicherung für die Stadt."}
+    assert bf.notice(["Kein Wort davon."]) is None
+    assert bf.notice(["Die Stadt muss ab 2027 in die Haushaltssicherung und hat ein Konzept aufgestellt. 7"])["text"] \
+        .endswith("aufgestellt.")
+
+
+def test_eckzahl_aus_grafik_oder_zitat():
+    f, grund = bf.check_fact({"label": "Jahresergebnis 2027, Plan", "value": -170.1, "unit": "Mio. €",
+                              "chart": "2.1.1-1"}, {"2.1.1-1": ERGEBNIS}, SEITEN)
+    assert grund is None and f["page"] == 10
+    f, grund = bf.check_fact({"label": "Fehlbedarf 2026, Prognose", "value": 64.9, "unit": "Mio. €", "chart": None,
+                              "quote": "Nach Abzug des prognostizierten Fehlbedarfs 2026 von 64,9 Millionen Euro"},
+                             {}, SEITEN)
+    assert grund is None and f["page"] == 5
+    assert bf.check_fact({"label": "Investitionen 2027", "value": 154.0, "unit": "Mio. €", "chart": "2.1.1-1"},
+                         {"2.1.1-1": ERGEBNIS}, SEITEN)[1] == "Wert 154.0 nicht belegt"
+
+
+def test_gesamtbild_ein_pruefaufruf_fuer_alles(monkeypatch):
+    aufrufe = []
+
+    def antwort(**kw):
+        aufrufe.append(kw["_feature"])
+        return _antwort({"verdicts": [{"id": "s0", "correct": True}, {"id": "s1", "correct": False, "reason": "Ursache erfunden"},
+                                      {"id": "f0", "correct": True}]})
+
+    monkeypatch.setattr(bf.llm, "chat_complete", antwort)
+    zitat = "Die Stadt Oldenburg wird sich daher ab dem Jahr 2027 in die Haushaltssicherung begeben müssen"
+    roh = {"statements": [{"text": "Ab 2027 muss die Stadt in die Haushaltssicherung.", "quote": zitat, "page": 5},
+                          {"text": "Schuld ist die Gewerbesteuer.", "quote": zitat, "page": 5}],
+           "facts": [{"label": "Jahresergebnis 2027, Plan", "value": -170.1, "unit": "Mio. €", "chart": "2.1.1-1"}]}
+    gesamt, weg, kosten = bf.overview(roh, {"2.1.1-1": ERGEBNIS}, SEITEN)
+    assert aufrufe == ["budget_findings_verify"]
+    assert [s["text"] for s in gesamt["statements"]] == ["Ab 2027 muss die Stadt in die Haushaltssicherung."]
+    assert [f["label"] for f in gesamt["facts"]] == ["Jahresergebnis 2027, Plan"]
+    assert [w["stage"] for w in weg] == ["reading"]
+    # Hält kein Satz, gibt es kein Gesamtbild — Eckzahlen allein stehen nicht da.
+    monkeypatch.setattr(bf.llm, "chat_complete", lambda **kw: _antwort({"verdicts": [{"id": "f0", "correct": True}]}))
+    assert bf.overview(roh, {"2.1.1-1": ERGEBNIS}, SEITEN)[0] is None
 
 
 def test_unklares_urteil_verwirft(monkeypatch):
@@ -210,6 +278,7 @@ def test_vorbericht_finden_erzeugen_speichern_anzeigen(tmp_path, monkeypatch):
 
         sicht = store.item_budget_findings(4642, "Ö 7")
         assert sicht["document_id"] == 316689 and sicht["budget_year"] == 2027
+        assert sicht["about"] == bf.ABOUT and "overview" not in sicht
         assert sicht["findings"][0]["title"] == _befund()["title"]
     finally:
         store.close()
