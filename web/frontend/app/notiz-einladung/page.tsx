@@ -32,7 +32,7 @@ import { mitRuecksprung } from "@/lib/public-routes";
 import { decisionHref, punktHref } from "@/lib/routes";
 import { inviteVerifier, openInvite, wrapForMe } from "@/lib/shared-note-crypto";
 import { acceptInvitation, declineInvitation, joinInvitation } from "@/lib/shared-note-invite";
-import { EINRICHTUNG_SPAETER, offeneEinladungMerken, offeneEinladungVergessen } from "@/lib/einladung-merken";
+import { EINRICHTUNG_SPAETER, geheimnisLesen, geheimnisMerken, geheimnisVergessen } from "@/lib/einladung-merken";
 import type { ApiAntwort } from "@/lib/vertrag";
 
 type Info = ApiAntwort<"/note-invites/{invite_id}">;
@@ -51,38 +51,6 @@ function merken() {
     sessionStorage.setItem("ratslotse:punkt-reiter", "note");
     sessionStorage.setItem(EINRICHTUNG_SPAETER, "1");
   } catch { /* privat */ }
-}
-
-/* Das Geheimnis aus dem Anker liegt im localStorage, nicht im
-   sessionStorage: Wer noch kein Konto hat, registriert sich und bestätigt
-   die Adresse über einen Link aus der Mail — der öffnet einen NEUEN Tab, und
-   den sessionStorage des alten sieht er nicht. Es bleibt höchstens acht Tage
-   (die Einladung gilt sieben) und geht mit dem Beitreten weg. */
-const GEHEIMNIS_TAGE = 8;
-const geheimnisKey = (id: string) => `ratslotse:einladung:${id}`;
-
-function geheimnisLesen(id: string): string | null {
-  try {
-    const roh = localStorage.getItem(geheimnisKey(id));
-    if (roh) {
-      const v = JSON.parse(roh) as { s?: string; at?: number };
-      if (v.s && typeof v.at === "number" && Date.now() - v.at < GEHEIMNIS_TAGE * 86_400_000) return v.s;
-      localStorage.removeItem(geheimnisKey(id));
-    }
-  } catch { /* privat oder kaputt */ }
-  try { return sessionStorage.getItem(geheimnisKey(id)); } catch { return null; }
-}
-
-function geheimnisMerken(id: string, s: string) {
-  try { localStorage.setItem(geheimnisKey(id), JSON.stringify({ s, at: Date.now() })); } catch { /* privat */ }
-  try { sessionStorage.setItem(geheimnisKey(id), s); } catch { /* privat */ }
-  offeneEinladungMerken(`/notiz-einladung?i=${encodeURIComponent(id)}`);
-}
-
-function geheimnisVergessen(id: string) {
-  try { localStorage.removeItem(geheimnisKey(id)); } catch { /* privat */ }
-  try { sessionStorage.removeItem(geheimnisKey(id)); } catch { /* privat */ }
-  offeneEinladungVergessen();
 }
 
 type AdressInfo = ApiAntwort<"/note-invites/address/{invite_id}">;
@@ -243,8 +211,14 @@ function LinkEinladung({ id }: { id: string }) {
       setGeheimnis(anker);
       return;
     }
-    setGeheimnis(geheimnisLesen(id));
+    setGeheimnis(geheimnisLesen(id, null));
   }, [id]);
+  // Sobald das Konto feststeht, gehört das Geheimnis ihm — ein anderes
+  // Konto im selben Browser bekommt es nicht.
+  useEffect(() => {
+    if (!user || !geheimnis) return;
+    if (!geheimnisLesen(id, user.id)) setGeheimnis(null);
+  }, [user, geheimnis, id]);
 
   useEffect(() => {
     if (loading || user || geheimnis === undefined) return;
@@ -272,6 +246,7 @@ function LinkEinladung({ id }: { id: string }) {
         if (gone) return;
         if (e instanceof ApiError && e.status === 403) { setUnbestaetigt(true); setInfo(undefined); return; }
         setInfo(null);
+        if (e instanceof ApiError && e.status === 404) geheimnisVergessen(id);   // gilt nicht mehr
         setFehler(e instanceof ApiError && e.status === 404 ? null : String(e?.message ?? e));
       });
     return () => { gone = true; };

@@ -6,6 +6,8 @@
  *  Sicherheitsprüfung, F8/F17).
  */
 
+import { einladungenRaeumen } from "@/lib/einladung-merken";
+
 /** Gespräche und ihre Zuordnung — gehören dem Konto, nicht dem Tab. */
 const GESPRAECHE = [
   "ratslotse:lotti-verlauf",
@@ -26,4 +28,7 @@ export function kontoDatenRaeumen({ mitEntwurf }: { mitEntwurf: boolean }): void
   // gemerkt, vom Gerät. (Läuft die Sitzung nur ab, bleibt er — dieselbe
   // Person meldet sich gleich wieder an.)
   if (mitEntwurf) void import("@/lib/notizen").then((m) => m.lock()).catch(() => {});
+  // Und gemerkte Einladungen zu gemeinsamen Notizen: Ihr Geheimnis öffnet
+  // die Notiz für jedes Konto, das es hat.
+  if (mitEntwurf) einladungenRaeumen();
 }

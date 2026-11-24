@@ -725,8 +725,10 @@ Notizfeld: „Nur ich“, die gemeinsamen Notizen zu diesem Ziel, „+ Gemeinsam
 
 **Einladen per Link.** Der Link heißt `/notiz-einladung?i=<Kennung>#<Geheimnis>`.
 Kein Browser schickt den Anker an einen Server; die Seite legt ihn in den
-`localStorage` (höchstens acht Tage, weg mit dem Beitreten) und nimmt ihn aus
-der Adresszeile. `localStorage` und nicht `sessionStorage`, weil jemand ohne
+`localStorage` und nimmt ihn aus der Adresszeile. Dort bleibt er höchstens 48
+Stunden, gehört dem ersten Konto, das die Seite damit öffnet (ein anderes im
+selben Browser bekommt ihn nicht), und fällt mit dem Beitreten, einer
+abgelaufenen Einladung und dem Abmelden weg. `localStorage` und nicht `sessionStorage`, weil jemand ohne
 Konto sich erst registriert und die Adresse über einen Link aus der Mail
 bestätigt — der öffnet einen neuen Tab. Die Bestätigungsseite führt dann
 zurück zur Einladung (`lib/einladung-merken.ts`), bis dahin sagt die
