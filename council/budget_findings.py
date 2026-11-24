@@ -27,6 +27,7 @@ import logging
 import os
 import re
 from concurrent.futures import ThreadPoolExecutor
+from typing import TypeGuard
 
 from council import budget_charts as bc, evidence
 from council.plan_judge import cost_usd
@@ -206,8 +207,12 @@ def bounded(value: float, direction: str, candidates: set[float]) -> bool:
     return False
 
 
-def _num(x) -> bool:
+def _num(x) -> TypeGuard[int | float]:
     return isinstance(x, (int, float)) and not isinstance(x, bool)
+
+
+def _dict(x) -> dict:
+    return x if isinstance(x, dict) else {}
 
 
 def visual_values(v: dict) -> list[float]:
@@ -215,14 +220,14 @@ def visual_values(v: dict) -> list[float]:
     einer Brücke ist ein Rest und wird über die Summe geprüft."""
     kind = v.get("type")
     if kind == "columns":
-        return [x for s in v.get("series") or [] for x in s.get("values") or [] if _num(x)]
+        return [float(x) for s in v.get("series") or [] for x in _dict(s).get("values") or [] if _num(x)]
     if kind == "bridge":
-        ends = [e.get("value") for e in (v.get("start") or {}, v.get("end") or {})]
-        steps = [s.get("value") for s in v.get("steps") or []
-                 if not str(s.get("label", "")).lower().startswith("übrig")]
-        return [x for x in ends + steps if _num(x)]
+        ends = [_dict(v.get("start")).get("value"), _dict(v.get("end")).get("value")]
+        steps = [_dict(s).get("value") for s in v.get("steps") or []
+                 if not str(_dict(s).get("label", "")).lower().startswith("übrig")]
+        return [float(x) for x in ends + steps if _num(x)]
     if kind == "bars":
-        return [x for r in v.get("rows") or [] for x in (r.get("value"), r.get("change")) if _num(x)]
+        return [float(x) for r in v.get("rows") or [] for x in (_dict(r).get("value"), _dict(r).get("change")) if _num(x)]
     return []
 
 
@@ -252,7 +257,7 @@ def check(f: dict, charts: dict[str, bc.Chart], pages: list[str], budget_year: i
     if not chart and not quote:
         return None, "weder Grafik noch Zitat"
     candidates = _candidates(chart, quote)
-    v = f.get("visual") if isinstance(f.get("visual"), dict) else {}
+    v: dict = _dict(f.get("visual"))
     if v.get("type") not in VISUAL_TYPES:
         return None, "unbekannte Darstellung"
     drawn = visual_values(v)
@@ -260,18 +265,21 @@ def check(f: dict, charts: dict[str, bc.Chart], pages: list[str], budget_year: i
         if not backed(float(x), candidates):
             return None, f"Wert {x} der Darstellung nicht belegt"
     if v["type"] == "bridge":
-        steps = [s.get("value") for s in v.get("steps") or []]
-        start, end = (v.get("start") or {}).get("value"), (v.get("end") or {}).get("value")
-        if not all(_num(x) for x in [start, end, *steps]) or abs(start + sum(steps) - end) > 0.15:
+        steps = [_dict(s).get("value") for s in v.get("steps") or []]
+        start, end = _dict(v.get("start")).get("value"), _dict(v.get("end")).get("value")
+        zahlen = [x for x in steps if _num(x)]
+        if not (_num(start) and _num(end)) or len(zahlen) != len(steps) or abs(start + sum(zahlen) - end) > 0.15:
             return None, "Brücke geht nicht auf"
     if v["type"] == "columns":
         categories = [str(c) for c in v.get("categories") or []]
-        if not categories or not v.get("series") or any(len(s.get("values") or []) != len(categories) for s in v["series"]):
+        series = v.get("series")
+        if not categories or not isinstance(series, list) or not series \
+                or any(len(_dict(s).get("values") or []) != len(categories) for s in series):
             return None, "Kategorien und Werte passen nicht zusammen"
         highlight = [i for i in v.get("highlight") or [] if _num(i) and 0 <= i < len(categories)]
         v = {**v, "categories": categories, "highlight": highlight,
              "kinds": kinds(categories, chart.caption if chart else "", budget_year, chart.header if chart else None)}
-    k = f.get("key_figure") if isinstance(f.get("key_figure"), dict) else {}
+    k = _dict(f.get("key_figure"))
     if not _num(k.get("value")) or not backed(float(k["value"]), candidates | set(drawn), signed=False):
         return None, "Kennzahl nicht belegt"
     for x, schranke in text_claims(f"{title} {text}"):

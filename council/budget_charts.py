@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import asdict, dataclass, field
+from typing import Any
 
 #: „(Grafik 2.1.1-1)", „Grafik 7-1: Entwicklung …", „Grafik -2)" (Kapitel ohne Nummer).
 _CAPTION_RE = re.compile(r"\(?\bGrafik\s*((?:\d+(?:\.\d+)*)?\s*-\s*\d+)\)?")
@@ -213,8 +214,10 @@ def from_pdf(data: bytes) -> list[Chart]:
     out: list[Chart] = []
     seen: set[str] = set()
     with pymupdf.open(stream=data, filetype="pdf") as doc:
+        page: Any   # die Typen von PyMuPDF kennen find_tables nicht und geben Text als str | float
         for page in doc:
-            blocks = page.get_text("blocks")
+            blocks: list[tuple[float, float, float, float, str]] = [
+                (float(b[0]), float(b[1]), float(b[2]), float(b[3]), str(b[4])) for b in page.get_text("blocks")]
             captions = []
             for b in blocks:
                 for m in _CAPTION_RE.finditer(b[4]):
@@ -225,7 +228,8 @@ def from_pdf(data: bytes) -> list[Chart]:
             if not captions:
                 continue
             tables = list(page.find_tables().tables)
-            words = [tuple(w[:5]) for w in page.get_text("words")]
+            words: list[Word] = [(float(w[0]), float(w[1]), float(w[2]), float(w[3]), str(w[4]))
+                                 for w in page.get_text("words")]
             images = page.get_images()
             previous_bottom = 0.0
             for number, b in sorted(captions, key=lambda x: x[1][1]):
@@ -250,7 +254,7 @@ def from_pdf(data: bytes) -> list[Chart]:
                                and d["rect"].width < page.rect.width * 0.95]
                     top = (min(r.y0 for r in strokes) - 18) if strokes else max(previous_bottom, cap_y - 430)
                     inside = [w for w in words if top <= w[1] < cap_y]
-                    header, series, extras = from_diagram(inside)  # type: ignore[arg-type]
+                    header, series, extras = from_diagram(inside)
                     # Ohne Wertbeschriftung (nur Achse) bleibt ein Diagramm eine Lücke:
                     # Säulenhöhen nachzumessen hieße, Zahlen zu erfinden, die nirgends stehen.
                     if series and is_regular(series) and sum(1 for s in series for v in s["values"] if v is not None) >= 2:
