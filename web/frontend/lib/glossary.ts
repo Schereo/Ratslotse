@@ -110,6 +110,12 @@ export const GLOSSARY: Record<string, string> = {
     "Eine eigene, höhere Grundsteuer auf Grundstücke, die bebaut werden dürften, aber leer bleiben. Städte dürfen sie seit 2025 erheben: Bauen soll sich mehr lohnen, als Bauland liegen zu lassen.",
   "Haushaltssatzung":
     "Der förmliche Beschluss, mit dem der Rat den Haushalt in Kraft setzt — darin stehen auch die Hebesätze für das Jahr.",
+  "Haushaltssicherung":
+    "Kann eine Stadt ihren Haushalt nicht ausgleichen, muss sie ein Konzept aufstellen, mit welchen Einsparungen und Mehreinnahmen sie den Ausgleich wieder erreichen will. Es geht mit dem Haushalt an die Kommunalaufsicht.",
+  "Haushaltskonsolidierung":
+    "Einsparungen und Mehreinnahmen, mit denen eine Stadt ihren Haushalt wieder ins Gleichgewicht bringen will.",
+  "Überschussrücklage":
+    "Das Polster aus früheren Jahren mit Überschüssen. Damit darf die Stadt spätere Fehlbeträge ausgleichen; ist es aufgebraucht, gilt der Haushalt nicht mehr als ausgeglichen.",
   "Doppik":
     "Die kaufmännische Buchführung der Kommunen: Sie zeigt nicht nur Zahlungen, sondern auch den Werteverzehr (etwa Abnutzung von Gebäuden).",
   "Produkt":
@@ -378,4 +384,4 @@ export const GLOSSARY: Record<string, string> = {
     "Laufende Ausgaben, die niedriger ausfallen als im Haushalt geplant. Das gesparte Geld kann zusätzliche Ausgaben an anderer Stelle decken.",
 };
 
-// glossar-sha256: 0d42ebba657d72fc637eac98b6be31f6cd531bb949633f812742ae9ec7b74108
+// glossar-sha256: 0d9b39cf3568572b2f7309004d31040575b80fc4ad1afa8d7b6165e5d631bba7

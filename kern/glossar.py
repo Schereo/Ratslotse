@@ -141,6 +141,14 @@ BEGRIFFE: dict[str, str] = {
         "Eine eigene, höhere Grundsteuer auf Grundstücke, die bebaut werden dürften, aber leer bleiben. Städte dürfen sie seit 2025 erheben: Bauen soll sich mehr lohnen, als Bauland liegen zu lassen.",
     "Haushaltssatzung":
         "Der förmliche Beschluss, mit dem der Rat den Haushalt in Kraft setzt — darin stehen auch die Hebesätze für das Jahr.",
+    # Haushaltsentwurf 2027 (Vorbericht S. 5 und 8): „Die Stadt Oldenburg wird
+    # sich daher ab dem Jahr 2027 in die Haushaltssicherung begeben müssen“.
+    "Haushaltssicherung":
+        "Kann eine Stadt ihren Haushalt nicht ausgleichen, muss sie ein Konzept aufstellen, mit welchen Einsparungen und Mehreinnahmen sie den Ausgleich wieder erreichen will. Es geht mit dem Haushalt an die Kommunalaufsicht.",
+    "Haushaltskonsolidierung":
+        "Einsparungen und Mehreinnahmen, mit denen eine Stadt ihren Haushalt wieder ins Gleichgewicht bringen will.",
+    "Überschussrücklage":
+        "Das Polster aus früheren Jahren mit Überschüssen. Damit darf die Stadt spätere Fehlbeträge ausgleichen; ist es aufgebraucht, gilt der Haushalt nicht mehr als ausgeglichen.",
     "Doppik":
         "Die kaufmännische Buchführung der Kommunen: Sie zeigt nicht nur Zahlungen, sondern auch den Werteverzehr (etwa Abnutzung von Gebäuden).",
     # Wörter aus den Produkt-Steckbriefen der Teilhaushaltspläne. Sie stehen dort

@@ -579,7 +579,7 @@ class UnterlagenMixin(StoreBasis):
     def item_budget_findings(self, ksinr: int, item_number: str) -> dict | None:
         """Die Befunde für die Punkt-Seite: aus dem Vorbericht unter den
         Unterlagen des Punkts (auch an einer anderen Station seiner Vorlage)."""
-        from council.budget_findings import is_budget_report  # noqa: PLC0415
+        from council.budget_findings import ABOUT, is_budget_report  # noqa: PLC0415
 
         for d in self.item_documents(ksinr, item_number):
             if not is_budget_report(d.get("label"), d.get("n_pages")):
@@ -587,9 +587,14 @@ class UnterlagenMixin(StoreBasis):
             stored = self.budget_draft_findings(d["document_id"])
             if not stored or stored["status"] != "ok" or not (stored["payload"] or {}).get("findings"):
                 continue
-            return {"document_id": d["document_id"], "label": d["label"], "url": d.get("url"),
-                    "budget_year": stored["payload"].get("budget_year"),
-                    "findings": stored["payload"]["findings"], "created_at": stored["created_at"]}
+            out = {"document_id": d["document_id"], "label": d["label"], "url": d.get("url"),
+                   "budget_year": stored["payload"].get("budget_year"), "about": ABOUT,
+                   "findings": stored["payload"]["findings"], "created_at": stored["created_at"]}
+            if stored["payload"].get("overview"):
+                out["overview"] = stored["payload"]["overview"]
+            if stored["payload"].get("notice"):
+                out["notice"] = stored["payload"]["notice"]
+            return out
         return None
 
     def vorlagen_kommender_sitzungen(self, seit: str, bis: str) -> list[str]:

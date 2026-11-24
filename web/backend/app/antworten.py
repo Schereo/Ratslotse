@@ -3337,12 +3337,46 @@ class BudgetFinding(TypedDict):
     visual: BudgetFindingVisual
 
 
+class DraftOverviewStatement(TypedDict):
+    text: str
+    #: Wörtlich aus dem Vorbericht.
+    quote: str
+    page: int | None
+
+
+class DraftOverviewFact(TypedDict):
+    label: str
+    value: float
+    unit: str
+    chart: str | None
+    page: int | None
+    quote: str | None
+
+
+class DraftNotice(TypedDict):
+    """Ein Satz aus dem Vorbericht, der über allem steht (bisher: die
+    Haushaltssicherung) — wörtlich, ohne Modell."""
+    text: str
+    page: int
+
+
+class DraftOverview(TypedDict):
+    """Das Gesamtbild über den Befunden: geprüfte Sätze und Eckzahlen."""
+    statements: list[DraftOverviewStatement]
+    facts: list[DraftOverviewFact]
+
+
 class ItemBudgetFindings(TypedDict):
     """„Was der Haushaltsentwurf zeigt“ (``council/budget_findings.py``)."""
     document_id: int
     label: str
     url: str | None
     budget_year: int | None
+    #: Wozu es einen Haushalt gibt — fester Text, kein Modell.
+    about: str
+    #: Fehlt bei Befunden aus dem ersten Prompt-Stand und wenn kein Satz die Prüfung besteht.
+    overview: NotRequired[DraftOverview]
+    notice: NotRequired[DraftNotice]
     findings: list[BudgetFinding]
     created_at: str
 

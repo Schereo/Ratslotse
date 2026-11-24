@@ -108,6 +108,27 @@ _KEIN_SUCHWORT = {
 #: gliedert selbst nach 2.2 Eigenbetriebe · 2.3 AöR · 2.4 privatrechtlich. Der
 #: Name taugt dafür nicht („Abfallwirtschaftsbetrieb Stadt Oldenburg" trägt
 #: sein „Eigenbetrieb" nicht im Namen).
+#: Ein Suchwort, das mehr Gesellschaften trifft, zeigt auf keine bestimmte
+#: (s. ``Store._passende``). Drei, weil die engsten echten Gruppen drei groß
+#: sind: Weser-Ems Halle samt Komplementärin, die beiden Stadion-Einheiten,
+#: Bäderbetrieb und Bäderbetriebsgesellschaft.
+_HOECHSTENS = 3
+
+#: Füllwörter einer Frage, die über Wortanfänge zufällig in Zweck-Texten
+#: stecken („darf" in „bedarfsgerecht", „geht" in „hervorgeht", „einen" in
+#: „Gemeinwohl…"-Sätzen). Gefaltet, ab drei Buchstaben — kürzere übergeht
+#: ``_trifft`` ohnehin.
+_FUELLWOERTER = frozenset({
+    "was", "wer", "wem", "wen", "wie", "wann", "darf", "duerfen", "kann", "koennen",
+    "muss", "muessen", "soll", "sollen", "will", "macht", "machen", "gemacht",
+    "geht", "gehen", "hat", "haben", "hatte", "ist", "sind", "war", "waren",
+    "wird", "werden", "wurde", "gibt", "einer", "eine", "einen", "einem", "eines",
+    "der", "die", "das", "dem", "den", "des", "bei", "mit", "von", "und", "oder",
+    "etwas", "dort", "hier", "noch", "schon", "auch", "sich", "uns", "ihr", "ihre",
+    "sein", "seine", "steht", "stehen", "sitzt", "sitzen", "fuehrt", "fuehren",
+    "vorschreiben", "bestimmt", "entscheidet",
+})
+
 _FORMEN = {"2": "Eigenbetrieb", "3": "Anstalt öffentlichen Rechts",
            "4": "GmbH / Co. KG"}
 _KENNZAHL_TITEL = {"jahresergebnis": "Jahresergebnis",
@@ -215,24 +236,71 @@ class Store(StoreBasis):
         zweite Gesellschaft mit einem — die ritte sonst als gleichrangiger
         Steckbrief mit, obwohl die Frage sie nicht meint.
 
+        EIN WORT, DAS AUF VIELE PASST, ZEIGT AUF KEINE. ``_trifft`` vergleicht
+        über Wortanfänge in beide Richtungen — für die Haushaltszeilen richtig,
+        hier zu großzügig: Gemessen 24.11.2026 traf „Aufsichtsrat" 9 der 16
+        Zweck-Texte, „einer" und „Darf" je drei bis vier, und „Was macht ein
+        Aufsichtsrat bei einer städtischen Gesellschaft?" bekam die Steckbriefe
+        von Bäderbetrieb und Klinikum statt des Überblicks. Deshalb zählt ein
+        Wort nur, wenn es höchstens ``_HOECHSTENS`` Gesellschaften trifft.
+
+        DER NAME ZÄHLT DOPPELT, der Zweck-Text einfach: „Klinikum" im Namen ist
+        ein stärkeres Zeichen als ein Wort, das irgendwo im Gegenstand steht.
+
+        BINDESTRICH-NAMEN WERDEN ZERLEGT. „Weser-Ems-Halle" traf als Ganzes
+        über das Teilwort „Halle" fünf Einheiten und fiel damit in den
+        Überblick; in Teilen tragen „Weser" und „Halle" beide auf die
+        Weser-Ems Halle.
+
         Und ein SCHWACHES Signal ist der Überblick, keine Auswahl: Teilen sich
-        vier oder mehr Gesellschaften denselben Punktestand 1, hat die Frage
-        keine bestimmte gemeint — zwei davon zu zeigen hieße raten."""
-        woerter = [w for w in terms
-                   if geld.falte(w) not in _KEIN_SUCHWORT and len(w) > 2]
+        drei oder mehr Gesellschaften denselben niedrigsten Punktestand, hat
+        die Frage keine bestimmte gemeint — zwei davon zu zeigen hieße raten."""
+        roh = [w for w in terms if geld.falte(w) not in _KEIN_SUCHWORT
+               and geld.falte(w) not in _FUELLWOERTER and len(w) > 2]
         # Die Kürzel („GSG", „VWG", „AWB") zählen doppelt, und zwar über den
         # Schlüssel der Gesellschaft: `_trifft` übergeht Begriffe unter vier
         # Zeichen, und so fand „Wie viel Gewinn hat die GSG Oldenburg 2024
         # gemacht?" die GSG nicht (Fakten-Eval 23.09.2026).
-        kuerzel = {geld.falte(w) for w in woerter}
-        punkte = [(self._trifft(f"{r['name']} {r['company']} {r['purpose'] or ''}",
-                                woerter) + (2 if r["company"] in kuerzel else 0), r)
-                  for r in reihen]
+        kuerzel = {geld.falte(w) for w in roh}
+        woerter = list(dict.fromkeys(
+            teil for w in roh for teil in re.split(r"[-–/]", w)
+            if len(teil) > 2 and geld.falte(teil) not in _KEIN_SUCHWORT
+            and geld.falte(teil) not in _FUELLWOERTER))
+
+        def name_von(r) -> str:
+            return f"{r['name']} {r['company']}"
+
+        def voll_von(r) -> str:
+            return f"{name_von(r)} {r['purpose'] or ''}"
+
+        # Ein Wort, das einen NAMEN trifft, trennt immer — auch wenn es in
+        # fremden Zweck-Texten vorkommt („Abfallwirtschaft", „Gebäude-
+        # wirtschaft"). Sonst nur, wenn es höchstens `_HOECHSTENS` trifft.
+        def trennt(w: str) -> bool:
+            namen = sum(1 for r in reihen if self._trifft(name_von(r), [w]))
+            if 0 < namen <= _HOECHSTENS:
+                return True
+            return 0 < sum(1 for r in reihen if self._trifft(voll_von(r), [w])) <= _HOECHSTENS
+
+        trennend = [w for w in woerter if trennt(w)]
+        punkte = []
+        for r in reihen:
+            n = 2 if r["company"] in kuerzel else 0
+            # Ein Wort, das genau so im Namen steht, schlägt den Wortanfang:
+            # „Bäderbetriebsgesellschaft" meint die BBGO, nicht auch den
+            # Bäderbetrieb, dessen Name mit denselben sechs Buchstaben beginnt.
+            namenswoerter = {geld.falte(t) for t in re.split(r"[^\wÄÖÜäöüß]+", name_von(r)) if t}
+            for w in trennend:
+                if self._trifft(name_von(r), [w]):
+                    n += 3 if geld.falte(w) in namenswoerter else 2
+                elif self._trifft(voll_von(r), [w]):
+                    n += 1
+            punkte.append((n, r))
         beste = max((p[0] for p in punkte), default=0)
         if not beste:
             return []
         treffer = [r for n, r in punkte if n == beste]
-        if beste == 1 and len(treffer) >= 4:
+        if beste == 1 and len(treffer) >= 3:
             return []
         return treffer[:2]
 

@@ -11,9 +11,16 @@
    im PDF geprüft, jede Deutung ein zweites Modell; die Art jeder Säule (Ist,
    Prognose, Plan, Finanzplanung) setzt der Server, nicht die Seite. Die
    ersten vier stehen offen, der Rest auf Knopfdruck — zehn Grafiken am Stück
-   schoben „Frag den Rat“ zu weit nach unten. */
+   schoben „Frag den Rat“ zu weit nach unten.
 
-import { useState } from "react";
+   Darüber seit 24.11.2026 ein Abriss (Tim: „vorher allgemein ein paar Sachen
+   zum Haushaltsentwurf sagen … wofür ist der Haushaltsentwurf überhaupt da …
+   dass die Stadt in die Haushaltskonsolidierung rutscht“): wozu es einen
+   Haushalt gibt (fester Text vom Server), das Gesamtbild in belegten Sätzen
+   und drei, vier Eckzahlen. Fachwörter wie „Haushaltssicherung“ erklärt das
+   Glossar am Wort. */
+
+import { useState, type CSSProperties } from "react";
 import { ChevronDown, ExternalLink } from "lucide-react";
 import { Aufklapp } from "@/components/aufklapp";
 import { Bruecke } from "@/components/grafik/bruecke";
@@ -21,12 +28,15 @@ import { deZahl } from "@/components/grafik/format";
 import { RanglisteSchiene } from "@/components/grafik/rangliste-schiene";
 import { ArtLegende, VorzeichenSaeulen } from "@/components/grafik/vorzeichen-saeulen";
 import { KiStern } from "@/components/ki-stern";
-import { KARTENTITEL, META, ZITAT } from "@/components/session/unterlagen-typo";
+import { ErklaerBereich, Erklaert } from "@/components/session/begriffe";
+import { ABSCHNITT, KARTENTITEL, META, ZITAT } from "@/components/session/unterlagen-typo";
 import type { ApiAntwort } from "@/lib/vertrag";
 import { cn } from "@/lib/utils";
 
 export type HaushaltsBefunde = NonNullable<ApiAntwort<"/council/session/{ksinr}/item">["budget_findings"]>;
 type Befund = HaushaltsBefunde["findings"][number];
+type Gesamtbild = NonNullable<HaushaltsBefunde["overview"]>;
+type Hinweis = NonNullable<HaushaltsBefunde["notice"]>;
 
 const OFFEN = 4;
 const HINWEIS = "Automatisch aus den Grafiken des Vorberichts erstellt: jede Zahl gegen die Grafik geprüft, jede Deutung von einem zweiten Modell. Verbindlich ist der Vorbericht im Ratsinfo.";
@@ -97,7 +107,9 @@ function BefundKarte({ b, url }: { b: Befund; url: string | null }) {
           {k.label && <span className={cn(META, "mt-1 block")}>{k.label}</span>}
         </p>
       </div>
-      <p className="mt-2 text-lese text-foreground">{b.text}</p>
+      <ErklaerBereich className="mt-2">
+        <p className="text-lese text-foreground"><Erklaert text={b.text} /></p>
+      </ErklaerBereich>
       <div className="mt-3">
         <Grafik b={b} />
       </div>
@@ -121,6 +133,75 @@ function BefundKarte({ b, url }: { b: Befund; url: string | null }) {
   );
 }
 
+function Seite({ url, page, chart }: { url: string | null; page: number | null; chart?: string | null }) {
+  const text = [chart && `Grafik ${chart}`, page && `S. ${page}`].filter(Boolean).join(" · ");
+  if (!text) return null;
+  if (!url) return <span className={META}>{text}</span>;
+  return (
+    <a href={page ? `${url}#page=${page}` : url} target="_blank" rel="noreferrer"
+      className={cn(META, "whitespace-nowrap underline decoration-dashed underline-offset-2 hover:text-foreground")}>
+      {text}
+    </a>
+  );
+}
+
+function Abriss({ about, gesamt, hinweis, url }: {
+  about: string; gesamt?: Gesamtbild | null; hinweis?: Hinweis | null; url: string | null;
+}) {
+  return (
+    <div className="mt-2">
+      <p className={META}>
+        <span className={cn(ABSCHNITT, "mr-1.5")}>Worum es geht</span>{about}
+      </p>
+      {/* Wörtlich aus dem Vorbericht, ohne Modell — darum ohne Stern, mit
+          Anführungszeichen und Seite (council/budget_findings.py::notice). */}
+      {hinweis && (
+        <ErklaerBereich className="mt-4">
+          <blockquote className="rounded-lg border-l-[3px] border-primary bg-primary/[0.07] px-3 py-2.5 text-lese text-foreground">
+            „<Erklaert text={hinweis.text} />“
+            <span className="mt-1 block text-meta text-muted-foreground">
+              Aus dem Vorbericht · <Seite url={url} page={hinweis.page} />
+            </span>
+          </blockquote>
+        </ErklaerBereich>
+      )}
+      {gesamt && (
+        <>
+          <h3 className={cn(ABSCHNITT, "mt-5")}>Das Gesamtbild</h3>
+          <ErklaerBereich className="mt-2">
+            <p className="text-lese text-foreground">
+              {gesamt.statements.map((s, i) => (
+                <span key={i}>
+                  {i > 0 && " "}
+                  <Erklaert text={s.text} />{" "}
+                  <Seite url={url} page={s.page} />
+                </span>
+              ))}
+            </p>
+          </ErklaerBereich>
+          {gesamt.facts.length > 0 && (
+            // So viele Spalten wie Eckzahlen (zwei bis vier) — vier feste Spalten
+            // ließen bei zwei Zahlen die halbe Zeile leer.
+            <ul className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-[repeat(var(--n),minmax(0,1fr))]"
+              style={{ "--n": Math.max(2, gesamt.facts.length) } as CSSProperties}>
+              {gesamt.facts.map((f, i) => (
+                <li key={i} className="flex flex-col rounded-xl border border-border bg-muted/40 p-3">
+                  <span className="font-display text-[22px] font-bold leading-none tabular-nums text-foreground">
+                    {deZahl(f.value, nachkomma(f.value))}
+                    <span className="ml-1 font-sans text-xs font-medium text-muted-foreground">{f.unit}</span>
+                  </span>
+                  <span className="mt-1.5 text-meta leading-snug text-foreground">{f.label}</span>
+                  <span className="mt-auto pt-1.5"><Seite url={url} page={f.page} chart={f.chart} /></span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
 export function HaushaltsentwurfBefunde({ befunde }: { befunde?: HaushaltsBefunde | null }) {
   const [alle, setAlle] = useState(false);
   if (!befunde?.findings.length) return null;
@@ -132,11 +213,9 @@ export function HaushaltsentwurfBefunde({ befunde }: { befunde?: HaushaltsBefund
         Was der Haushaltsentwurf zeigt
         <KiStern text={HINWEIS} />
       </h2>
-      <p className={cn(META, "mt-1")}>
-        {befunde.findings.length === 1 ? "Ein Befund" : `${befunde.findings.length} Befunde`} aus den Grafiken des
-        Vorberichts{befunde.budget_year ? ` zum Haushalt ${befunde.budget_year}` : ""}, neu gezeichnet.
-      </p>
-      <ul className="mt-5 flex flex-col gap-5">
+      <Abriss about={befunde.about} gesamt={befunde.overview} hinweis={befunde.notice} url={befunde.url} />
+      <h3 className={cn(ABSCHNITT, "mt-6 border-t border-border pt-5")}>Aus den Grafiken</h3>
+      <ul className="mt-4 flex flex-col gap-5">
         {vorne.map((b, i) => <BefundKarte key={`${b.chart}-${i}`} b={b} url={befunde.url} />)}
       </ul>
       {rest.length > 0 && (
