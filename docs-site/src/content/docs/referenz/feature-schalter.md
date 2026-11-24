@@ -50,4 +50,4 @@ Ein Schalter trennt Ausliefern von Freischalten: Der Code fährt fertig nach `ma
 | `punkt-seite` | Jeder Tagesordnungspunkt bekommt eine eigene Seite mit Kurzfassung, Vorgeschichte, Unterlagen und „Frag den Rat“ zu diesem Punkt; die Karten der Sitzungsseite führen dorthin (docs/plan-sitzungsseite-kurs.md, Schritt 4). [→ Erklärt in der Doku](/docs/sitzungen/#die-punkt-seite) | Auf dev zwei Wochen ohne Befund, Messung „Frag den Rat mit Punkt-Bezug“ ohne Rückschritt, von Tim abgenommen und auf Prod angeschaltet. |
 | `sitzung-kurs` | Die neue Seite einer einzelnen Sitzung: Kopf auf der Anzeigetafel mit dem „Kurs der Sitzung“, „Wichtig in dieser Sitzung“, Tagesordnung als Linie mit Etappen und Karten (docs/plan-sitzungsseite-kurs.md, Schritt 3). [→ Erklärt in der Doku](/docs/sitzungen/#kurs-der-sitzung) | Auf dev zwei Wochen ohne Befund an echten Sitzungen (vorher, nachher, Rat mit vielen Punkten), von Tim abgenommen und auf Prod angeschaltet; dann fliegt die alte Seite samt Schalter raus. |
 
-35 Schalter.
+36 Schalter.
