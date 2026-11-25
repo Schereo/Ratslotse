@@ -30,6 +30,7 @@ Deshalb steht hier dreierlei:
 from __future__ import annotations
 
 import re
+import time
 from urllib.parse import urlsplit
 
 import requests
@@ -164,13 +165,26 @@ def check(response: requests.Response, *, html: bool = False) -> requests.Respon
 
 def get(session: requests.Session, page: str, *, timeout: float = 20,
         html: bool = True, **params: object) -> requests.Response:
-    """Eine Seite des Ratsinformationssystems holen — geprüft (s. ``check``)."""
-    response = session.get(f"{BASE}/{page}.{EXT}",
-                           params={k: str(v) for k, v in params.items() if v is not None},
-                           timeout=timeout)
-    check(response, html=html)
-    response.raise_for_status()
-    return response
+    """Eine Seite des Ratsinformationssystems holen — geprüft (s. ``check``).
+
+    Zwei Wiederholungen fangen einen kurzen Netzaussetzer ab. Anlass am
+    25.11.2026: Ein ReadTimeout beim ersten Kalenderabruf ließ den ganzen
+    Protokolle-Schritt scheitern.
+    """
+    def abruf() -> requests.Response:
+        response = session.get(f"{BASE}/{page}.{EXT}",
+                               params={k: str(v) for k, v in params.items() if v is not None},
+                               timeout=timeout)
+        check(response, html=html)
+        response.raise_for_status()
+        return response
+
+    for pause in (2, 5):
+        try:
+            return abruf()
+        except (requests.Timeout, requests.ConnectionError):
+            time.sleep(pause)
+    return abruf()
 
 
 def fetch(session: requests.Session, url: str, *, timeout: float = 45, stream: bool = False) -> requests.Response:

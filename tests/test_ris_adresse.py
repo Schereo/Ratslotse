@@ -22,6 +22,7 @@ from __future__ import annotations
 import json
 import re
 from pathlib import Path
+from unittest.mock import Mock, call
 
 import pytest
 
@@ -215,6 +216,48 @@ class _Antwort:
     def raise_for_status(self):
         if self.status_code >= 400:
             raise AssertionError(self.status_code)
+
+
+def test_get_wiederholt_timeout_bis_zum_erfolg(monkeypatch):
+    pausen = Mock()
+    monkeypatch.setattr(ris.time, "sleep", pausen)
+    erfolg = _Antwort(ris.page_url("si0040"))
+    session = Mock()
+    session.get.side_effect = [ris.requests.Timeout("kurzer Aussetzer"), erfolg]
+
+    assert ris.get(session, "si0040") is erfolg
+    assert session.get.call_count == 2
+    pausen.assert_called_once_with(2)
+
+
+def test_get_gibt_dauerhaften_timeout_nach_drei_versuchen_weiter(monkeypatch):
+    pausen = Mock()
+    monkeypatch.setattr(ris.time, "sleep", pausen)
+    timeout = ris.requests.Timeout("weiterhin nicht erreichbar")
+    session = Mock()
+    session.get.side_effect = timeout
+
+    with pytest.raises(ris.requests.Timeout) as fehler:
+        ris.get(session, "si0040")
+
+    assert fehler.value is timeout
+    assert session.get.call_count == 3
+    assert pausen.call_args_list == [call(2), call(5)]
+
+
+def test_get_wiederholt_ris_error_nicht(monkeypatch):
+    pausen = Mock()
+    monkeypatch.setattr(ris.time, "sleep", pausen)
+    hop = _Antwort(ris.page_url("si0040"), 301,
+                   headers={"Location": "https://anderswo.example/ris/"})
+    session = Mock()
+    session.get.return_value = _Antwort(ris.page_url("si0040"), history=[hop])
+
+    with pytest.raises(ris.RisError, match="dauerhaft umgezogen"):
+        ris.get(session, "si0040")
+
+    assert session.get.call_count == 1
+    pausen.assert_not_called()
 
 
 def test_ein_dauerhafter_umzug_ist_ein_fehler():
