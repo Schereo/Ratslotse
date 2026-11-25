@@ -32,8 +32,8 @@ und tauscht die Datei aus. Die alte bleibt als Sicherung liegen.
   gelaufen sind (Fachwörter, Wahlprogramm-Einordnungen, Dossiers, …). Sie
   hängen an Schlüsseln, die über alle Umgebungen gleich sind (Vorlagennummer,
   Sitzung, Gegenstand), und überleben den Tausch deshalb.
-* Jede Tabelle, die auf Prod leer und auf dev gefüllt ist und an keiner
-  umgebungseigenen Nummer hängt — damit eine neue dev-Anreicherung nicht über
+* Jede Tabelle, die auf Prod leer (oder dort noch gar nicht angelegt) und auf
+  dev gefüllt ist und an keiner umgebungseigenen Nummer hängt — damit eine neue dev-Anreicherung nicht über
   Nacht verschwindet, bevor jemand sie in die Liste einträgt.
 * Die nutzerbezogenen Tabellen von dev (die Konten von dev, nicht die von Prod).
 
@@ -169,6 +169,16 @@ def _copy_rows(old: sqlite3.Connection, new: sqlite3.Connection, table: str) -> 
     return _rows(new, table) - before
 
 
+def _create_like(old: sqlite3.Connection, new: sqlite3.Connection, table: str) -> None:
+    """Tabelle samt ihren Indizes in ``new`` so anlegen, wie sie in ``old``
+    steht. Die Migration des Dienstes findet sie dann schon vor
+    (``CREATE TABLE IF NOT EXISTS``) und legt sie nicht leer an."""
+    for (sql,) in old.execute(
+            "SELECT sql FROM sqlite_master WHERE tbl_name = ? AND sql IS NOT NULL "
+            "ORDER BY type = 'index'", (table,)).fetchall():
+        new.execute(sql)
+
+
 def swap(new_path: str, db: str, user_owned: list[str], backup: str | None = None,
          dry_run: bool = False) -> dict:
     """Die Kopie von Prod an die Stelle der dev-Datei setzen.
@@ -209,8 +219,19 @@ def swap(new_path: str, db: str, user_owned: list[str], backup: str | None = Non
             report["auto_preserved"][table] = _copy_rows(old, new, table)
         elif dev_rows > prod_rows * 1.05 and dev_rows - prod_rows >= 5:
             report["lost_tables"][table] = {"dev": dev_rows, "prod": prod_rows}
+    # Tabellen, die es auf Prod noch GAR NICHT gibt — der Normalfall für eine
+    # neue dev-Anreicherung, solange ihr Code nicht released ist. Bis 11/2026
+    # galten sie nur als „verloren“: Am 24.11.2026 verschwanden so die
+    # Haushaltsentwurf-Befunde (`budget_draft_findings`, obwohl in
+    # DEV_ONLY_TABLES) und 235 Beteiligungs-Prognosen über Nacht.
     for table in sorted(old_tables - new_tables):
-        if not _is_fts(table) and _rows(old, table):
+        if _is_fts(table) or not _rows(old, table):
+            continue
+        listed = table in DEV_ONLY_TABLES or table in user_owned
+        if listed or not (set(_columns(old, table)) & ENV_ID_COLUMNS):
+            _create_like(old, new, table)
+            report["preserved" if listed else "auto_preserved"][table] = _copy_rows(old, new, table)
+        else:
             report["lost_tables"][table] = {"dev": _rows(old, table), "prod": None}
     for table in sorted(old_tables & new_tables):
         extra = set(_columns(old, table)) - set(_columns(new, table))

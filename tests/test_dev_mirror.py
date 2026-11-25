@@ -169,6 +169,52 @@ def test_leere_prod_tabelle_ohne_beschluss_id_kommt_von_dev(tmp_path):
     assert _sql(dev, "SELECT template_number FROM neue_anreicherung") == [("26/0001",)]
 
 
+def test_tabelle_die_prod_noch_nicht_kennt_ueberlebt(tmp_path):
+    """Neue dev-Anreicherung, deren Code noch nicht released ist: Auf Prod
+    gibt es die Tabelle gar nicht. Am 24.11.2026 gingen so die
+    Haushaltsentwurf-Befunde und 235 Beteiligungs-Prognosen verloren."""
+    prod = _db(tmp_path / "prod.sqlite", 10)
+    dev = _db(tmp_path / "dev.sqlite", 10)
+    _sql(dev, "CREATE TABLE nur_auf_dev (document_id INTEGER PRIMARY KEY, payload TEXT NOT NULL)")
+    _sql(dev, "CREATE INDEX idx_nur_auf_dev ON nur_auf_dev(payload)")
+    _sql(dev, "INSERT INTO nur_auf_dev VALUES (7, '{}')")
+    kopie = str(tmp_path / "kopie.sqlite")
+    mirror.snapshot(prod, kopie, NUTZER)
+    bericht = mirror.swap(kopie, dev, NUTZER)
+    assert bericht["auto_preserved"]["nur_auf_dev"] == 1
+    assert "nur_auf_dev" not in bericht["lost_tables"]
+    assert _sql(dev, "SELECT document_id FROM nur_auf_dev") == [(7,)]
+    assert _sql(dev, "SELECT name FROM sqlite_master WHERE name = 'idx_nur_auf_dev'") == [("idx_nur_auf_dev",)]
+
+
+def test_dev_only_tabelle_die_prod_nicht_kennt_ueberlebt(tmp_path, monkeypatch):
+    """Eingetragen in DEV_ONLY_TABLES zählt sie als bewahrt — auch mit einer
+    Spalte, die sonst gegen die automatische Übernahme spräche."""
+    monkeypatch.setattr(mirror, "DEV_ONLY_TABLES", (*mirror.DEV_ONLY_TABLES, "gelistet"))
+    prod = _db(tmp_path / "prod.sqlite", 10)
+    dev = _db(tmp_path / "dev.sqlite", 10)
+    _sql(dev, "CREATE TABLE gelistet (decision_id INTEGER PRIMARY KEY)")
+    _sql(dev, "INSERT INTO gelistet VALUES (3)")
+    kopie = str(tmp_path / "kopie.sqlite")
+    mirror.snapshot(prod, kopie, NUTZER)
+    bericht = mirror.swap(kopie, dev, NUTZER)
+    assert bericht["preserved"]["gelistet"] == 1
+    assert _sql(dev, "SELECT decision_id FROM gelistet") == [(3,)]
+
+
+def test_tabelle_nur_auf_dev_mit_beschluss_id_bleibt_verloren(tmp_path):
+    """Hängt sie an einer umgebungseigenen Nummer und steht nicht in der Liste,
+    wird sie nicht übernommen — aber gemeldet."""
+    prod = _db(tmp_path / "prod.sqlite", 10)
+    dev = _db(tmp_path / "dev.sqlite", 10)
+    _sql(dev, "CREATE TABLE haengt_an_id (decision_id INTEGER, x TEXT)")
+    _sql(dev, "INSERT INTO haengt_an_id VALUES (3, 'a')")
+    kopie = str(tmp_path / "kopie.sqlite")
+    mirror.snapshot(prod, kopie, NUTZER)
+    bericht = mirror.swap(kopie, dev, NUTZER, dry_run=True)
+    assert bericht["lost_tables"]["haengt_an_id"] == {"dev": 1, "prod": None}
+
+
 def test_liste_nennt_nur_tabellen_ohne_umgebungseigene_nummer():
     """Jede Tabelle in DEV_ONLY_TABLES muss es im Schema geben und darf an
     keiner umgebungseigenen Nummer hängen — sonst zeigte sie nach dem Tausch
