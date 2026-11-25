@@ -1107,6 +1107,7 @@ Nur für Eval-Läufe und Werkzeuge von Hand; kein Dienst liest sie.
 | `RATSLOTSE_TRANSKRIPTE` | Ordner der Referenz-Transkripte für die Transkriptions-Eval | unter `data/` |
 | `VIERTEL_POC_MODEL` | Modell des Probe-Skripts `scripts/viertel_poc.py` | `openai/gpt-5.6-luna` |
 | `LOTTI_STUDIO` | Checkout des Grafik-Studios, nur zum Rendern der Mail-Bilder (`scripts/mail_helden/bauen.py`) | im Heimatordner |
+| `RATSLOTSE_SOCIAL` | Checkout von `ratslotse-social`, aus dem `scripts/brand_icons.py` App-Icon, Favicons, Mail-Logo und Vorschaubilder setzt (auch `ios/scripts/make_splash.py`) | neben diesem Repo |
 
 :::tip
 Wer nur lokal entwickelt, braucht davon fast nichts: `OPENROUTER_API_KEY` für

@@ -170,7 +170,7 @@ export default function ChangelogPage() {
         <div className="mx-auto flex max-w-3xl items-center justify-between gap-3 px-5 py-4">
           <div className="flex items-center gap-3">
             <BackLink />
-            <Link href="/" className="flex items-center gap-2"><BrandMark /><span className="hidden font-semibold text-foreground sm:inline">Ratslotse</span></Link>
+            <Link href="/" className="flex items-center gap-2"><BrandMark /><span className="sr-only font-semibold text-foreground sm:not-sr-only">Ratslotse</span></Link>
           </div>
           <KopfKontoLink />
         </div>
