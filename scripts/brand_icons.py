@@ -15,8 +15,10 @@ war die einzige Stelle, an der noch die alte Zeichnung stand (Tims Wunsch
 Jetzt entsteht alles aus EINEM Render: der Szene ``app-icon`` im Studio von
 ``ratslotse-social``, über ``studio/marke.py`` nach
 ``assets/marke/lotti-app-icon.png`` gelegt — Kopf und Mütze, transparent,
-auf den sichtbaren Inhalt beschnitten. Dieses Skript setzt die Figur auf
-den Hafenblau-Grund und schreibt jede Größe, die irgendwo gebraucht wird.
+auf den sichtbaren Inhalt beschnitten. Dieses Skript setzt die Figur in
+eine kleine Szene — Himmel, Sonne angeschnitten in der Ecke, drei Möwen,
+davor das Meer (Tims Wahl 25.11.26) — und schreibt jede Größe, die
+irgendwo gebraucht wird.
 
 DIE UNTERKANTE IST EINE SCHNITTKANTE. Der Körper läuft im Render unten aus
 dem Bild; die Figur wird deshalb bündig an den unteren Rand jeder Kachel
@@ -31,6 +33,7 @@ nachbearbeiten.
 from __future__ import annotations
 
 import argparse
+import math
 import os
 import sys
 from dataclasses import dataclass
@@ -42,13 +45,47 @@ ROOT = Path(__file__).resolve().parent.parent
 WEB = ROOT / "web" / "frontend"
 IOS_ASSETS = ROOT / "ios" / "Resources" / "Assets.xcassets"
 
-#: Hafenblau, diagonal von oben links nach unten rechts — derselbe Verlauf
-#: wie das alte Icon, damit die Kachel im Homescreen nicht die Farbe wechselt.
-BLUE = ((11, 114, 184), (10, 61, 102))
-#: Der Grund des dunklen iOS-Icons (wie bisher).
-NIGHT = ((18, 40, 59), (11, 23, 35))
+RGB = tuple[int, int, int]
+
+#: Hafenblau, diagonal — der Grund der Vorschaubilder.
+BLUE: tuple[RGB, RGB] = ((11, 114, 184), (10, 61, 102))
 #: Signal-Orange der Designsprache.
-SIGNAL = (246, 102, 35)
+SIGNAL: RGB = (246, 102, 35)
+
+
+@dataclass(frozen=True)
+class Scene:
+    """Der Grund einer Kachel: Himmel, Sonne in der Ecke, Möwen, Meer."""
+
+    sky: tuple[RGB, RGB]
+    sun: tuple[RGB, RGB]
+    halo: RGB
+    gull: RGB
+    sea: tuple[RGB, RGB, RGB]
+    foam: int
+
+
+#: Tag: Hafenblau oben, zum Horizont heller; die Sonne in Gold und
+#: Signal-Orange.
+DAY = Scene(sky=((10, 92, 168), (64, 160, 222)), sun=((255, 200, 92), (248, 118, 44)),
+            halo=(255, 214, 140), gull=(255, 255, 255),
+            sea=((16, 98, 168), (10, 70, 124), (6, 48, 90)), foam=170)
+#: Das dunkle iOS-Icon: dieselbe Szene bei Nacht, die Sonne als blasser Mond.
+NIGHT = Scene(sky=((9, 22, 38), (24, 54, 86)), sun=((252, 226, 160), (236, 176, 86)),
+              halo=(250, 220, 160), gull=(196, 214, 232),
+              sea=((16, 44, 72), (11, 32, 54), (7, 21, 37)), foam=110)
+
+#: Sonne: Mitte und Radius im Verhältnis zur Kachel. Sie sitzt angeschnitten
+#: in der Ecke oben rechts — Tims Wahl am 25.11.26 aus fünf Varianten.
+SUN = (0.92, 0.07, 0.16)
+#: Möwen oben links: Mitte und Spannweite. Links neben der Mütze ist der
+#: einzige freie Himmel; kleiner heißt weiter weg.
+GULLS = ((0.145, 0.150, 0.110), (0.255, 0.082, 0.075), (0.075, 0.250, 0.060))
+#: Wellen von hinten nach vorn: Höhe, Ausschlag, Wellenlänge, Phase, mit
+#: Schaumkrone. Sie decken den Körper ab, wo er aus dem Render läuft —
+#: Lotti schwimmt, wie eine Möwe das tut.
+WAVES = ((0.80, 0.018, 0.42, 0.0, True), (0.87, 0.016, 0.33, 1.7, True),
+         (0.94, 0.012, 0.27, 3.1, False))
 
 #: Breite der Figur im Verhältnis zur Kachel. Die Mützenkrempe ist das
 #: Breiteste; bei 0,84 bleibt sie in der iOS-Squircle-Maske frei.
@@ -105,33 +142,96 @@ def _scaled(figure: Image.Image, width: int) -> Image.Image:
     return figure.resize((width, height), Image.Resampling.LANCZOS)
 
 
+def _glow(canvas: Image.Image, center: tuple[float, float], radius: float,
+          color: RGB, alpha: int, blur: float) -> None:
+    layer = Image.new("RGBA", canvas.size, (0, 0, 0, 0))
+    x, y = center
+    ImageDraw.Draw(layer).ellipse((x - radius, y - radius, x + radius, y + radius),
+                                  fill=(*color, alpha))
+    canvas.alpha_composite(layer.filter(ImageFilter.GaussianBlur(blur)))
+
+
+def _sun(canvas: Image.Image, scene: Scene) -> None:
+    size = canvas.width
+    x, y, r = (round(v * size) for v in SUN)
+    _glow(canvas, (x, y), r * 2.2, (230, 245, 255), 60, size * 0.05)
+    _glow(canvas, (x, y), r * 1.35, scene.halo, 110, size * 0.02)
+    disc = _gradient(2 * r, 2 * r, scene.sun, diagonal=False)
+    mask = Image.new("L", disc.size, 0)
+    ImageDraw.Draw(mask).ellipse((0, 0, 2 * r - 1, 2 * r - 1), fill=255)
+    disc.putalpha(mask)
+    canvas.alpha_composite(disc, (x - r, y - r))
+
+
+def _gulls(canvas: Image.Image, color: RGB) -> None:
+    """Möwen als zwei geschwungene Flügel, die sich in der Mitte treffen."""
+    size = canvas.width
+    layer = Image.new("RGBA", canvas.size, (0, 0, 0, 0))
+    draw = ImageDraw.Draw(layer)
+    for fx, fy, fspan in GULLS:
+        x, y, span = fx * size, fy * size, fspan * size
+        width = max(2, round(span * 0.095))
+        for side in (-1, 1):
+            # Quadratische Kurve: Mitte → Bogen nach oben → Flügelspitze.
+            p0, p1, p2 = (x, y), (x + side * span * 0.24, y - span * 0.40), (x + side * span / 2, y - span * 0.06)
+            points = [((1 - s) ** 2 * p0[0] + 2 * (1 - s) * s * p1[0] + s * s * p2[0],
+                       (1 - s) ** 2 * p0[1] + 2 * (1 - s) * s * p1[1] + s * s * p2[1])
+                      for s in (i / 24 for i in range(25))]
+            draw.line(points, fill=(*color, 235), width=width, joint="curve")
+            for px, py in (points[0], points[-1]):
+                draw.ellipse((px - width / 2, py - width / 2, px + width / 2, py + width / 2),
+                             fill=(*color, 235))
+    canvas.alpha_composite(layer)
+
+
+def _sea(canvas: Image.Image, scene: Scene) -> None:
+    size = canvas.width
+    for (fy, famp, fwave, phase, foam), color in zip(WAVES, scene.sea):
+        y0, amp, wave = fy * size, famp * size, fwave * size
+        line = [(float(x), y0 + amp * math.sin(2 * math.pi * x / wave + phase))
+                for x in range(-10, size + 11, max(2, size // 256))]
+        layer = Image.new("RGBA", canvas.size, (0, 0, 0, 0))
+        draw = ImageDraw.Draw(layer)
+        draw.polygon([*line, (size + 10, size + 10), (-10, size + 10)], fill=(*color, 255))
+        if foam:
+            draw.line(line, fill=(255, 255, 255, scene.foam), width=round(size * 0.012),
+                      joint="curve")
+        canvas.alpha_composite(layer)
+
+
 def tile(figure: Image.Image, size: int, share: float = FULL,
-         colors: tuple[tuple[int, int, int], ...] = BLUE) -> Image.Image:
-    """Die Figur auf den Verlauf, bündig am unteren Rand."""
-    canvas = _gradient(size, size, colors)
-    body = _scaled(figure, round(size * share))
-    canvas.alpha_composite(body, ((size - body.width) // 2, size - body.height))
-    return canvas
+         scene: Scene = DAY) -> Image.Image:
+    """Die Kachel: Himmel, Sonne, Möwen, die Figur bündig am unteren Rand,
+    davor das Meer. Doppelt so groß gezeichnet und dann verkleinert — sonst
+    werden Wellenkanten und Möwen in den kleinen Größen treppig."""
+    big = max(size * 2, 1024)
+    canvas = _gradient(big, big, scene.sky, diagonal=False)
+    _sun(canvas, scene)
+    _gulls(canvas, scene.gull)
+    body = _scaled(figure, round(big * share))
+    canvas.alpha_composite(body, ((big - body.width) // 2, big - body.height))
+    _sea(canvas, scene)
+    return canvas.resize((size, size), Image.Resampling.LANCZOS)
 
 
 def rounded(image: Image.Image, corner: float = CORNER) -> Image.Image:
-    mask = Image.new("L", image.size, 0)
+    # Maske vierfach groß zeichnen und verkleinern: Sonst ist die Rundung
+    # treppig, und das sieht man im Browser-Tab zuerst.
+    big = (image.width * 4, image.height * 4)
+    mask = Image.new("L", big, 0)
     ImageDraw.Draw(mask).rounded_rectangle(
-        (0, 0, image.width - 1, image.height - 1), round(image.width * corner), fill=255)
+        (0, 0, big[0] - 1, big[1] - 1), round(big[0] * corner), fill=255)
+    mask = mask.resize(image.size, Image.Resampling.LANCZOS)
     out = image.copy()
     out.putalpha(mask)
     return out
 
 
 def tinted(figure: Image.Image, size: int) -> Image.Image:
-    """Das „getönte" iOS-Icon: Graustufen auf Schwarz. Das System legt die
-    Tönung über die Helligkeit — Schwarz bleibt Grund, Weiß wird Farbe."""
-    canvas = Image.new("RGBA", (size, size), (0, 0, 0, 255))
-    body = _scaled(figure, round(size * FULL))
-    gray = ImageOps.grayscale(body.convert("RGB")).convert("RGBA")
-    gray.putalpha(body.getchannel("A"))
-    canvas.alpha_composite(gray, ((size - gray.width) // 2, size - gray.height))
-    return canvas
+    """Das „getönte" iOS-Icon: die Nachtszene in Graustufen. Das System legt
+    die Tönung über die Helligkeit — der dunkle Himmel bleibt Grund, Lotti,
+    Mond und Schaum werden Farbe."""
+    return ImageOps.grayscale(tile(figure, size, scene=NIGHT).convert("RGB")).convert("RGB")
 
 
 def _opaque(image: Image.Image) -> Image.Image:
@@ -238,7 +338,7 @@ def targets(figure: Image.Image, group: Image.Image, social: Path) -> dict[Path,
         WEB / "public" / "og-teilen.png": _opaque(og_share(figure, social)),
         ROOT / "docs-site" / "public" / "favicon.png": rounded(tile(figure, 256)),
         app_icon / "AppIcon-1024.png": _opaque(tile(figure, 1024)),
-        app_icon / "AppIcon-1024-dark.png": _opaque(tile(figure, 1024, colors=NIGHT)),
+        app_icon / "AppIcon-1024-dark.png": _opaque(tile(figure, 1024, scene=NIGHT)),
         app_icon / "AppIcon-1024-tinted.png": _opaque(tinted(figure, 1024)),
         IOS_ASSETS / "AppIconPreview.imageset" / "AppIconPreview.png": _opaque(tile(figure, 1024)),
         # Das Logo der Instagram-Karten drüben ist dieselbe Kachel.
