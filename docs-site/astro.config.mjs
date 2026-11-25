@@ -69,6 +69,9 @@ export default defineConfig({
 	integrations: [
 		starlight({
 			title: 'Ratslotse — Technik',
+			// Dieselbe Kachel wie das App-Icon (scripts/brand_icons.py). Vorher
+			// stand hier gar nichts, und die Doku trug Starlights Standard-Stern.
+			favicon: '/favicon.png',
 			description:
 				'Technische Dokumentation zu ratslotse.de: Architektur, KI-Pipeline und Architekturentscheidungen.',
 			social: [

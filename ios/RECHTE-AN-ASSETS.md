@@ -7,10 +7,10 @@ Feld „Content Rights" in App Store Connect steht auf „nutzt Drittinhalte").
 
 | Asset | Wo | Herkunft |
 |---|---|---|
-| Lotti, die Lotsenmöwe (2D) | `web/frontend/components/mascot.tsx`, Logo/BrandMark | eigene SVG-Geometrie, seit 07/2026 im Repo |
+| Lotti, die Lotsenmöwe (2D) | `web/frontend/components/mascot.tsx` (Küken, Familie) | eigene SVG-Geometrie, seit 07/2026 im Repo |
 | Lotti 3D und Küken | `ratslotse-social/studio/lotti-modell.js`, gerendert nach `Assets.xcassets/Lotti3D*` | eigenes three.js-Modell, headless gerendert; kein Bildgenerator |
 | Lotti-Sprites | `Assets.xcassets/LottiSprite*`, Herkunft in `Resources/LOTTI-SPRITES-SOURCE.md` | aus demselben Modell gerendert |
-| App-Icon | `Assets.xcassets/AppIcon.appiconset` | aus der BrandMark-Geometrie abgeleitet |
+| App-Icon | `Assets.xcassets/AppIcon.appiconset` | seit 11/2026 ein Render der 3D-Lotti (Szene `app-icon`), gesetzt von `scripts/brand_icons.py` |
 | Screenshots, Clips, Texte | Store-Eintrag, `web/frontend/public/neuigkeiten/` | selbst aufgenommen aus der eigenen App |
 
 Der Quellcode selbst steht unter AGPL-3.0 (`LICENSE` im Repo-Root); die
