@@ -44,7 +44,11 @@ Themenfelder (Schlüssel: Beschreibung):
 Für JEDEN Eintrag liefere:
 - "field": GENAU EIN Schlüssel aus der Liste (der am besten passende)
 - "tags": 1-3 feinere Schlagworte (frei, deutsch, z.B. "Radverkehr", "Kita-Ausbau"); [] wenn unklar
-- "summary": EIN knapper, neutraler Satz (max. 140 Zeichen), was beschlossen/berichtet wurde.
+- "summary": EIN knapper, neutraler Satz (max. 160 Zeichen), was beschlossen/berichtet wurde.
+  Lies den GANZEN Beschluss: Hat er mehrere Teile (oft ein angehängter Auftrag aus einem
+  Änderungsantrag, z. B. „Die Verwaltung wird mit … beauftragt"), nennt "summary" den
+  folgenreichsten Teil — einen Auftrag, etwas einzurichten oder umzusetzen, vor einer
+  bloßen Prüfung oder Analyse.
   Trägt ein Eintrag eine Zeile "Ergebnis:", ist "Beschluss" dort nur der VORSCHLAG:
   Dann nennt "summary" das Ergebnis ausdrücklich ("… wurde abgelehnt", "… wurde vertagt",
   "… in den Fachausschuss verwiesen", "kein Beschluss zu …") und beschreibt den Inhalt
@@ -87,13 +91,29 @@ def _strip_fences(content: str) -> str:
     return c
 
 
+# Bis 11/2026 bekam das Modell nur die ersten 400 Zeichen. Ein Auftrag, den
+# ein Änderungsantrag hinten anfügt, fiel damit weg: 19134 (Rat, 15.04.2024)
+# beauftragt erst eine Wirtschaftlichkeitsanalyse und DANACH die Erweiterung
+# des EGH um eine Wohnungsgesellschaft — der Satz hieß nur „Beauftragung einer
+# Wirtschaftlichkeitsanalyse …", und Frag den Rat, das `summary` vor
+# `official_text` liest, antwortete, die Gesellschaft sei nur geprüft worden.
+# Sehr lange Texte (Satzungen, Abschlüsse) behalten Anfang UND Ende.
+TEXT_KOPF = 1400
+TEXT_ENDE = 600
+
+
+def _beschlusstext(official_text: str | None) -> str:
+    text = " ".join((official_text or "").split())
+    if len(text) <= TEXT_KOPF + TEXT_ENDE:
+        return text
+    return f"{text[:TEXT_KOPF]} … {text[-TEXT_ENDE:]}"
+
+
 def _render_items(decisions: list[dict]) -> str:
     lines = []
     for d in decisions:
         title = (d.get("title") or "").strip()
-        official_text = " ".join((d.get("official_text") or "").split())
-        if len(official_text) > 400:
-            official_text = official_text[:400] + "…"
+        official_text = _beschlusstext(d.get("official_text"))
         committee = d.get("committee") or ""
         line = f'- id {d["id"]}: [{committee}] {title}\n  Beschluss: {official_text}'
         outcome = d.get("outcome")
