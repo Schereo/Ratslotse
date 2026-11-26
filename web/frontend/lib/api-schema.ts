@@ -4869,9 +4869,15 @@ export interface paths {
         };
         /**
          * Zahl Der Woche
-         * @description RL-905: größter Beschluss-Betrag der letzten 7 Tage (Fallback 30);
-         *     ganz ohne Treffer zählt die Karte die Beschlüsse der Woche. Die Satz-
-         *     Formulierung übernimmt das Frontend — hier nur Rohdaten.
+         * @description RL-905: Die Karte, die der Lauf ``zahl_der_woche`` zuletzt gewählt und
+         *     in Alltagssprache geschrieben hat (``council/week_number.py``) — wenn sie
+         *     höchstens sechs Tage alt ist. Sonst rechnet „Heute“ selbst: größter
+         *     Beschluss-Betrag der letzten 7 Tage (Fallback 30) mit dem ersten Satz der
+         *     Kurzfassung, ganz ohne Betrag die Zahl der Beschlüsse.
+         *
+         *     Tim, 25.11.2026: „59.000 € — beschlossen für: Überplanmäßige Bewilligung
+         *     … Teilhaushalt 02, Budget 10“ sage niemandem etwas — und es soll ein
+         *     System sein, das die Zahlen regelmäßig mit einfachen Texten erzeugt.
          */
         get: operations["zahl_der_woche_api_council_zahl_der_woche_get"];
         put?: never;
@@ -16632,6 +16638,8 @@ export interface components {
              * @constant
              */
             kind: "amount";
+            /** Sentence */
+            sentence: string | null;
             /** Session Date */
             session_date: string | null;
             /** Title */
@@ -16650,6 +16658,8 @@ export interface components {
              * @constant
              */
             kind: "count";
+            /** Sentence */
+            sentence: string | null;
             /** Window Days */
             window_days: number;
         };
@@ -33442,4 +33452,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 84865dd6c010d03cb358dece2b69a0e56af9b96fb5d29479f080c28aede60c70
+// vertrag-sha256: ff9e9348b03a6305277fd17278028c3dcfe3dae8d11694845ab23026ec75f523

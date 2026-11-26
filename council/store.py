@@ -2170,7 +2170,7 @@ class CouncilStore(AktenMixin, BplanMixin, FundstueckeMixin, HaushaltMixin, Orte
         """Größter im Beschlusstext erkannter Betrag seit ``date_from`` — die
         „Zahl der Woche" fürs Heute-Briefing (RL-905)."""
         row = self._conn.execute(
-            """SELECT d.id, d.title, d.amount_eur, s.session_date
+            """SELECT d.id, d.title, d.amount_eur, d.simple_summary, s.session_date
                FROM council_decisions d
                JOIN council_sessions s ON s.ksinr = d.ksinr
                WHERE s.session_date >= ? AND d.amount_eur IS NOT NULL

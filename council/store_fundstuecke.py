@@ -11,7 +11,8 @@ dem Beschluss-Kern, auch wenn hier der einzige Leser sitzt.
 """
 from __future__ import annotations
 
-from datetime import datetime
+import json
+from datetime import UTC, datetime
 from council.store_basis import StoreBasis
 
 class FundstueckeMixin(StoreBasis):
@@ -82,6 +83,36 @@ class FundstueckeMixin(StoreBasis):
         args.append(limit + len(exclude))
         rows = [dict(r) for r in self._conn.execute(sql, args).fetchall()]
         return [r for r in rows if r["id"] not in exclude][:limit]
+
+    def top_amount_decisions(self, date_from: str, date_to: str, limit: int = 8) -> list[dict]:
+        """Angenommene Beschlüsse mit Betrag zwischen ``date_from`` und
+        ``date_to``, größte zuerst — Kandidaten der Zahl der Woche
+        (``council/week_number.py``)."""
+        return [dict(r) for r in self._conn.execute(
+            """SELECT d.id, d.title, d.amount_eur, d.simple_summary, s.session_date, s.committee
+               FROM council_decisions d JOIN council_sessions s ON s.ksinr = d.ksinr
+               WHERE s.session_date BETWEEN ? AND ? AND d.amount_eur IS NOT NULL AND d.kind = 'decision'
+                 AND d.outcome = 'accepted'
+               ORDER BY d.amount_eur DESC, s.session_date DESC LIMIT ?""", (date_from, date_to, limit))]
+
+    def latest_week_number(self, since: str) -> dict | None:
+        r = self._conn.execute("SELECT * FROM council_week_numbers WHERE day >= ? ORDER BY day DESC LIMIT 1",
+                               (since,)).fetchone()
+        if not r:
+            return None
+        d = dict(r)
+        d["candidate_ids"] = json.loads(d["candidate_ids"])
+        d["payload"] = json.loads(d["payload"])
+        return d
+
+    def save_week_number(self, day: str, candidate_ids: list[str], source_id: str, payload: dict,
+                         model: str | None, cost_usd: float | None) -> None:
+        with self._conn:
+            self._conn.execute(
+                "INSERT OR REPLACE INTO council_week_numbers (day, candidate_ids, source_id, payload, model, "
+                "cost_usd, created_at) VALUES (?,?,?,?,?,?,?)",
+                (day, json.dumps(candidate_ids), source_id, json.dumps(payload, ensure_ascii=False), model,
+                 cost_usd, datetime.now(UTC).isoformat(timespec="seconds")))
 
     def get_fundstueck(self, day: str) -> dict | None:
         """Fundstück eines Tages inklusive Beschluss-Metadaten."""

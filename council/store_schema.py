@@ -159,6 +159,19 @@ CREATE TABLE IF NOT EXISTS budget_draft_findings (
     created_at      TEXT NOT NULL
 );
 
+-- Zahl der Woche (council/week_number.py, Cron zahl_der_woche): je Lauftag,
+-- an dem neu gewählt wurde, die fertige Karte für „Heute“ und die Kandidaten,
+-- unter denen gewählt wurde — ein neuer Kandidat löst die nächste Wahl aus.
+CREATE TABLE IF NOT EXISTS council_week_numbers (
+    day            TEXT PRIMARY KEY,
+    candidate_ids  TEXT NOT NULL,
+    source_id      TEXT NOT NULL,
+    payload        TEXT NOT NULL,
+    model          TEXT,
+    cost_usd       REAL,
+    created_at     TEXT NOT NULL
+);
+
 -- Steckbrief je Dokument (Vorlagen-PDF, Vorlagen-Anlage, Punkt-Anlage — alle
 -- hängen an derselben getfile-Kennung): Art, Antragsteller, Seiten, Scan,
 -- Seitenanfänge im gespeicherten Text samt dessen Prüfsumme. Ein Dokument an

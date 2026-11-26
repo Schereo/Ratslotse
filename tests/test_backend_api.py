@@ -608,6 +608,7 @@ def test_admin_jobs_listet_registry_auch_ohne_laeufe(client):
         "antraege_nachzuegler",  # Änderungsanträge an Sitzungstagen
         "vorlagen_dossiers",  # Dossiers der Vorlagen
         "social_kartentexte",  # ein Satz je Tagesordnungspunkt (LLM), täglich 7:45
+        "zahl_der_woche",     # Zahl der Woche für „Heute“ (LLM bei neuem Kandidaten), 11:30
         "render_plaene",  # P1: Planzeichnungen als Bilder, sonntags
         "check_finanzdaten",  # neue Haushalts-Jahrgänge, alle zwei Wochen
         "check_beteiligungsbericht",  # lädt von oldenburg.de, alle vier Wochen
@@ -8172,6 +8173,50 @@ def test_zahl_der_woche_zaehlt_wie_die_liste(client):
     liste = client.get("/api/council/decisions",
                        params={"date_from": zahl["date_from"], "category": "vote", "limit": 1}).json()
     assert zahl["count"] == liste["total"] == 2
+
+
+def test_zahl_der_woche_erklaert_wofuer_das_geld_ist(client, monkeypatch):
+    """„59.000 € — beschlossen für: Überplanmäßige Bewilligung … Teilhaushalt
+    02, Budget 10“ sagt niemandem etwas (Tim, 25.11.2026). Ohne gewählte Karte
+    steht unter dem Betrag der erste Satz der Kurzfassung — ohne bei „Mio.“
+    abzuschneiden."""
+    _register(client)
+    tag = (date.today() - timedelta(days=1)).isoformat()
+    cs = CouncilStore(COUNCIL_DB)
+    cs.save_session(CouncilSession(96, "Rat", tag, "17:00", "Rathaus"))
+    with cs._conn:
+        cs._conn.execute("DELETE FROM council_week_numbers")
+        cs._conn.execute(
+            "INSERT INTO council_decisions (id,ksinr,position,item_number,title,outcome,kind,amount_eur,"
+            "simple_summary) VALUES (9601,96,1,'3','Überplanmäßige Bewilligung … Budget 10','accepted',"
+            "'decision',9e11,'Die Stadt gibt für StartJob 0,9 Mio. Euro mehr aus. Das Geld kommt aus der IT.')")
+    cs.close()
+    zahl = client.get("/api/council/zahl-der-woche").json()
+    assert zahl["kind"] == "amount" and zahl["decision_id"] == 9601
+    assert zahl["sentence"] == "Die Stadt gibt für StartJob 0,9 Mio. Euro mehr aus."
+
+
+def test_zahl_der_woche_liest_die_gewaehlte_karte(client):
+    """Hat der Lauf ``zahl_der_woche`` gewählt, zeigt „Heute“ seine Karte —
+    eine ältere als sechs Tage nicht mehr."""
+    _register(client)
+    heute = date.today()
+    alt = {"kind": "count", "count": 1, "window_days": 7, "sentence": "So viele alte."}
+    karte = {"kind": "amount", "amount_eur": 735000.0, "decision_id": 21062, "title": "Außerplanmäßige Bewilligung",
+             "sentence": "So viel darf die Stadt für Kunstrasenplatz und Freizeitanlage in Ofenerdiek zusagen.",
+             "session_date": heute.isoformat(), "window_days": 7}
+    cs = CouncilStore(COUNCIL_DB)
+    cs.save_week_number((heute - timedelta(days=9)).isoformat(), ["c7"], "c7", alt, "m", 0.0)
+    cs.close()
+    assert client.get("/api/council/zahl-der-woche").json().get("sentence") != "So viele alte."
+    cs = CouncilStore(COUNCIL_DB)
+    cs.save_week_number(heute.isoformat(), ["d21062"], "d21062", karte, "m", 0.007)
+    cs.close()
+    assert client.get("/api/council/zahl-der-woche").json() == karte
+    cs = CouncilStore(COUNCIL_DB)
+    with cs._conn:
+        cs._conn.execute("DELETE FROM council_week_numbers")
+    cs.close()
 
 
 def test_ask_zusagen_auch_wenn_der_plan_keine_debatten_will(client, monkeypatch):

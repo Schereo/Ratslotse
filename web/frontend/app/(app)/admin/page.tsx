@@ -153,6 +153,7 @@ const FEATURE_LABELS: Record<string, string> = {
   budget_findings: "Was der Haushaltsentwurf zeigt",
   budget_findings_verify: "Was der Haushaltsentwurf zeigt – Prüfung",
   simple_summary: "Lotti erklärt's einfach",
+  week_number: "Zahl der Woche",
   social_card_text: "Social-Kartentext",
   social_critic: "Social-Kritiker",
   speeches: "Wortbeiträge",

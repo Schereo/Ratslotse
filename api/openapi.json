@@ -22126,6 +22126,13 @@
             "title": "Kind",
             "type": "string"
           },
+          "sentence": {
+            "title": "Sentence",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "session_date": {
             "title": "Session Date",
             "type": [
@@ -22147,6 +22154,7 @@
           "amount_eur",
           "decision_id",
           "title",
+          "sentence",
           "session_date",
           "window_days"
         ],
@@ -22168,6 +22176,13 @@
             "title": "Kind",
             "type": "string"
           },
+          "sentence": {
+            "title": "Sentence",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "window_days": {
             "title": "Window Days",
             "type": "integer"
@@ -22176,7 +22191,8 @@
         "required": [
           "kind",
           "count",
-          "window_days"
+          "window_days",
+          "sentence"
         ],
         "title": "NumberOfTheWeekCount",
         "type": "object"
@@ -47077,7 +47093,7 @@
     },
     "/api/council/zahl-der-woche": {
       "get": {
-        "description": "RL-905: größter Beschluss-Betrag der letzten 7 Tage (Fallback 30);\nganz ohne Treffer zählt die Karte die Beschlüsse der Woche. Die Satz-\nFormulierung übernimmt das Frontend — hier nur Rohdaten.",
+        "description": "RL-905: Die Karte, die der Lauf ``zahl_der_woche`` zuletzt gewählt und\nin Alltagssprache geschrieben hat (``council/week_number.py``) — wenn sie\nhöchstens sechs Tage alt ist. Sonst rechnet „Heute“ selbst: größter\nBeschluss-Betrag der letzten 7 Tage (Fallback 30) mit dem ersten Satz der\nKurzfassung, ganz ohne Betrag die Zahl der Beschlüsse.\n\nTim, 25.11.2026: „59.000 € — beschlossen für: Überplanmäßige Bewilligung\n… Teilhaushalt 02, Budget 10“ sage niemandem etwas — und es soll ein\nSystem sein, das die Zahlen regelmäßig mit einfachen Texten erzeugt.",
         "operationId": "zahl_der_woche_api_council_zahl_der_woche_get",
         "responses": {
           "200": {
