@@ -244,7 +244,7 @@ prüft, ob jeder Job in der Tabelle steht.
 | `record_council_livestream.py` | täglich `0 13 * * *` (UTC) | Schneidet die Ratssitzung live aus dem O1-Stream mit, verfolgt den laufenden TOP und liest die Ergebnisse noch am Abend; an Tagen ohne Ratssitzung ein Leerlauf. |
 | `check_presse.py` | täglich `15 5 * * *` | RSS-Abgleich der städtischen Pressemitteilungen und der laufenden Bauleitplan-Beteiligungen. |
 | `social_kartentexte.py` | täglich `45 7 * * *` | Ein erklärender Satz je inhaltlichem Tagesordnungspunkt der nächsten drei Wochen (LLM, schreibt nie zweimal dasselbe). |
-| `zahl_der_woche.py` | täglich `30 11 * * *` | Zahl der Woche für „Heute“: wählt aus Beschluss-Beträgen und Zahl der Beschlüsse eine Zahl und schreibt sie in Alltagssprache (LLM nur bei neuem Kandidaten). |
+| `zahl_der_woche.py` | täglich `30 11 * * *` | Zahl der Woche für „Heute“: wählt aus Beschluss-Beträgen, Haushaltsentwurf (mit Schalter) und Zahl der Beschlüsse eine Zahl und schreibt sie in Alltagssprache (LLM nur bei neuem Kandidaten). |
 | `render_plaene.py` | sonntags `30 4 * * 0` | Neue Bauleitplan-Anlagen (Planzeichnung, Lageplan) als Bilder für die Beschluss-Seite. |
 | `speicherfristen.py` | täglich `40 4 * * *` | Löscht Recherchen von Konten ohne Einwilligung ins Speichern sieben Tage nach ihrem letzten Stand (dieselbe Frist greift zusätzlich bei jedem Start des Backends). |
 | `check_wahltermine.py` | täglich `15 6 * * *` | Vergleicht den Terminkalender des Votemanagers mit `kommunalwahl/wahlen/` — meldet eine unbekannte Wahl und eine Wahl-Id, die endlich da ist oder kurz vor dem Wahltag noch fehlt. Legt nichts an. |

@@ -22161,6 +22161,72 @@
         "title": "NumberOfTheWeekAmount",
         "type": "object"
       },
+      "NumberOfTheWeekBudget": {
+        "description": "Eine Zahl aus dem Haushaltsentwurf, der gerade beraten wird — nur vom\nLauf ``zahl_der_woche`` und nur mit dem Schalter ``haushaltsentwurf-befunde``.",
+        "properties": {
+          "budget_year": {
+            "title": "Budget Year",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "committee": {
+            "title": "Committee",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "item_number": {
+            "title": "Item Number",
+            "type": "string"
+          },
+          "kind": {
+            "const": "budget_draft",
+            "title": "Kind",
+            "type": "string"
+          },
+          "ksinr": {
+            "title": "Ksinr",
+            "type": "integer"
+          },
+          "sentence": {
+            "title": "Sentence",
+            "type": "string"
+          },
+          "session_date": {
+            "title": "Session Date",
+            "type": "string"
+          },
+          "unit": {
+            "title": "Unit",
+            "type": "string"
+          },
+          "value": {
+            "title": "Value",
+            "type": "number"
+          },
+          "window_days": {
+            "title": "Window Days",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "kind",
+          "value",
+          "unit",
+          "sentence",
+          "budget_year",
+          "ksinr",
+          "item_number",
+          "session_date",
+          "committee",
+          "window_days"
+        ],
+        "title": "NumberOfTheWeekBudget",
+        "type": "object"
+      },
       "NumberOfTheWeekCount": {
         "properties": {
           "count": {
@@ -47101,6 +47167,9 @@
               "application/json": {
                 "schema": {
                   "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/NumberOfTheWeekBudget"
+                    },
                     {
                       "$ref": "#/components/schemas/NumberOfTheWeekAmount"
                     },

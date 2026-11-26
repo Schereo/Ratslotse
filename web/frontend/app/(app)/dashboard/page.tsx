@@ -25,7 +25,8 @@ import { HinweisSlot } from "@/components/note-slot";
 import { WahlabendHinweis } from "@/components/wahlabend-hinweis";
 import { ReleaseNewsCard } from "@/components/release-news-card";
 import { formatEuro } from "@/components/decision-ui";
-import { fragenHref, decisionHref } from "@/lib/routes";
+import { fragenHref, decisionHref, punktHref } from "@/lib/routes";
+import { deZahl } from "@/components/grafik/format";
 import { startGuidedTour } from "@/components/tour";
 import { ConfettiBurst } from "@/components/confetti";
 import { useOnboarding, type StepId } from "@/components/onboarding";
@@ -154,6 +155,27 @@ export default function DashboardPage() {
         {/* Zahl der Woche (RL-905) — eine Zahl und ein Satz, braucht am
             wenigsten Breite. */}
         <HeuteWidget id="zahl-der-woche" title="Zahl der Woche" icon={Hash}>
+          {/* In der Woche, in der ein Haushaltsentwurf beraten wird, kann die
+              Zahl aus ihm kommen (Lauf zahl_der_woche, Schalter
+              haushaltsentwurf-befunde). Das Vorzeichen steckt im Satz. */}
+          {zahl?.kind === "budget_draft" && (
+            <div className="inhalt-auf">
+              <p className="font-display text-[40px] font-extrabold leading-none tracking-tight tabular-nums text-signal-ink">
+                {deZahl(zahl.value, Number.isInteger(zahl.value) ? 0 : 1)}
+                {zahl.unit && <span className="ml-1.5 text-[26px]">{zahl.unit}</span>}
+              </p>
+              <p className="mt-2 line-clamp-3 text-hinweis text-muted-foreground">{zahl.sentence}</p>
+              <p className="mt-1 flex-1 text-xs text-muted-foreground">
+                {zahl.budget_year ? `Haushaltsentwurf ${zahl.budget_year}` : "Haushaltsentwurf"}
+              </p>
+              <Link
+                href={punktHref(zahl.ksinr, zahl.item_number)}
+                className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
+              >
+                Was der Entwurf zeigt <ArrowRight className="h-3.5 w-3.5" />
+              </Link>
+            </div>
+          )}
           {zahl?.kind === "amount" && (
             <div className="inhalt-auf">
               <p className="font-display text-[40px] font-extrabold leading-none tracking-tight text-signal-ink">

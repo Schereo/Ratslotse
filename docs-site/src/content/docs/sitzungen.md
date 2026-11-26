@@ -323,6 +323,11 @@ Drei Stufen, jede kann einen Befund kippen:
    stand, fast immer wegen der Deutung, nicht der Zahl — etwa eine Teilzahl,
    die dem ganzen Haushalt zugeschrieben wurde.
 
+Eine Zahl daraus kann die **Zahl der Woche** auf „Heute“ werden: Der Lauf
+`zahl_der_woche` (`council/week_number.py`) nimmt die geprüften Befunde,
+Eckzahlen und Sätze eines Entwurfs, der höchstens sieben Tage entfernt beraten
+wird, zu seinen Kandidaten.
+
 Gespeichert wird je Vorbericht (`budget_draft_findings`, Schlüssel ist die
 Dokumentnummer); er hängt oft an mehreren Punkten. Erzeugt werden die
 Befunde im Lauf `vorlagen_dossiers` für Vorberichte an Punkten im selben
