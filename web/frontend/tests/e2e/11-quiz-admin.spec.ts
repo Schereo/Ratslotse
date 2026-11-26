@@ -159,9 +159,9 @@ test.describe("Admin-Panel — die Grenze", () => {
       await expect(page.getByRole("heading", { name: "Stufen" })).toBeVisible();
       const gold = page.locator("#b-ask-gold");
       await gold.getByRole("button", { name: /Bedingungen und \d+ Läufe/ }).click();
-      await expect(gold.getByText("eval/cases_deep_gold.json")).toBeVisible();
+      await expect(gold.getByText(/^gh workflow run ops-gold\.yml/)).toBeVisible();
       await gold.locator("tbody button[aria-expanded]").first().click();
-      await expect(gold.getByText("Rohdaten", { exact: true })).toBeVisible();
+      await expect(gold.getByText(/eval\/runs\/ask-gold\//)).toBeVisible();
       await page.getByRole("link", { name: "Alle Läufe", exact: true }).click();
       await expect(page.getByRole("heading", { name: "Alle Läufe" })).toBeVisible();
     });

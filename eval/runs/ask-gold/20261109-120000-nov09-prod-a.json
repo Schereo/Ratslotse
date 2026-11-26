@@ -32,7 +32,7 @@
  "purpose": "v3.0.0: Suche-Ausbau, Diät, Akte; ohne Belegnotizen, ohne Nachrecherche",
  "conclusion": "Erstes Wort nach 26,9 s (Median), gesamt 29,1 s — der größte Hebel liegt vor dem ersten Wort, nicht in der Suche.",
  "comparable": true,
- "note": "aus dem Messbuch übernommen; Uhrzeit nicht erfasst (Reihenfolge wie dort). Modelle laut Messbuch (Analyse bis #1783 Gemini 3.1 Flash Lite, danach GPT-5.6 Luna).",
+ "note": "aus dem Messbuch übernommen",
  "raw": "server:prod:data/eval_gold/ask-nov09-prod-a.json",
  "raw_extra": null,
  "source": "docs/gold-messbuch.md"

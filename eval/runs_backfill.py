@@ -407,8 +407,9 @@ def aus_gold_messbuch() -> Iterator[dict[str, Any]]:
                             "median_s": dauer, "cases": 27},
                    cases=None, environment=umgebung, label=label, purpose=stand, conclusion=fazit,
                    models=dict(modelle), judge="anthropic/claude-opus-5.5", source=quelle,
-                   note="aus dem Messbuch übernommen; Uhrzeit nicht erfasst (Reihenfolge wie dort). Modelle laut Messbuch "
-                        "(Analyse bis #1783 Gemini 3.1 Flash Lite, danach GPT-5.6 Luna).")
+                   # Modelle laut Messbuch: Analyse bis #1783 Gemini 3.1 Flash Lite,
+                   # danach GPT-5.6 Luna. Uhrzeit nicht erfasst (s. oben).
+                   note="aus dem Messbuch übernommen")
     for tag, umgebung, label, stand, faelle, fazit in GOLD_TEILLAEUFE:
         minute[tag] = minute.get(tag, -1) + 1
         yield lauf("ask-gold", f"server:{umgebung}:data/eval_gold/ask-{label}.json",
@@ -417,8 +418,7 @@ def aus_gold_messbuch() -> Iterator[dict[str, Any]]:
                    cases=None, environment=umgebung, label=label, purpose=stand, conclusion=fazit,
                    models=dict(_NOV), judge="anthropic/claude-opus-5.5", source=quelle, comparable=False,
                    sample=len(faelle),
-                   note="Teillauf über die schwachen Fälle — nicht mit vollen Läufen vergleichen. Je Fall: "
-                        + ", ".join(f"{k} {round(v * 100)} %" for k, v in faelle.items()))
+                   note="schwache Fälle: " + ", ".join(f"{k} {round(v * 100)} %" for k, v in faelle.items()))
 
 
 QUELLEN = (aus_pruefstand, aus_fakten, aus_qa, aus_harness, aus_cities, aus_deep_gold, aus_quality,

@@ -31,7 +31,7 @@
  "purpose": "+ jüngste Aussprache nach der Akte (#1803)",
  "conclusion": "Griff bei den oberen drei nicht: Der Forschungsplan schaltete bei Termin- und Faktenfragen die Aussprache ab.",
  "comparable": false,
- "note": "Teillauf über die schwachen Fälle — nicht mit vollen Läufen vergleichen. Je Fall: trinkwasserspender-draussen 8 %, bahnuebergang-am-stadtrand-verlauf 40 %, heidbrook-zusagen 39 %, behrens-baumschutz 71 %, parkgebuehren-mehreinnahmen 62 %, klinikum-buergschaften-stand 62 %",
+ "note": "schwache Fälle: trinkwasserspender-draussen 8 %, bahnuebergang-am-stadtrand-verlauf 40 %, heidbrook-zusagen 39 %, behrens-baumschutz 71 %, parkgebuehren-mehreinnahmen 62 %, klinikum-buergschaften-stand 62 %",
  "raw": "server:dev:data/eval_gold/ask-nov09-dev-nach-1803.json",
  "raw_extra": null,
  "source": "docs/gold-messbuch.md"

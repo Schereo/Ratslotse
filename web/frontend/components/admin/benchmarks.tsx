@@ -2,7 +2,11 @@
 
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, ArrowUpRight, ChevronDown } from "lucide-react";
+import {
+  ArrowLeft, ArrowUpRight, BookOpen, Check, ChevronDown, Clock, Coins, Copy, Cpu, Database, FileJson, FileText,
+  GitCommitHorizontal, Info, Laptop, Layers, Lightbulb, Scale, Server, Target, Terminal, TriangleAlert, Waves,
+  type LucideIcon,
+} from "lucide-react";
 import { scaleLinear } from "d3-scale";
 import { line } from "d3-shape";
 import { api } from "@/lib/api";
@@ -11,9 +15,10 @@ import { Card, CardListSkeleton, ErrorState, Select } from "@/components/ui";
 import { StatKicker } from "@/components/admin-charts";
 import { AbleseBeschreibung, AbleseFlaeche, Ableseleiste, useAblesen, useAbleseId } from "@/components/grafik/ablesen";
 import { useBreite } from "@/lib/use-breite";
+import { useTelefonBreite } from "@/lib/use-ultra";
 import { cn } from "@/lib/utils";
 import {
-  KENNZAHL_NAMEN, LAEUFT, STATUS, UMGEBUNG, commitLink, datumText, grundText, kostenText, modellKurz, rohLink, wertText,
+  KENNZAHL_NAMEN, LAEUFT, STATUS, UMGEBUNG, achse, commitLink, datumText, grundText, kostenText, modellKurz, rohLink, wertText,
   type Benchmark, type BenchmarkUebersicht, type LaufZeile, type Pipeline,
 } from "@/lib/benchmarks";
 import { Veraenderung } from "./primitives";
@@ -236,31 +241,75 @@ function BenchmarkKarte({ b, p, data, stufe, offen }: {
   );
 }
 
-function Bedingungen({ b, stufe }: { b: Benchmark; stufe: (k: string) => string }) {
-  const zeilen: [string, React.ReactNode][] = [
-    ["Fälle", b.cases.length ? b.cases.map((c) => `${c.cases ?? "?"} · ${c.path}`).join(" · ") : "keine Falldatei"],
-    ["Erwartung", b.truth || "–"],
-    ["Richter", b.judge ? modellKurz(b.judge) : "kein Modell"],
-    ["Stufen", b.steps.map(stufe).join(" · ") || "–"],
-    ["Läuft", LAEUFT[b.runs_on] ?? b.runs_on],
-  ];
-  if (b.noise) zeilen.push(["Streuung", b.noise]);
-  if (b.hard) zeilen.push(["Harter Befund", b.hard]);
-  if (b.log) zeilen.push(["Messbuch", b.log]);
+/** Ein Merkmal mit Symbol: kurz, die Erklärung steht im Tooltip und für die
+ *  Vorlesehilfe im Label. */
+function Merkmal({ icon: Icon, label, children, title }: {
+  icon: LucideIcon; label: string; children: React.ReactNode; title?: string;
+}) {
   return (
-    <div className="mt-1 rounded-lg bg-muted/40 p-3">
-      <dl className="grid gap-x-4 gap-y-2 text-sm @2xl:grid-cols-[8rem_minmax(0,1fr)]">
-        {zeilen.map(([k, w]) => <Fragment key={k}><dt className="text-muted-foreground">{k}</dt><dd className="min-w-0 break-words">{w}</dd></Fragment>)}
-        <dt className="text-muted-foreground">Befehl</dt>
-        <dd className="min-w-0"><code className="block overflow-x-auto whitespace-pre rounded bg-card px-2 py-1 font-mono text-xs">{b.command}</code></dd>
-      </dl>
+    <span className="inline-flex min-w-0 items-center gap-1.5" title={title ?? label}>
+      <Icon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden />
+      <span className="sr-only">{label}: </span>
+      <span className="min-w-0 truncate">{children}</span>
+    </span>
+  );
+}
+
+function Kopieren({ text }: { text: string }) {
+  const [kopiert, setKopiert] = useState(false);
+  return (
+    <button type="button" aria-label={kopiert ? "Kopiert" : "Befehl kopieren"}
+      onClick={() => { void navigator.clipboard.writeText(text).then(() => { setKopiert(true); setTimeout(() => setKopiert(false), 1500); }); }}
+      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground">
+      {kopiert ? <Check className="h-3.5 w-3.5" aria-hidden /> : <Copy className="h-3.5 w-3.5" aria-hidden />}
+    </button>
+  );
+}
+
+function Bedingungen({ b, stufe }: { b: Benchmark; stufe: (k: string) => string }) {
+  const faelle = b.cases.reduce((n, c) => n + (c.cases ?? 0), 0);
+  const erklaert: [LucideIcon, string, string][] = [
+    [Target, "Erwartung", b.truth],
+    ...(b.noise ? [[Waves, "Streuung", b.noise] as [LucideIcon, string, string]] : []),
+    ...(b.hard ? [[TriangleAlert, "Harter Befund", b.hard] as [LucideIcon, string, string]] : []),
+  ];
+  return (
+    <div className="mt-1 space-y-3 rounded-lg bg-muted/40 p-3">
+      <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm">
+        <Merkmal icon={FileText} label="Fälle" title={b.cases.map((c) => c.path).join(", ") || undefined}>
+          {b.cases.length ? `${faelle.toLocaleString("de-DE")} Fälle` : "echter Bestand"}
+        </Merkmal>
+        <Merkmal icon={Scale} label="Richter">{b.judge ? modellKurz(b.judge) : "ohne Richter"}</Merkmal>
+        <Merkmal icon={b.runs_on === "server" ? Server : Laptop} label="Läuft">{LAEUFT[b.runs_on] ?? b.runs_on}</Merkmal>
+        {b.log && <Merkmal icon={BookOpen} label="Messbuch" title={b.log}>{b.log.split("/").pop()}</Merkmal>}
+      </div>
+      <ul className="flex flex-wrap gap-1.5" aria-label="Gemessene Stufen">
+        {b.steps.map((s) => <li key={s} className="rounded-full border border-border bg-card px-2 py-0.5 text-xs">{stufe(s)}</li>)}
+      </ul>
+      {erklaert.length > 0 && (
+        <dl className="space-y-1 text-xs leading-relaxed text-muted-foreground">
+          {erklaert.map(([Icon, k, w]) => (
+            <div key={k} className="flex gap-1.5">
+              <dt className="shrink-0 pt-0.5"><Icon className="h-3.5 w-3.5" aria-hidden /><span className="sr-only">{k}</span></dt>
+              <dd className="min-w-0">{w}</dd>
+            </div>
+          ))}
+        </dl>
+      )}
+      <div className="flex items-center gap-1 rounded-md bg-card pl-2">
+        <Terminal className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden />
+        <code className="min-w-0 flex-1 overflow-x-auto whitespace-pre py-1.5 font-mono text-xs">{b.command}</code>
+        <Kopieren text={b.command} />
+      </div>
     </div>
   );
 }
 
 /** Die Hauptkennzahl über die vergleichbaren Läufe. Gefüllt: heutige
  *  Besetzung; hohl: Kandidaten und Varianten. Abstände nach Reihenfolge,
- *  nicht nach Zeit — es geht um die Folge der Messungen. */
+ *  nicht nach Zeit — es geht um die Folge der Messungen. Die y-Achse zeigt
+ *  nur den Bereich, in dem die Werte liegen (`achse`), sonst verschwinden
+ *  kleine Schwankungen in einer Fläche von 0 bis 100 %. */
 function LaufVerlauf({ b, zeilen }: { b: Benchmark; zeilen: LaufZeile[] }) {
   const { box, breite } = useBreite(520, 120);
   const steuerung = useAblesen(zeilen.length, zeilen.length - 1);
@@ -269,30 +318,30 @@ function LaufVerlauf({ b, zeilen }: { b: Benchmark; zeilen: LaufZeile[] }) {
   const links = 44;
   const rechts = breite - 8;
   const werte = zeilen.map((z) => z.value ?? 0);
-  const max = b.metric.unit === "share" || b.metric.unit === "ratio" ? 1 : Math.max(1, ...werte);
-  const y = scaleLinear().domain([0, max]).nice(2).range([hoehe - 6, 8]);
+  const y = scaleLinear().domain(achse(werte, b.metric.unit)).range([hoehe - 6, 8]);
   const schritt = (rechts - links) / Math.max(zeilen.length - 1, 1);
   const x = (i: number) => links + schritt * i;
   const heutig = zeilen.map((z, i) => [z, i] as const).filter(([z]) => z.current);
   const stellen = zeilen.map((z) => {
     const wert = wertText(z.value, b.metric.unit);
-    const titel = `${datumText(z.started_at)} · ${UMGEBUNG[z.environment] ?? z.environment}`;
+    const titel = [datumText(z.started_at), UMGEBUNG[z.environment] ?? z.environment, z.label].filter(Boolean).join(" · ");
     return {
       title: titel,
+      // Kurz halten: Die Ablesekarte stellt den Nebenwert neben die Zahl,
+      // ein langer Text schöbe sich am Telefon darunter.
       werte: [{ label: b.metric.label, value: wert, farbe: "hsl(var(--primary))" },
-        { label: !z.current ? "Kandidat/Variante" : z.model ? "heutige Besetzung" : "Modell nicht erfasst",
-          value: [z.label, z.model && modellKurz(z.model), z.variant].filter(Boolean).join(" · ") || "–" }],
+        { label: !z.current ? "Kandidat" : "heute", value: [z.model ? modellKurz(z.model) : "Modell nicht erfasst", z.variant].filter(Boolean).join(" · ") }],
       vorlesen: `${titel}: ${b.metric.label} ${wert}${z.model ? `, ${z.model}` : ""}`,
     };
   });
-  const ticks = y.ticks(2);
+  const ticks = y.ticks(3);
   return (
     <div ref={box} className="min-w-0">
-      <AbleseBeschreibung id={id}>{b.metric.label} über {zeilen.length} Läufe. Mit Pfeiltasten, Maus oder Antippen einzelne Läufe lesen.</AbleseBeschreibung>
+      <AbleseBeschreibung id={id}>{b.metric.label} über {zeilen.length} Läufe, Achse von {wertText(y.domain()[0], b.metric.unit)} bis {wertText(y.domain()[1], b.metric.unit)}. Mit Pfeiltasten, Maus oder Antippen einzelne Läufe lesen.</AbleseBeschreibung>
       <svg width="100%" height={hoehe} viewBox={`0 0 ${breite} ${hoehe}`} role="group" aria-label={`${b.metric.label} über die Läufe`} aria-describedby={id}>
         <g aria-hidden>
-          {ticks.map((t) => <g key={t}>
-            <line x1={links} x2={rechts} y1={y(t)} y2={y(t)} className="stroke-border" strokeDasharray={t === 0 ? undefined : "3 4"} />
+          {ticks.map((t, i) => <g key={t}>
+            <line x1={links} x2={rechts} y1={y(t)} y2={y(t)} className="stroke-border" strokeDasharray={i === 0 ? undefined : "3 4"} />
             <text x={links - 6} y={y(t) + 4} textAnchor="end" className="fill-muted-foreground text-[11px] tabular-nums">{wertText(t, b.metric.unit)}</text>
           </g>)}
           {heutig.length > 1 && <path d={line<readonly [LaufZeile, number]>().x(([, i]) => x(i)).y(([z]) => y(z.value ?? 0))(heutig) ?? ""}
@@ -315,6 +364,48 @@ function LaufTabelle({ zeilen, data, mitBenchmark }: { zeilen: LaufZeile[]; data
   const [n, setN] = useState(25);
   const benchmarks = new Map(data.benchmarks.map((b) => [b.key, b]));
   const spalten = mitBenchmark ? 7 : 6;
+  const telefon = useTelefonBreite();
+  const pipelineTitel = (b: Benchmark) => data.pipelines.find((p) => p.key === b.pipeline)?.title;
+  const mehr = zeilen.length > n && <button type="button" onClick={() => setN(n + 50)} className="mt-2 min-h-11 text-sm font-medium text-primary">Weitere {Math.min(50, zeilen.length - n)} von {zeilen.length - n} zeigen</button>;
+  if (telefon) {
+    // Am Telefon eine Liste statt der Tabelle: Ein aufgeklappter Lauf läge
+    // sonst in einer seitwärts scrollenden Zeile und wäre abgeschnitten.
+    return (
+      <div className="mt-3">
+        <ul className="rounded-lg border border-border bg-card px-3">
+          {zeilen.slice(0, n).map((z) => {
+            const b = benchmarks.get(z.benchmark);
+            if (!b) return null;
+            const auf = offen === z.id;
+            return (
+              <li key={`${z.origin}:${z.id}`} className="border-t border-border py-2.5 first:border-0">
+                <button type="button" aria-expanded={auf} onClick={() => setOffen(auf ? null : z.id)}
+                  className={cn("flex min-h-11 w-full items-start justify-between gap-3 text-left", !z.comparable && "text-muted-foreground")}>
+                  <span className="min-w-0">
+                    <span className="flex items-center gap-1.5 text-sm font-medium text-primary">
+                      <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", auf && "rotate-180")} aria-hidden />{datumText(z.started_at)}
+                      {z.current && <span className="h-1.5 w-1.5 rounded-full bg-primary" aria-label="heutige Besetzung" />}
+                    </span>
+                    {mitBenchmark && <span className="block text-sm">{b.title} <span className="text-xs text-muted-foreground">{pipelineTitel(b)}</span></span>}
+                    <span className="block break-words text-xs text-muted-foreground">
+                      {[UMGEBUNG[z.environment] ?? z.environment, z.label, z.variant, z.model && modellKurz(z.model),
+                        z.sample ? `${z.comparable ? "Stichprobe" : "Teillauf"} ${z.sample}` : !z.comparable && "nicht vergleichbar"].filter(Boolean).join(" · ")}
+                    </span>
+                  </span>
+                  <span className="shrink-0 text-right">
+                    <strong className="text-sm tabular-nums">{wertText(z.value, b.metric.unit)}</strong>
+                    {z.cost_usd != null && <span className="block text-xs text-muted-foreground">{kostenText(z.cost_usd)}</span>}
+                  </span>
+                </button>
+                {auf && <div className="mt-2 rounded-lg bg-muted/30 p-3"><LaufDetails zeile={z} b={b} data={data} /></div>}
+              </li>
+            );
+          })}
+        </ul>
+        {mehr}
+      </div>
+    );
+  }
   return (
     <div className="mt-3">
       <div className="overflow-x-auto rounded-lg border border-border">
@@ -345,7 +436,7 @@ function LaufTabelle({ zeilen, data, mitBenchmark }: { zeilen: LaufZeile[]; data
                       </button>
                     </td>
                     {mitBenchmark && <td className="p-2.5"><a href={`#pipelines?p=${b.pipeline}&b=${b.key}`} className="hover:text-primary">{b.title}</a>
-                      <span className="block text-xs text-muted-foreground">{data.pipelines.find((p) => p.key === b.pipeline)?.title}</span></td>}
+                      <span className="block text-xs text-muted-foreground">{pipelineTitel(b)}</span></td>}
                     <td className="p-2.5">{UMGEBUNG[z.environment] ?? z.environment}</td>
                     <td className="p-2.5">
                       <span className="flex flex-wrap items-center gap-1.5">
@@ -367,11 +458,15 @@ function LaufTabelle({ zeilen, data, mitBenchmark }: { zeilen: LaufZeile[]; data
           </tbody>
         </table>
       </div>
-      {zeilen.length > n && <button type="button" onClick={() => setN(n + 50)} className="mt-2 min-h-11 text-sm font-medium text-primary">Weitere {Math.min(50, zeilen.length - n)} von {zeilen.length - n} zeigen</button>}
+      {mehr}
     </div>
   );
 }
 
+/** Ein Lauf aufgeklappt: oben, wofür und mit welchem Ergebnis; dann die
+ *  Zahlen als Kacheln, die Modelle gebündelt; die Bedingungen klein mit
+ *  Symbolen; Pfade ganz unten. Was fehlt, wird weggelassen statt als „–"
+ *  gezeigt. */
 function LaufDetails({ zeile, b, data }: { zeile: LaufZeile; b: Benchmark; data: BenchmarkUebersicht }) {
   const q = useQuery({ queryKey: ["admin", "benchmarks", b.key], queryFn: () => api.get<ApiAntwort<"/admin/benchmarks/{key}">>(`/admin/benchmarks/${encodeURIComponent(b.key)}`) });
   const stufe = useStufen(data)(b);
@@ -381,46 +476,93 @@ function LaufDetails({ zeile, b, data }: { zeile: LaufZeile; b: Benchmark; data:
   const rec = r as Record<string, unknown>;
   const text = (k: string) => (typeof rec[k] === "string" && rec[k] ? String(rec[k]) : null);
   const code = (rec.code ?? null) as { commit?: string; branch?: string | null; dirty?: boolean | null; checked_in?: boolean; from?: string } | null;
-  const ds = (rec.dataset ?? null) as { path?: string; sha256?: string | null; cases?: number | null; sample?: number } | null;
-  const modelle = Object.entries((rec.models ?? {}) as Record<string, string>);
-  const metriken = Object.entries((rec.metrics ?? {}) as Record<string, unknown>).filter(([k, w]) => w != null && k !== "cases");
+  const ds = (rec.dataset ?? null) as { path?: string | null; sha256?: string | null; cases?: number | null; sample?: number } | null;
+  const metriken = Object.entries((rec.metrics ?? {}) as Record<string, unknown>).filter(([k, w]) => typeof w === "number" && k !== "cases") as [string, number][];
   const latenz = (rec.latency_ms ?? null) as { p50?: number | null; p95?: number | null } | null;
   const flags = (rec.flags ?? null) as string[] | null;
   const extra = (rec.raw_extra ?? null) as string[] | null;
   const benannt = new Map([b.metric, ...b.secondary].map((m) => [m.key, m]));
   const commit = commitLink(code?.commit, data.github);
   const roh = rohLink(text("raw"), data.github);
+  // Modelle gebündelt: „gpt-5.6-luna — Analyse & Routing, Suchbegriffe".
+  const jeModell = new Map<string, string[]>();
+  for (const [s, m] of Object.entries((rec.models ?? {}) as Record<string, string>)) jeModell.set(m, [...(jeModell.get(m) ?? []), stufe(s)]);
+  const dauer = typeof rec.duration_s === "number" ? rec.duration_s : null;
+  const faelle = ds?.sample ?? ds?.cases ?? zeile.cases;
 
-  const zeilen: [string, React.ReactNode][] = [];
-  if (text("purpose")) zeilen.push(["Zweck", text("purpose")]);
-  if (text("conclusion")) zeilen.push(["Fazit", <strong key="f" className="font-semibold">{text("conclusion")}</strong>]);
-  zeilen.push(["Code", code?.commit ? <>
-    {commit ? <a href={commit} target="_blank" rel="noreferrer" className="font-mono text-primary">{code.commit}</a> : <span className="font-mono">{code.commit}</span>}
-    <span className="text-muted-foreground">{code.checked_in ? " · eingecheckt mit diesem Commit" : code.from === "workflow" ? " · laut Workflow" : `${code.branch ? ` · ${code.branch}` : ""}${code.dirty ? " · mit lokalen Änderungen" : ""}`}</span>
-  </> : "nicht erfasst"]);
-  zeilen.push(["Modelle", modelle.length ? modelle.map(([s, m]) => `${stufe(s)}: ${m}`).join(" · ") : "nicht erfasst"]);
-  if (text("judge")) zeilen.push(["Richter", text("judge")]);
-  if (text("variant")) zeilen.push(["Variante", text("variant")]);
-  if (flags) zeilen.push(["Schalter", flags.length ? flags.join(", ") : "keine"]);
-  zeilen.push(["Fälle", ds?.path ? `${ds.cases ?? "?"} · ${ds.path}${ds.sha256 ? ` · ${ds.sha256}` : ""}${ds.sample ? ` · Stichprobe ${ds.sample}` : ""}` : zeile.cases ? `${zeile.cases}` : "–"]);
-  if (text("data")) zeilen.push(["Daten", text("data")]);
-  zeilen.push(["Kennzahlen", metriken.map(([k, w]) => {
-    const m = benannt.get(k);
-    return `${m?.label ?? KENNZAHL_NAMEN[k] ?? k} ${typeof w === "number" ? wertText(w, m?.unit ?? (w <= 1 && !Number.isInteger(w) ? "ratio" : "count")) : String(w)}`;
-  }).join(" · ") || "–"]);
-  const dauer = typeof rec.duration_s === "number" ? `${Math.round(rec.duration_s).toLocaleString("de-DE")} s` : null;
-  if (dauer || latenz?.p50) zeilen.push(["Dauer", [dauer && `Lauf ${dauer}`, latenz?.p50 && `je Aufruf p50 ${latenz.p50.toLocaleString("de-DE")} ms`, latenz?.p95 && `p95 ${latenz.p95.toLocaleString("de-DE")} ms`].filter(Boolean).join(" · ")]);
-  zeilen.push(["Kosten", kostenText(zeile.cost_usd)]);
-  if (text("note")) zeilen.push(["Notiz", text("note")]);
-  zeilen.push(["Rohdaten", <span key="r" className="break-all font-mono text-xs">
-    {roh ? <a href={roh} target="_blank" rel="noreferrer" className="text-primary">{text("raw")}</a> : text("raw") ?? "–"}
-    {extra?.length ? <span className="text-muted-foreground"> · {extra.join(" · ")}</span> : null}
-  </span>]);
-  zeilen.push(["Datei", <span key="d" className="break-all font-mono text-xs">{zeile.origin === "server" ? "data/eval_runs/" : "eval/runs/"}{zeile.id}.json</span>]);
   return (
-    <dl className="grid gap-x-4 gap-y-1.5 text-sm sm:grid-cols-[7rem_minmax(0,1fr)]">
-      {zeilen.map(([k, w]) => <Fragment key={k}><dt className="text-muted-foreground">{k}</dt><dd className="min-w-0 break-words">{w}</dd></Fragment>)}
-    </dl>
+    <div className="space-y-3">
+      {(text("purpose") || text("conclusion")) && (
+        <div className="space-y-1.5">
+          {text("purpose") && <p className="text-sm font-semibold">{text("purpose")}</p>}
+          {text("conclusion") && (
+            <p className="flex gap-2 rounded-md bg-primary/[0.07] px-2.5 py-2 text-sm">
+              <Lightbulb className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden /><span><span className="sr-only">Fazit: </span>{text("conclusion")}</span>
+            </p>
+          )}
+        </div>
+      )}
+      {metriken.length > 0 && (
+        <ul className="flex flex-wrap gap-1.5" aria-label="Kennzahlen">
+          {metriken.map(([k, w]) => {
+            const m = benannt.get(k);
+            const einheit = m?.unit ?? (w <= 1 && !Number.isInteger(w) ? "ratio" : "count");
+            return (
+              <li key={k} className={cn("rounded-md border px-2 py-1", k === b.metric.key ? "border-primary/30 bg-primary/[0.05]" : "border-border bg-card")}>
+                <span className="block text-[11px] leading-tight text-muted-foreground">{m?.label ?? KENNZAHL_NAMEN[k] ?? k}</span>
+                <strong className="text-sm tabular-nums">{wertText(w, einheit)}</strong>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+      {jeModell.size > 0 && (
+        <ul className="space-y-0.5 text-xs" aria-label="Modelle je Stufe">
+          {[...jeModell].map(([m, stufen]) => (
+            <li key={m} className="flex flex-wrap items-baseline gap-x-2">
+              <Cpu className="h-3.5 w-3.5 shrink-0 self-center text-muted-foreground" aria-hidden />
+              <span className="font-mono" title={m}>{modellKurz(m)}</span>
+              <span className="text-muted-foreground">{stufen.join(", ")}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+      <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-xs">
+        {code?.commit && (
+          <Merkmal icon={GitCommitHorizontal} label="Code-Stand"
+            title={code.checked_in ? "Commit, mit dem das Ergebnis eingecheckt wurde" : code.from === "workflow" ? "Commit laut Workflow" : `${code.branch ?? ""}${code.dirty ? ", mit lokalen Änderungen" : ""}`}>
+            {commit ? <a href={commit} target="_blank" rel="noreferrer" className="font-mono text-primary">{code.commit}</a> : <span className="font-mono">{code.commit}</span>}
+            {code.dirty ? " *" : ""}
+          </Merkmal>
+        )}
+        {faelle ? <Merkmal icon={FileText} label="Fälle" title={[ds?.path, ds?.sha256 && `Prüfsumme ${ds.sha256}`].filter(Boolean).join(" · ") || undefined}>
+          {faelle} {ds?.sample ? (zeile.comparable ? "Fälle (Stichprobe)" : "Fälle (Teillauf)") : "Fälle"}
+        </Merkmal> : null}
+        {text("judge") && <Merkmal icon={Scale} label="Richter">{modellKurz(text("judge"))}</Merkmal>}
+        {text("variant") && <Merkmal icon={Layers} label="Variante">{text("variant")}</Merkmal>}
+        {text("data") && <Merkmal icon={Database} label="Datenstand" title={text("data") ?? undefined}>{text("data")}</Merkmal>}
+        {(dauer != null || latenz?.p50) && <Merkmal icon={Clock} label="Dauer"
+          title={latenz?.p50 ? `je Aufruf p50 ${latenz.p50.toLocaleString("de-DE")} ms, p95 ${(latenz.p95 ?? 0).toLocaleString("de-DE")} ms` : undefined}>
+          {[dauer != null && `${Math.round(dauer).toLocaleString("de-DE")} s`, latenz?.p50 && `p50 ${(latenz.p50 / 1000).toLocaleString("de-DE", { maximumFractionDigits: 1 })} s je Aufruf`].filter(Boolean).join(" · ")}
+        </Merkmal>}
+        {zeile.cost_usd != null && <Merkmal icon={Coins} label="Kosten">{kostenText(zeile.cost_usd)}</Merkmal>}
+      </div>
+      {flags && flags.length > 0 && (
+        <details className="text-xs">
+          <summary className="cursor-pointer text-muted-foreground hover:text-foreground">{flags.length} Schalter an</summary>
+          <p className="mt-1 font-mono text-muted-foreground">{flags.join(", ")}</p>
+        </details>
+      )}
+      {text("note") && <p className="flex gap-1.5 text-xs text-muted-foreground"><Info className="mt-px h-3.5 w-3.5 shrink-0" aria-hidden />{text("note")}</p>}
+      <p className="flex gap-1.5 break-all border-t border-border pt-2 font-mono text-[11px] text-muted-foreground">
+        <FileJson className="h-3.5 w-3.5 shrink-0" aria-hidden />
+        <span>
+          {roh ? <a href={roh} target="_blank" rel="noreferrer" className="text-primary">{text("raw")}</a> : text("raw") ?? "kein Rohergebnis"}
+          {extra?.length ? ` · ${extra.join(" · ")}` : ""}
+          {` · ${zeile.origin === "server" ? "data/eval_runs/" : "eval/runs/"}${zeile.id}.json`}
+        </span>
+      </p>
+    </div>
   );
 }
 

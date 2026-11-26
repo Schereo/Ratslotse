@@ -32,7 +32,7 @@
  "purpose": "Grundlinie, alle Schalter aus",
  "conclusion": null,
  "comparable": true,
- "note": "aus dem Messbuch übernommen; Uhrzeit nicht erfasst (Reihenfolge wie dort). Modelle laut Messbuch (Analyse bis #1783 Gemini 3.1 Flash Lite, danach GPT-5.6 Luna).",
+ "note": "aus dem Messbuch übernommen",
  "raw": "server:dev:data/eval_gold/ask-okt-basis-c.json",
  "raw_extra": null,
  "source": "docs/gold-messbuch.md"

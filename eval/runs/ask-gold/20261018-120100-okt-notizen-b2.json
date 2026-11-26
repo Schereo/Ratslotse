@@ -32,7 +32,7 @@
  "purpose": "+ Belegnotizen und 24 statt 6 Beiträge Aussprache (#1726)",
  "conclusion": null,
  "comparable": true,
- "note": "aus dem Messbuch übernommen; Uhrzeit nicht erfasst (Reihenfolge wie dort). Modelle laut Messbuch (Analyse bis #1783 Gemini 3.1 Flash Lite, danach GPT-5.6 Luna).",
+ "note": "aus dem Messbuch übernommen",
  "raw": "server:dev:data/eval_gold/ask-okt-notizen-b2.json",
  "raw_extra": null,
  "source": "docs/gold-messbuch.md"

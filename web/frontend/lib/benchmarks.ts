@@ -93,3 +93,26 @@ export function rohLink(raw: string | null | undefined, github: string, ref = "d
 export function commitLink(commit: string | null | undefined, github: string): string | null {
   return commit && /^[0-9a-f]{7,40}$/.test(commit) ? `${github}/commit/${commit}` : null;
 }
+
+/** Der Ausschnitt der y-Achse: so eng wie die Werte, damit kleine Schwankungen
+ *  sichtbar werden (Tim, 26.11.2026) — mit etwas Luft und einer Mindestspanne,
+ *  sonst bläst ein Unterschied von einem Punkt die ganze Fläche auf.
+ *
+ *  Anteile und Verhältnisse bleiben zwischen 0 und 1, Zahlen über 0. Die Achse
+ *  beginnt damit oft NICHT bei null; ihre Beschriftung sagt, wo sie beginnt. */
+export function achse(werte: number[], einheit: string): [number, number] {
+  const anteil = einheit === "share" || einheit === "ratio";
+  if (werte.length === 0) return anteil ? [0, 1] : [0, 1];
+  const lo = Math.min(...werte);
+  const hi = Math.max(...werte);
+  const mindest = anteil ? 0.06 : Math.max(1, Math.abs(hi) * 0.1);
+  const spanne = Math.max(hi - lo, mindest);
+  const mitte = (lo + hi) / 2;
+  let von = mitte - spanne * 0.65;
+  let bis = mitte + spanne * 0.65;
+  const unten = 0;
+  const oben = anteil ? 1 : Infinity;
+  if (von < unten) { bis += unten - von; von = unten; }
+  if (bis > oben) { von = Math.max(unten, von - (bis - oben)); bis = oben; }
+  return [von, bis];
+}

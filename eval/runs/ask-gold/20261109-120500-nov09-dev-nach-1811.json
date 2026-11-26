@@ -31,7 +31,7 @@
  "purpose": "+ Zusagen auch bei Termin- und Faktenfragen (#1811)",
  "conclusion": "Bahnübergang und Heidbrook fehlt weiter Material in der Suche, nicht in den Zusagen.",
  "comparable": false,
- "note": "Teillauf über die schwachen Fälle — nicht mit vollen Läufen vergleichen. Je Fall: trinkwasserspender-draussen 33 %, bahnuebergang-am-stadtrand-verlauf 40 %, heidbrook-zusagen 33 %",
+ "note": "schwache Fälle: trinkwasserspender-draussen 33 %, bahnuebergang-am-stadtrand-verlauf 40 %, heidbrook-zusagen 33 %",
  "raw": "server:dev:data/eval_gold/ask-nov09-dev-nach-1811.json",
  "raw_extra": null,
  "source": "docs/gold-messbuch.md"

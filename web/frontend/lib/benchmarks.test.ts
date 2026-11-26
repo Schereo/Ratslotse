@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { commitLink, grundText, kostenText, modellKurz, rohLink, wertText } from "./benchmarks";
+import { achse, commitLink, grundText, kostenText, modellKurz, rohLink, wertText } from "./benchmarks";
 
 describe("wertText", () => {
   it("rundet Anteile genau einmal auf ganze Prozent", () => {
@@ -50,5 +50,26 @@ describe("Links", () => {
   it("kürzt den Anbieter weg", () => {
     expect(modellKurz("openai/gpt-6-luna")).toBe("gpt-6-luna");
     expect(modellKurz(null)).toBe("–");
+  });
+});
+
+describe("achse", () => {
+  it("schneidet auf den Wertebereich zu, mit Luft", () => {
+    const [von, bis] = achse([0.54, 0.57, 0.63], "share");
+    expect(von).toBeGreaterThan(0.45);
+    expect(von).toBeLessThan(0.54);
+    expect(bis).toBeGreaterThan(0.63);
+    expect(bis).toBeLessThan(0.72);
+  });
+  it("hält eine Mindestspanne, damit ein Punkt Unterschied nicht riesig wirkt", () => {
+    const [von, bis] = achse([0.61, 0.62], "share");
+    expect(bis - von).toBeGreaterThanOrEqual(0.06);
+  });
+  it("bleibt bei Anteilen zwischen 0 und 1", () => {
+    expect(achse([0.98, 1], "share")[1]).toBe(1);
+    expect(achse([0, 0.02], "share")[0]).toBe(0);
+  });
+  it("Zahlen werden nie negativ", () => {
+    expect(achse([1, 2], "count")[0]).toBeGreaterThanOrEqual(0);
   });
 });
