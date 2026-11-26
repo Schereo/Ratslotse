@@ -1,0 +1,38 @@
+{
+ "schema": 1,
+ "benchmark": "ask-gold",
+ "label": "nov09-dev-nach-1811",
+ "started_at": "2026-11-09T12:05:00",
+ "environment": "dev",
+ "code": null,
+ "models": {
+  "qa_analysis": "openai/gpt-5.6-luna",
+  "qa_query_expansion": "openai/gpt-5.6-luna",
+  "qa_nachrecherche": "openai/gpt-5.6-luna",
+  "qa_answer": "openai/gpt-6-luna"
+ },
+ "judge": "anthropic/claude-opus-5.5",
+ "variant": null,
+ "flags": null,
+ "dataset": {
+  "path": null,
+  "sha256": null,
+  "cases": null,
+  "sample": 3
+ },
+ "data": null,
+ "metrics": {
+  "coverage": 0.3533,
+  "cases": 3
+ },
+ "cost_usd": null,
+ "duration_s": null,
+ "latency_ms": null,
+ "purpose": "+ Zusagen auch bei Termin- und Faktenfragen (#1811)",
+ "conclusion": "Bahnübergang und Heidbrook fehlt weiter Material in der Suche, nicht in den Zusagen.",
+ "comparable": false,
+ "note": "Teillauf über die schwachen Fälle — nicht mit vollen Läufen vergleichen. Je Fall: trinkwasserspender-draussen 33 %, bahnuebergang-am-stadtrand-verlauf 40 %, heidbrook-zusagen 33 %",
+ "raw": "server:dev:data/eval_gold/ask-nov09-dev-nach-1811.json",
+ "raw_extra": null,
+ "source": "docs/gold-messbuch.md"
+}

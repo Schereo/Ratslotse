@@ -296,6 +296,687 @@
         "title": "AdminAnmeldungen",
         "type": "object"
       },
+      "AdminBenchmark": {
+        "description": "Ein Benchmark samt Status (``kern.benchmarks.overview``).",
+        "properties": {
+          "also": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Also",
+            "type": "array"
+          },
+          "cases": {
+            "items": {
+              "$ref": "#/components/schemas/AdminBenchmarkCases"
+            },
+            "title": "Cases",
+            "type": "array"
+          },
+          "command": {
+            "title": "Command",
+            "type": "string"
+          },
+          "hard": {
+            "title": "Hard",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "judge": {
+            "title": "Judge",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "latest": {
+            "description": "Kurzform eines Laufs (``kern.benchmarks.run_row``).",
+            "properties": {
+              "benchmark": {
+                "title": "Benchmark",
+                "type": "string"
+              },
+              "cases": {
+                "title": "Cases",
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "comparable": {
+                "title": "Comparable",
+                "type": "boolean"
+              },
+              "cost_usd": {
+                "title": "Cost Usd",
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "current": {
+                "title": "Current",
+                "type": "boolean"
+              },
+              "environment": {
+                "title": "Environment",
+                "type": "string"
+              },
+              "hard": {
+                "title": "Hard",
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "has_conclusion": {
+                "title": "Has Conclusion",
+                "type": "boolean"
+              },
+              "id": {
+                "title": "Id",
+                "type": "string"
+              },
+              "label": {
+                "title": "Label",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "model": {
+                "title": "Model",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "origin": {
+                "title": "Origin",
+                "type": "string"
+              },
+              "sample": {
+                "title": "Sample",
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "started_at": {
+                "title": "Started At",
+                "type": "string"
+              },
+              "value": {
+                "title": "Value",
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "variant": {
+                "title": "Variant",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "id",
+              "benchmark",
+              "origin",
+              "started_at",
+              "environment",
+              "label",
+              "variant",
+              "model",
+              "value",
+              "hard",
+              "cases",
+              "sample",
+              "cost_usd",
+              "comparable",
+              "current",
+              "has_conclusion"
+            ],
+            "title": "AdminBenchmarkRunRow",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "log": {
+            "title": "Log",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "measures": {
+            "title": "Measures",
+            "type": "string"
+          },
+          "metric": {
+            "$ref": "#/components/schemas/AdminBenchmarkMetric"
+          },
+          "noise": {
+            "title": "Noise",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "pipeline": {
+            "title": "Pipeline",
+            "type": "string"
+          },
+          "previous": {
+            "description": "Kurzform eines Laufs (``kern.benchmarks.run_row``).",
+            "properties": {
+              "benchmark": {
+                "title": "Benchmark",
+                "type": "string"
+              },
+              "cases": {
+                "title": "Cases",
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "comparable": {
+                "title": "Comparable",
+                "type": "boolean"
+              },
+              "cost_usd": {
+                "title": "Cost Usd",
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "current": {
+                "title": "Current",
+                "type": "boolean"
+              },
+              "environment": {
+                "title": "Environment",
+                "type": "string"
+              },
+              "hard": {
+                "title": "Hard",
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "has_conclusion": {
+                "title": "Has Conclusion",
+                "type": "boolean"
+              },
+              "id": {
+                "title": "Id",
+                "type": "string"
+              },
+              "label": {
+                "title": "Label",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "model": {
+                "title": "Model",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "origin": {
+                "title": "Origin",
+                "type": "string"
+              },
+              "sample": {
+                "title": "Sample",
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "started_at": {
+                "title": "Started At",
+                "type": "string"
+              },
+              "value": {
+                "title": "Value",
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "variant": {
+                "title": "Variant",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "id",
+              "benchmark",
+              "origin",
+              "started_at",
+              "environment",
+              "label",
+              "variant",
+              "model",
+              "value",
+              "hard",
+              "cases",
+              "sample",
+              "cost_usd",
+              "comparable",
+              "current",
+              "has_conclusion"
+            ],
+            "title": "AdminBenchmarkRunRow",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "reasons": {
+            "items": {
+              "$ref": "#/components/schemas/AdminBenchmarkReason"
+            },
+            "title": "Reasons",
+            "type": "array"
+          },
+          "runs": {
+            "items": {
+              "$ref": "#/components/schemas/AdminBenchmarkRunRow"
+            },
+            "title": "Runs",
+            "type": "array"
+          },
+          "runs_on": {
+            "title": "Runs On",
+            "type": "string"
+          },
+          "secondary": {
+            "items": {
+              "$ref": "#/components/schemas/AdminBenchmarkMetric"
+            },
+            "title": "Secondary",
+            "type": "array"
+          },
+          "status": {
+            "enum": [
+              "ok",
+              "stale",
+              "none"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "steps": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Steps",
+            "type": "array"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "truth": {
+            "title": "Truth",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "pipeline",
+          "also",
+          "title",
+          "measures",
+          "metric",
+          "secondary",
+          "steps",
+          "cases",
+          "truth",
+          "judge",
+          "runs_on",
+          "command",
+          "noise",
+          "hard",
+          "log",
+          "status",
+          "reasons",
+          "latest",
+          "previous",
+          "runs"
+        ],
+        "title": "AdminBenchmark",
+        "type": "object"
+      },
+      "AdminBenchmarkCases": {
+        "description": "Eine Falldatei, wie sie HEUTE im Repo liegt (Prüfsumme, Fallzahl).",
+        "properties": {
+          "cases": {
+            "title": "Cases",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          },
+          "sha256": {
+            "title": "Sha256",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "path",
+          "sha256",
+          "cases"
+        ],
+        "title": "AdminBenchmarkCases",
+        "type": "object"
+      },
+      "AdminBenchmarkInvalid": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "origin": {
+            "title": "Origin",
+            "type": "string"
+          },
+          "problems": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Problems",
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "origin",
+          "problems"
+        ],
+        "title": "AdminBenchmarkInvalid",
+        "type": "object"
+      },
+      "AdminBenchmarkMetric": {
+        "properties": {
+          "higher_is_better": {
+            "title": "Higher Is Better",
+            "type": "boolean"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "unit": {
+            "title": "Unit",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "label",
+          "unit",
+          "higher_is_better"
+        ],
+        "title": "AdminBenchmarkMetric",
+        "type": "object"
+      },
+      "AdminBenchmarkReason": {
+        "description": "Warum eine Messung überholt ist (``kern.benchmarks.assess``).",
+        "properties": {
+          "days": {
+            "title": "Days",
+            "type": "integer"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "now": {
+            "title": "Now",
+            "type": "string"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          },
+          "step": {
+            "title": "Step",
+            "type": "string"
+          },
+          "then": {
+            "title": "Then",
+            "type": "string"
+          },
+          "variant": {
+            "title": "Variant",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "kind"
+        ],
+        "title": "AdminBenchmarkReason",
+        "type": "object"
+      },
+      "AdminBenchmarkRunRow": {
+        "description": "Kurzform eines Laufs (``kern.benchmarks.run_row``).",
+        "properties": {
+          "benchmark": {
+            "title": "Benchmark",
+            "type": "string"
+          },
+          "cases": {
+            "title": "Cases",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "comparable": {
+            "title": "Comparable",
+            "type": "boolean"
+          },
+          "cost_usd": {
+            "title": "Cost Usd",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "current": {
+            "title": "Current",
+            "type": "boolean"
+          },
+          "environment": {
+            "title": "Environment",
+            "type": "string"
+          },
+          "hard": {
+            "title": "Hard",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "has_conclusion": {
+            "title": "Has Conclusion",
+            "type": "boolean"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "model": {
+            "title": "Model",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "origin": {
+            "title": "Origin",
+            "type": "string"
+          },
+          "sample": {
+            "title": "Sample",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "started_at": {
+            "title": "Started At",
+            "type": "string"
+          },
+          "value": {
+            "title": "Value",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "variant": {
+            "title": "Variant",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "benchmark",
+          "origin",
+          "started_at",
+          "environment",
+          "label",
+          "variant",
+          "model",
+          "value",
+          "hard",
+          "cases",
+          "sample",
+          "cost_usd",
+          "comparable",
+          "current",
+          "has_conclusion"
+        ],
+        "title": "AdminBenchmarkRunRow",
+        "type": "object"
+      },
+      "AdminBenchmarkRuns": {
+        "description": "``GET /api/admin/benchmarks/{key}`` — die Läufe vollständig, neueste zuerst.\n\nEin Lauf ist das Format aus ``kern/benchmarks.py::new_run`` (Schema 1) plus\n``id``, ``origin`` und ``current``. Bewusst ``dict[str, Any]``: Das Format\ndarf um Felder wachsen, ohne dass hier still etwas wegfällt.",
+        "properties": {
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "runs": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Runs",
+            "type": "array"
+          }
+        },
+        "required": [
+          "key",
+          "runs"
+        ],
+        "title": "AdminBenchmarkRuns",
+        "type": "object"
+      },
+      "AdminBenchmarks": {
+        "description": "``GET /api/admin/benchmarks`` — Pipelines, Benchmarks, Läufe in Kurzform.",
+        "properties": {
+          "benchmarks": {
+            "items": {
+              "$ref": "#/components/schemas/AdminBenchmark"
+            },
+            "title": "Benchmarks",
+            "type": "array"
+          },
+          "github": {
+            "title": "Github",
+            "type": "string"
+          },
+          "invalid": {
+            "items": {
+              "$ref": "#/components/schemas/AdminBenchmarkInvalid"
+            },
+            "title": "Invalid",
+            "type": "array"
+          },
+          "pipelines": {
+            "items": {
+              "$ref": "#/components/schemas/AdminPipeline"
+            },
+            "title": "Pipelines",
+            "type": "array"
+          },
+          "runs_total": {
+            "title": "Runs Total",
+            "type": "integer"
+          },
+          "stale_after_days": {
+            "title": "Stale After Days",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "pipelines",
+          "benchmarks",
+          "runs_total",
+          "invalid",
+          "stale_after_days",
+          "github"
+        ],
+        "title": "AdminBenchmarks",
+        "type": "object"
+      },
       "AdminClientShare": {
         "properties": {
           "client": {
@@ -2616,6 +3297,133 @@
           "skipped"
         ],
         "title": "AdminNewsSent",
+        "type": "object"
+      },
+      "AdminPipeline": {
+        "properties": {
+          "benchmarks": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Benchmarks",
+            "type": "array"
+          },
+          "headline": {
+            "title": "Headline",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "measured_steps": {
+            "title": "Measured Steps",
+            "type": "integer"
+          },
+          "status": {
+            "enum": [
+              "ok",
+              "stale",
+              "none"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "steps": {
+            "items": {
+              "$ref": "#/components/schemas/AdminPipelineStep"
+            },
+            "title": "Steps",
+            "type": "array"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "title",
+          "summary",
+          "steps",
+          "benchmarks",
+          "headline",
+          "status",
+          "measured_steps"
+        ],
+        "title": "AdminPipeline",
+        "type": "object"
+      },
+      "AdminPipelineStep": {
+        "properties": {
+          "benchmarks": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Benchmarks",
+            "type": "array"
+          },
+          "calls_30d": {
+            "title": "Calls 30D",
+            "type": "integer"
+          },
+          "cost_30d": {
+            "title": "Cost 30D",
+            "type": "number"
+          },
+          "features": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Features",
+            "type": "array"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "llm": {
+            "title": "Llm",
+            "type": "boolean"
+          },
+          "model": {
+            "title": "Model",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "models_30d": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Models 30D",
+            "type": "array"
+          }
+        },
+        "required": [
+          "key",
+          "label",
+          "features",
+          "model",
+          "llm",
+          "calls_30d",
+          "cost_30d",
+          "models_30d",
+          "benchmarks"
+        ],
+        "title": "AdminPipelineStep",
         "type": "object"
       },
       "AdminPlaceCandidate": {
@@ -39919,6 +40727,71 @@
         "summary": "Bereich Gesehen",
         "tags": [
           "activity"
+        ]
+      }
+    },
+    "/api/admin/benchmarks": {
+      "get": {
+        "description": "Alle Pipelines mit ihren Stufen (Modell heute, Nutzung 30 Tage) und alle\nBenchmarks mit Status und ihren Läufen in Kurzform.",
+        "operationId": "benchmarks_overview_api_admin_benchmarks_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminBenchmarks"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Benchmarks Overview",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/admin/benchmarks/{key}": {
+      "get": {
+        "description": "Die Läufe eines Benchmarks vollständig, neueste zuerst.",
+        "operationId": "benchmark_runs_api_admin_benchmarks__key__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "key",
+            "required": true,
+            "schema": {
+              "title": "Key",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminBenchmarkRuns"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Benchmark Runs",
+        "tags": [
+          "admin"
         ]
       }
     },

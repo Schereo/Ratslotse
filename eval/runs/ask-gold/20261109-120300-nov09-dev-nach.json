@@ -1,0 +1,39 @@
+{
+ "schema": 1,
+ "benchmark": "ask-gold",
+ "label": "nov09-dev-nach",
+ "started_at": "2026-11-09T12:03:00",
+ "environment": "dev",
+ "code": null,
+ "models": {
+  "qa_analysis": "openai/gpt-5.6-luna",
+  "qa_query_expansion": "openai/gpt-5.6-luna",
+  "qa_nachrecherche": "openai/gpt-5.6-luna",
+  "qa_answer": "openai/gpt-6-luna"
+ },
+ "judge": "anthropic/claude-opus-5.5",
+ "variant": null,
+ "flags": null,
+ "dataset": null,
+ "data": null,
+ "metrics": {
+  "coverage": 0.63,
+  "passed": 19,
+  "context_recall": 0.685,
+  "evidence_in_prompt": 137,
+  "evidence_total": 200,
+  "omitted": 46,
+  "median_s": 48,
+  "cases": 27
+ },
+ "cost_usd": null,
+ "duration_s": null,
+ "latency_ms": null,
+ "purpose": "+ #1801: Personenreden, Komposita, „seitdem“ mit Datum, Gold-Pflege",
+ "conclusion": "Ohne die drei umgestellten Gold-Fälle 56,9 % → 61,4 %; größter Sprung behrens-baumschutz (18 % → 65 %).",
+ "comparable": true,
+ "note": "aus dem Messbuch übernommen; Uhrzeit nicht erfasst (Reihenfolge wie dort). Modelle laut Messbuch (Analyse bis #1783 Gemini 3.1 Flash Lite, danach GPT-5.6 Luna).",
+ "raw": "server:dev:data/eval_gold/ask-nov09-dev-nach.json",
+ "raw_extra": null,
+ "source": "docs/gold-messbuch.md"
+}

@@ -1,0 +1,38 @@
+{
+ "schema": 1,
+ "benchmark": "ki-frage",
+ "label": null,
+ "started_at": "2026-08-10T17:47:42",
+ "environment": "unknown",
+ "code": {
+  "commit": "bbf1aa548",
+  "checked_in": true
+ },
+ "models": {},
+ "judge": null,
+ "variant": null,
+ "flags": null,
+ "dataset": {
+  "path": "eval/cases_qa.json",
+  "sha256": "26b267c1a5b8",
+  "cases": 22
+ },
+ "data": null,
+ "metrics": {
+  "quality": 0.8571,
+  "hard_findings": 2,
+  "retrieval_hit_rate": 0.9524,
+  "mrr": 0.7805,
+  "cases": 21
+ },
+ "cost_usd": 0.0844,
+ "duration_s": null,
+ "latency_ms": null,
+ "purpose": null,
+ "conclusion": null,
+ "comparable": true,
+ "note": "Modelle nicht erfasst",
+ "raw": "eval/results/qa/2026-08-10_17-47-42.json",
+ "raw_extra": null,
+ "source": "eval/runs_backfill.py"
+}

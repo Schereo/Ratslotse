@@ -1,0 +1,28 @@
+{
+ "schema": 1,
+ "benchmark": "sitzung-satz",
+ "label": "lauf1",
+ "started_at": "2026-11-11T00:00:00",
+ "environment": "local",
+ "code": {
+  "commit": "1b72e14fe",
+  "checked_in": true
+ },
+ "models": {},
+ "judge": null,
+ "variant": null,
+ "flags": null,
+ "dataset": null,
+ "data": null,
+ "metrics": {},
+ "cost_usd": null,
+ "duration_s": null,
+ "latency_ms": null,
+ "purpose": null,
+ "conclusion": null,
+ "comparable": true,
+ "note": "Gegenüberstellung zum Lesen",
+ "raw": "eval/results/sitzung_satz/20261111-lauf1.md",
+ "raw_extra": null,
+ "source": "eval/runs_backfill.py"
+}

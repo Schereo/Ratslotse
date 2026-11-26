@@ -1,0 +1,43 @@
+{
+ "schema": 1,
+ "benchmark": "ki-frage-antwort",
+ "label": null,
+ "started_at": "2026-09-23T08:28:44",
+ "environment": "local",
+ "code": {
+  "commit": "92b333332",
+  "checked_in": true
+ },
+ "models": {
+  "qa_answer": "openai/gpt-6-luna"
+ },
+ "judge": null,
+ "variant": null,
+ "flags": null,
+ "dataset": {
+  "path": "eval/cases_qa.json",
+  "sha256": "ce5ad1cf45ad",
+  "cases": 22
+ },
+ "data": "Sitzungen bis 2026-09-16, 9078 Beschlüsse",
+ "metrics": {
+  "quality": 0.3523,
+  "hard_findings": 0,
+  "cases": 20,
+  "mindestens_einer": 0.85,
+  "zitiert_erwartet": 17
+ },
+ "cost_usd": 0.005197,
+ "duration_s": 118.0,
+ "latency_ms": {
+  "p50": 5775,
+  "p95": 9486
+ },
+ "purpose": null,
+ "conclusion": null,
+ "comparable": false,
+ "note": "Archiv „p4a-zwischenstand“: älterer Prompt oder ältere Fallliste · Lauf 1",
+ "raw": "eval/results/pruefstand/ki-frage-antwort/p4a-zwischenstand/openai-gpt-6-luna-20260923-082844.json",
+ "raw_extra": null,
+ "source": "eval/pruefstand.py"
+}

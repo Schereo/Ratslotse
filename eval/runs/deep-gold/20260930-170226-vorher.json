@@ -1,0 +1,39 @@
+{
+ "schema": 1,
+ "benchmark": "deep-gold",
+ "label": "vorher",
+ "started_at": "2026-09-30T17:02:26",
+ "environment": "unknown",
+ "code": {
+  "commit": "3503ec29d",
+  "checked_in": true
+ },
+ "models": {
+  "deep_report": "openai/gpt-6-luna"
+ },
+ "judge": "google/gemini-2.5-flash",
+ "variant": null,
+ "flags": null,
+ "dataset": {
+  "path": "eval/cases_deep_gold.json",
+  "sha256": "bfff92cddf0a",
+  "cases": 1,
+  "sample": 1
+ },
+ "data": "dev-Abzug vom 24.09.2026, Embeddings lokal nachgerechnet, alte Wortbeitrags-Extraktion (Verwaltungsantwort im Feld answer des Fragenden)",
+ "metrics": {
+  "coverage": 0.7,
+  "passed": 1,
+  "cases": 1
+ },
+ "cost_usd": 0.005,
+ "duration_s": null,
+ "latency_ms": null,
+ "purpose": null,
+ "conclusion": null,
+ "comparable": false,
+ "note": "Teillauf (1 Fall) — Zeitpunkt = Commit, mit dem er eingecheckt wurde",
+ "raw": "eval/results/deep_gold/vorher.json",
+ "raw_extra": null,
+ "source": "eval/runs_backfill.py"
+}

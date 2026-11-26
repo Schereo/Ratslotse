@@ -1,0 +1,41 @@
+{
+ "schema": 1,
+ "benchmark": "lotti",
+ "label": null,
+ "started_at": "2026-10-03T14:56:54",
+ "environment": "local",
+ "code": {
+  "commit": "7258ae45d",
+  "checked_in": true
+ },
+ "models": {
+  "assistant_explain": "openai/gpt-6-luna"
+ },
+ "judge": null,
+ "variant": null,
+ "flags": null,
+ "dataset": {
+  "path": "eval/cases_assistant.json",
+  "sha256": "a1928ada32c5",
+  "cases": 64
+ },
+ "data": null,
+ "metrics": {
+  "quality": 0.9048,
+  "hard_findings": 6,
+  "cases": 63
+ },
+ "cost_usd": 0.042407,
+ "duration_s": null,
+ "latency_ms": {
+  "p50": 4557,
+  "p95": 13899
+ },
+ "purpose": null,
+ "conclusion": null,
+ "comparable": true,
+ "note": "eval/run_assistant.py --save, nicht über den Prüfstand",
+ "raw": "eval/results/assistant/assistant-openai-gpt-6-luna-20261003-145654.json",
+ "raw_extra": null,
+ "source": "eval/runs_backfill.py"
+}

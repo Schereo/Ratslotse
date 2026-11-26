@@ -1,0 +1,41 @@
+{
+ "schema": 1,
+ "benchmark": "live-verfolgung",
+ "label": null,
+ "started_at": "2026-09-23T07:06:15",
+ "environment": "local",
+ "code": {
+  "commit": "de6c59a5b",
+  "checked_in": true
+ },
+ "models": {
+  "live_top_tracker": "google/gemini-3.5-flash-lite"
+ },
+ "judge": null,
+ "variant": null,
+ "flags": null,
+ "dataset": {
+  "path": "eval/cases_live_tracker.json",
+  "sha256": "a20d2769a0c9",
+  "cases": 30
+ },
+ "data": "Sitzungen bis 2026-09-16, 9078 Beschlüsse",
+ "metrics": {
+  "quality": 1.0,
+  "hard_findings": 0,
+  "cases": 30
+ },
+ "cost_usd": 0.048877,
+ "duration_s": 40.9,
+ "latency_ms": {
+  "p50": 1340,
+  "p95": 2154
+ },
+ "purpose": null,
+ "conclusion": null,
+ "comparable": true,
+ "note": "Lauf 2",
+ "raw": "eval/results/pruefstand/live-verfolgung/google-gemini-3.5-flash-lite-20260923-070615.json",
+ "raw_extra": null,
+ "source": "eval/pruefstand.py"
+}

@@ -1,0 +1,41 @@
+{
+ "schema": 1,
+ "benchmark": "fakten-haushalt",
+ "label": "vor #1493",
+ "started_at": "2026-09-23T08:01:06",
+ "environment": "local",
+ "code": {
+  "commit": "168c0695e",
+  "checked_in": true
+ },
+ "models": {
+  "qa_answer": "google/gemini-2.5-flash",
+  "assistant_explain": "google/gemini-2.5-flash"
+ },
+ "judge": null,
+ "variant": null,
+ "flags": null,
+ "dataset": {
+  "path": "eval/cases_fakten_haushalt.json",
+  "sha256": "41a61d07e688",
+  "cases": 142
+ },
+ "data": null,
+ "metrics": {
+  "quality": 0.7113,
+  "cases": 142,
+  "kontextfehler": 33,
+  "modellfehler": 8,
+  "hard_findings": 0
+ },
+ "cost_usd": null,
+ "duration_s": null,
+ "latency_ms": null,
+ "purpose": null,
+ "conclusion": null,
+ "comparable": true,
+ "note": "aus einem gemeinsamen Lauf über Haushalt und Rat herausgerechnet",
+ "raw": "eval/results/fakten/google-gemini-2.5-flash-20260923-080106.json",
+ "raw_extra": null,
+ "source": "eval/runs_backfill.py"
+}

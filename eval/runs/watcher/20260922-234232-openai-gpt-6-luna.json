@@ -1,0 +1,41 @@
+{
+ "schema": 1,
+ "benchmark": "watcher",
+ "label": null,
+ "started_at": "2026-09-22T23:42:32",
+ "environment": "local",
+ "code": {
+  "commit": "4110f6425",
+  "checked_in": true
+ },
+ "models": {
+  "council_watcher": "openai/gpt-6-luna"
+ },
+ "judge": null,
+ "variant": null,
+ "flags": null,
+ "dataset": {
+  "path": "eval/cases_watcher.json",
+  "sha256": "12e96f680fa6",
+  "cases": 5
+ },
+ "data": "Sitzungen bis 2026-09-16, 9078 Beschlüsse",
+ "metrics": {
+  "quality": null,
+  "hard_findings": null,
+  "cases": null
+ },
+ "cost_usd": 0.0,
+ "duration_s": 0.2,
+ "latency_ms": {
+  "p50": null,
+  "p95": null
+ },
+ "purpose": null,
+ "conclusion": null,
+ "comparable": true,
+ "note": "Abbruch: NotFoundError: Error code: 404 - {'error': {'message': 'No endpoints found matching your data policy (Zero data retention). Configure: https://openrouter.ai/settings/privacy', 'code': 404, 'metadata': {'routing_funnel': [{'step': 'Initial Endpoints', 'endpoint_count': 4}, {'step': 'Filter by Regional Surcharge', 'endpoint_count': 3}, {'step': 'Filter by Tier Endpoint Rows', 'endpoint_count': 1, 'reason': 'Exclud · nicht zulässig: kein Anbieter mit ZDR/EU · Lauf 1",
+ "raw": "eval/results/pruefstand/watcher/openai-gpt-6-luna-20260922-234232.json",
+ "raw_extra": null,
+ "source": "eval/pruefstand.py"
+}

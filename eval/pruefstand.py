@@ -105,6 +105,9 @@ OHNE_DENKEN_ENV = "PRUEFSTAND_OHNE_DENKEN"
 #: nur im Unterprozess eines Laufs. Für teure Modelle die Vorgabe
 #: (eval/kostenbremse.py, Tims Regel vom 23.09.2026).
 STICHPROBE_ENV = "PRUEFSTAND_STICHPROBE"
+#: Warum gemessen wird (``--zweck``) — landet als ``purpose`` im Lauf
+#: (``kern/benchmarks.py``), gesetzt nur im Unterprozess eines Laufs.
+ZWECK_ENV = "PRUEFSTAND_ZWECK"
 #: Seit 11/2026 ebenso: Ein Feature mit Nutzereingabe läuft nur über
 #: EU-Anbieter (``kern/llm.py::KeinEuAnbieter``) — ein Modell ohne EU-Anbieter
 #: ist dafür „nicht zulässig", kein Ausfall.
@@ -1197,6 +1200,53 @@ def ablegen(erg: dict, ziel_vorgabe: Path | None = None) -> Path:
     return ziel
 
 
+def laufkarte_felder(erg: dict, archiv: str | None = None) -> dict[str, Any]:
+    """Das Prüfstand-Ergebnis als Felder eines Laufs (``kern.benchmarks.new_run``).
+
+    Dieselbe Abbildung für neue Läufe (:func:`_unterprozess`) und für die
+    nachgetragenen (``eval/runs_backfill.py``). ``archiv``: der Unterordner
+    eines älteren Prompts oder einer älteren Fallliste (``vor-p4a``) — dann
+    ist der Lauf nicht mit heutigen vergleichbar.
+    """
+    from kern import benchmarks as bm
+    suite = SUITEN[erg["suite"]]
+    schritte = bm.step_of_feature()
+    neben = erg.get("nebenkennzahlen") or {}
+    metrics: dict[str, Any] = {bm.QUALITY: erg.get("qualitaet"), bm.HARD: erg.get("harte_befunde"),
+                               "cases": erg.get("faelle"),
+                               **{k: v for k, v in neben.items()
+                                  if isinstance(v, (int, float)) and not isinstance(v, bool)}}
+    if suite.name == "ki-frage":
+        retrieval = neben.get("retrieval") or {}
+        metrics.update({"retrieval_hit_rate": retrieval.get("hit_rate"), "mrr": retrieval.get("mrr")})
+    notiz = [t for t in (
+        f"Archiv „{archiv}“: älterer Prompt oder ältere Fallliste" if archiv else None,
+        f"Abbruch: {erg['abbruch']}" if erg.get("abbruch") else None,
+        "nicht zulässig: kein Anbieter mit ZDR/EU" if erg.get("nicht_zulaessig") else None,
+        f"Ersatzmodell eingesprungen: {', '.join(erg['ersatz'])}" if erg.get("ersatz") else None,
+        erg.get("warnung"),
+        f"{erg['ohne_kostenwert']} Aufrufe ohne Kostenwert — Kosten sind eine Untergrenze"
+        if erg.get("ohne_kostenwert") else None,
+        f"Übernommen aus {erg['quelle']}" if erg.get("quelle") else None,
+        f"Lauf {erg['lauf']}" if erg.get("lauf") else None,
+    ) if t]
+    variante = " · ".join(v for v in (erg.get("variante"),
+                                      f"Tarif {erg['tarif']}" if erg.get("tarif") else None) if v)
+    return {
+        "started_at": datetime.fromisoformat(erg["zeitstempel"]) if erg.get("zeitstempel") else None,
+        "metrics": metrics,
+        "models": {schritte[f]: erg["modell"] for f in suite.features if f in schritte},
+        "variant": variante or None,
+        "data": erg.get("db_stand"),
+        "cost_usd": erg.get("kosten_usd"),
+        "duration_s": erg.get("dauer_s"),
+        "latency_ms": {"p50": erg.get("p50_ms"), "p95": erg.get("p95_ms")},
+        "sample": erg.get("stichprobe"),
+        "comparable": archiv is None and not erg.get("stichprobe"),
+        "note": " · ".join(notiz) or None,
+    }
+
+
 def _unterprozess(argv: list[str]) -> int:
     """``_lauf``: Umgebung ist gesetzt, eine Suite einmal messen, ablegen."""
     ap = argparse.ArgumentParser()
@@ -1215,7 +1265,12 @@ def _unterprozess(argv: list[str]) -> int:
         # vergleichbar — das Ergebnis sagt, dass es eine war.
         erg["stichprobe"] = int(os.environ[STICHPROBE_ENV])
     pfad = ablegen(erg)
-    print(f"\n  → {zeile(erg)}\n    {pfad.relative_to(WURZEL)}", flush=True)
+    from kern import benchmarks as bm
+    lauf = bm.write_run(bm.new_run(suite.name, raw=pfad.relative_to(WURZEL).as_posix(),
+                                   purpose=os.environ.get(ZWECK_ENV) or None,
+                                   source="eval/pruefstand.py", **laufkarte_felder(erg)))
+    print(f"\n  → {zeile(erg)}\n    {pfad.relative_to(WURZEL)}\n    {lauf.relative_to(WURZEL)}",
+          flush=True)
     return 0
 
 
@@ -1323,11 +1378,15 @@ def kostenpruefung(suite: Suite, modell: str, laeufe: int, *, max_kosten: float,
 
 
 def starten(suite: Suite, modell: str, lauf: int, tarif: str | None, ohne_denken: bool,
-            aufwand: str | None = None, stichprobe_n: int | None = None) -> int:
+            aufwand: str | None = None, stichprobe_n: int | None = None,
+            zweck: str | None = None) -> int:
     """Einen Lauf im eigenen Prozess mit eigener Kostendatei."""
     with tempfile.TemporaryDirectory(prefix="pruefstand-") as tmp:
         env = {**os.environ, suite.schalter: modell,
                "RATSLOTSE_SQLITE": str(Path(tmp) / "usage.sqlite")}
+        env.pop(ZWECK_ENV, None)
+        if zweck:
+            env[ZWECK_ENV] = zweck
         env.pop(STICHPROBE_ENV, None)
         if stichprobe_n:
             env[STICHPROBE_ENV] = str(stichprobe_n)
@@ -1741,6 +1800,8 @@ def main(argv: list[str] | None = None) -> int:
                     help="geschichtete Stichprobe von N Fällen (nur Suiten, die das können)")
     ap.add_argument("--voll", action="store_true",
                     help="teures Modell: alle Fälle statt der Stichprobe")
+    ap.add_argument("--zweck", help="warum gemessen wird — steht im Lauf und im Admin-Panel "
+                                    "(Benchmarks), z. B. „Kandidat für Lotti: halb so teuer?“")
     a = ap.parse_args(argv)
     from eval import kostenbremse as kb
     max_kosten = kb.MAX_KOSTEN_USD if a.max_kosten is None else a.max_kosten
@@ -1773,7 +1834,7 @@ def main(argv: list[str] | None = None) -> int:
         for lauf in range(1, a.laeufe + 1):
             print(f"\n=== {suite.name} · {modell} · Lauf {lauf}/{a.laeufe}", flush=True)
             rot |= starten(suite, modell, lauf, a.tarif, a.ohne_denken, a.aufwand,
-                           stichprobe_n=n) != 0
+                           stichprobe_n=n, zweck=a.zweck) != 0
     print("\nBericht neu schreiben: python eval/pruefstand.py bericht")
     return 1 if rot else 0
 

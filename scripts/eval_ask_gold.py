@@ -34,10 +34,12 @@ import importlib
 import json
 import os
 import re
+import statistics
 import sys
 import time
 import urllib.error
 import urllib.request
+from datetime import datetime
 from pathlib import Path
 
 WURZEL = Path(__file__).resolve().parents[1]
@@ -231,6 +233,7 @@ def lauf(basis: str, label: str, nur: str | None, konto: str | None,
     if not token:
         raise SystemExit(f"Kein Token: {info}")
     frei = befreien(basis, token, info) if frei_machen else False
+    start = datetime.now()
     cases = json.loads(CASES.read_text(encoding="utf-8"))
     cases = gold.faelle_waehlen(cases, "ask", nur)
     ergebnisse = []
@@ -325,7 +328,65 @@ def lauf(basis: str, label: str, nur: str | None, konto: str | None,
     out.write_text(json.dumps({"label": label, "judge": gold.JUDGE_MODEL, "cases": ergebnisse},
                               ensure_ascii=False, indent=1), encoding="utf-8")
     print(f"→ {out}")
+    karte = laufkarte_schreiben(label, ergebnisse, out, nur=nur, ohne_richter=ohne_richter,
+                                judge=gold.JUDGE_MODEL, richter_usd=llm.session_cost()["usd"],
+                                start=start)
+    print(f"→ {karte} (Lauf für den Benchmark-Bereich im Admin-Panel)")
     return out
+
+
+def laufkarte_schreiben(label: str, ergebnisse: list[dict], roh: Path, *, nur: str | None,
+                        ohne_richter: bool, judge: str, richter_usd: float, start: datetime) -> Path:
+    """Den Lauf im Format von ``kern/benchmarks.py`` ablegen — auf dem Server unter
+    ``data/eval_runs/ask-gold/`` (``data/`` überlebt den Deploy, ``eval/`` nicht).
+
+    Das Admin-Panel dieses Servers zeigt ihn sofort; ins Repo kommt er, wenn
+    jemand die Datei dorthin kopiert (``eval/runs/ask-gold/``). Zweck des Laufs
+    aus ``GOLD_ZWECK`` (``ops-gold.yml``, Eingabe ``zweck``), Code-Stand aus
+    Git (dev) oder ``GOLD_COMMIT`` (der Workflow kennt ihn auch auf Prod, wo
+    der Deploy kein ``.git`` mitschickt).
+    """
+    from council import qa
+    from kern import benchmarks as bm
+    from kern import features
+
+    da = sum(e["kontext_recall"][0] for e in ergebnisse)
+    gesamt = sum(e["kontext_recall"][1] for e in ergebnisse)
+    dauern = [e["dauer_s"] for e in ergebnisse]
+    umgebung = bm.detect_environment()
+    code = bm.code_state() or ({"commit": os.environ["GOLD_COMMIT"][:9], "from": "workflow"}
+                               if os.environ.get("GOLD_COMMIT") else None)
+    n = len(ergebnisse)
+    rec = bm.new_run(
+        "ask-gold", label=label, started_at=start, environment=umgebung, code=code or {},
+        metrics={
+            "coverage": None if ohne_richter or not n else
+            round(sum(e["wertung"]["abdeckung"] for e in ergebnisse) / n, 4),
+            "passed": None if ohne_richter else sum(1 for e in ergebnisse if e["wertung"]["bestanden"]),
+            "context_recall": round(da / gesamt, 4) if gesamt else None,
+            "evidence_in_prompt": da, "evidence_total": gesamt,
+            "omitted": None if ohne_richter else
+            sum(1 for e in ergebnisse for u in e["ursachen"].values() if u == "weggelassen"),
+            "violations": None if ohne_richter else sum(len(e["wertung"]["verstoesse"]) for e in ergebnisse),
+            "median_s": round(statistics.median(dauern), 1) if dauern else None,
+            "cases": n,
+        },
+        models={"qa_analysis": qa.EXPAND_MODEL, "qa_query_expansion": qa.EXPAND_MODEL,
+                "qa_nachrecherche": qa.EXPAND_MODEL, "qa_answer": qa.MODEL},
+        judge=None if ohne_richter else judge, flags=features.aktive(),
+        sample=n if nur else None, comparable=not nur,
+        cost_usd=None if ohne_richter else richter_usd,
+        duration_s=round((datetime.now() - start).total_seconds()),
+        purpose=os.environ.get("GOLD_ZWECK") or None,
+        raw=f"server:{umgebung}:{roh.relative_to(WURZEL).as_posix()}",
+        note=" · ".join(t for t in (
+            "nur Suche gemessen (ohne Richter)" if ohne_richter else None,
+            f"Teillauf: {nur}" if nur else None,
+            "Kosten = Richter; die Antworten zählen im Betrieb (llm_usage)" if not ohne_richter else None,
+        ) if t) or None,
+        source="scripts/eval_ask_gold.py")
+    rec["code"] = rec["code"] or None
+    return bm.write_run(rec, bm.SERVER_RUNS if umgebung in ("dev", "prod") else bm.REPO_RUNS)
 
 
 def main() -> None:

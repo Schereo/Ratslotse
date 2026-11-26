@@ -136,6 +136,8 @@ def _offene_schemata() -> set[str]:
 #:   (jeder Job gibt eigene zurück) oder eine Nutzlast mit zwei bewusst
 #:   verschiedenen Formen.
 BEWUSST_OFFEN = {
+    "AdminBenchmarkRuns": "Ein Lauf im Format von kern/benchmarks.py — das Format darf um "
+                          "Felder wachsen, ohne dass der Vertrag sie still entfernt; nur Admin-Web.",
     "AdminJob": "`last` ist eine job_runs-Zeile; ihr `stats` ist die "
                 "Kennzahlen-Rückgabe des jeweiligen Jobs und je Job anders.",
     "ConversationTurn": "Gespeicherter Quellen-Block eines Gesprächs-Zugs — "

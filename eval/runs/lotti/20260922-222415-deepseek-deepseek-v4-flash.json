@@ -1,0 +1,43 @@
+{
+ "schema": 1,
+ "benchmark": "lotti",
+ "label": null,
+ "started_at": "2026-09-22T22:24:15",
+ "environment": "local",
+ "code": {
+  "commit": "4110f6425",
+  "checked_in": true
+ },
+ "models": {
+  "assistant_explain": "deepseek/deepseek-v4-flash"
+ },
+ "judge": null,
+ "variant": null,
+ "flags": null,
+ "dataset": {
+  "path": "eval/cases_assistant.json",
+  "sha256": "776f4affd4d7",
+  "cases": 53
+ },
+ "data": "wie am 22.09.2026 (nicht erfasst)",
+ "metrics": {
+  "quality": 0.7547,
+  "hard_findings": 6,
+  "cases": 53,
+  "hart_sauber": 47,
+  "uebersprungen": 0
+ },
+ "cost_usd": 0.008731,
+ "duration_s": null,
+ "latency_ms": {
+  "p50": 6480,
+  "p95": 17729
+ },
+ "purpose": null,
+ "conclusion": null,
+ "comparable": false,
+ "note": "Archiv „vor-p4a“: älterer Prompt oder ältere Fallliste · Übernommen aus eval/results/assistant/assistant-deepseek-deepseek-v4-flash-20260922-222415.json · Lauf 2",
+ "raw": "eval/results/pruefstand/lotti/vor-p4a/deepseek-deepseek-v4-flash-20260922-222415.json",
+ "raw_extra": null,
+ "source": "eval/pruefstand.py"
+}

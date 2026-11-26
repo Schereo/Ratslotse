@@ -1,0 +1,43 @@
+{
+ "schema": 1,
+ "benchmark": "social-text",
+ "label": null,
+ "started_at": "2026-09-23T07:13:59",
+ "environment": "local",
+ "code": {
+  "commit": "6b25955ce",
+  "checked_in": true
+ },
+ "models": {
+  "social_card_text": "openai/gpt-6-luna"
+ },
+ "judge": null,
+ "variant": null,
+ "flags": null,
+ "dataset": {
+  "path": "eval/cases_social.json",
+  "sha256": "e3f9748837dc",
+  "cases": 20
+ },
+ "data": "Sitzungen bis 2026-09-30, 9091 Beschlüsse",
+ "metrics": {
+  "quality": 0.9444,
+  "hard_findings": 1,
+  "cases": 18,
+  "zu_lang": 0,
+  "fehlgeschlagen": 0
+ },
+ "cost_usd": 0.004524,
+ "duration_s": 123.4,
+ "latency_ms": {
+  "p50": 5809,
+  "p95": 16541
+ },
+ "purpose": null,
+ "conclusion": null,
+ "comparable": true,
+ "note": "Lauf 1",
+ "raw": "eval/results/pruefstand/social-text/openai-gpt-6-luna-20260923-071359.json",
+ "raw_extra": null,
+ "source": "eval/pruefstand.py"
+}

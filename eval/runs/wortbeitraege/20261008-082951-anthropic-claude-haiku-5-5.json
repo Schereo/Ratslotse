@@ -1,0 +1,46 @@
+{
+ "schema": 1,
+ "benchmark": "wortbeitraege",
+ "label": null,
+ "started_at": "2026-10-08T08:29:51",
+ "environment": "local",
+ "code": {
+  "commit": "de6c59a5b",
+  "checked_in": true
+ },
+ "models": {
+  "speeches": "anthropic/claude-haiku-5.5"
+ },
+ "judge": null,
+ "variant": null,
+ "flags": null,
+ "dataset": {
+  "path": "eval/cases_speeches.json",
+  "sha256": "422b15f40606",
+  "cases": 16
+ },
+ "data": "Sitzungen bis 2026-10-08, 9524 Beschlüsse",
+ "metrics": {
+  "quality": 0.9884,
+  "hard_findings": 0,
+  "cases": 16,
+  "precision": 0.9771,
+  "recall": 1.0,
+  "top_richtig": 1.0,
+  "partei_ohne_beleg": 0,
+  "fehlgeschlagen": 0
+ },
+ "cost_usd": 0.045254,
+ "duration_s": 269.8,
+ "latency_ms": {
+  "p50": 16223,
+  "p95": 28002
+ },
+ "purpose": null,
+ "conclusion": null,
+ "comparable": true,
+ "note": "Lauf 1",
+ "raw": "eval/results/pruefstand/wortbeitraege/anthropic-claude-haiku-5.5-20261008-082951.json",
+ "raw_extra": null,
+ "source": "eval/pruefstand.py"
+}

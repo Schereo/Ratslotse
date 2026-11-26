@@ -136,7 +136,7 @@ test.describe("Admin-Panel — die Grenze", () => {
     test("Bereiche bleiben über Direktlinks, Neuladen und Zurück erreichbar", async ({ page }) => {
       await page.goto("/admin#konten");
       await expect(page.getByRole("heading", { name: "Wer kommt wieder?" })).toBeVisible();
-      await expect(page.getByRole("navigation", { name: "Admin-Bereiche" }).getByRole("link")).toHaveCount(5);
+      await expect(page.getByRole("navigation", { name: "Admin-Bereiche" }).getByRole("link")).toHaveCount(6);
       await page.getByRole("link", { name: "Menschen", exact: true }).click();
       await expect(page.getByRole("link", { name: "Nutzer*innen", exact: true })).toHaveAttribute("aria-current", "page");
       await page.reload();
@@ -147,6 +147,23 @@ test.describe("Admin-Panel — die Grenze", () => {
       await expect(page.getByRole("heading", { name: "Cron-Jobs", exact: true })).toBeVisible();
       await page.getByRole("link", { name: "Inhalte", exact: true }).click();
       await expect(page.getByRole("link", { name: "Themen-Dubletten", exact: true })).toBeVisible();
+    });
+
+    test("Benchmarks: von der Pipeline zum einzelnen Lauf", async ({ page }) => {
+      // Die Läufe kommen aus eval/runs/ im Repo — sie sind auch gegen eine
+      // leere Ratsdatenbank da.
+      await page.goto("/admin#pipelines");
+      await expect(page.getByRole("heading", { name: "Wie gut sind sie gerade?" })).toBeVisible({ timeout: 15_000 });
+      await page.getByRole("link", { name: /Frag den Rat/ }).first().click();
+      await expect(page).toHaveURL(/#pipelines\?p=ask/);
+      await expect(page.getByRole("heading", { name: "Stufen" })).toBeVisible();
+      const gold = page.locator("#b-ask-gold");
+      await gold.getByRole("button", { name: /Bedingungen und \d+ Läufe/ }).click();
+      await expect(gold.getByText("eval/cases_deep_gold.json")).toBeVisible();
+      await gold.locator("tbody button[aria-expanded]").first().click();
+      await expect(gold.getByText("Rohdaten", { exact: true })).toBeVisible();
+      await page.getByRole("link", { name: "Alle Läufe", exact: true }).click();
+      await expect(page.getByRole("heading", { name: "Alle Läufe" })).toBeVisible();
     });
 
     test("Nutzer*innen nach letzter Nutzung und aktiven Tagen sortieren und inaktive Konten filtern", async ({ page }) => {

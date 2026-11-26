@@ -26,6 +26,7 @@ import { StatsTab, OperationsTab } from "@/components/admin/statistics";
 import { LottiTab } from "@/components/admin/lotti";
 import { McpTab } from "@/components/admin/mcp";
 import { ViertelMeldungenTab } from "@/components/admin/viertel-meldungen";
+import { BenchmarksTab } from "@/components/admin/benchmarks";
 
 export default function AdminPage() {
   const { user, loading } = useAuth();
@@ -59,6 +60,7 @@ export default function AdminPage() {
         {tab === "themen" && <EntityAliasTab />}
         {tab === "live" && <LiveProbeTab />}
         {tab === "news" && <NewsTab />}
+        {(tab === "pipelines" || tab === "laeufe") && <BenchmarksTab view={tab} route={route} />}
       </div>
     </div>
   );

@@ -1,0 +1,32 @@
+{
+ "schema": 1,
+ "benchmark": "punkt-bezug",
+ "label": null,
+ "started_at": "2026-11-10T17:40:00",
+ "environment": "local",
+ "code": {
+  "commit": "ee294ef4f",
+  "checked_in": true
+ },
+ "models": {},
+ "judge": null,
+ "variant": null,
+ "flags": null,
+ "dataset": null,
+ "data": null,
+ "metrics": {
+  "with_ref": 0.0,
+  "without_ref": 0.0,
+  "cases": 3
+ },
+ "cost_usd": 0.0011,
+ "duration_s": null,
+ "latency_ms": null,
+ "purpose": null,
+ "conclusion": null,
+ "comparable": true,
+ "note": "mit Bezug 0/3, ohne 0/3 — gegen einen lokalen Server",
+ "raw": "eval/results/punkt_bezug/20261110-1740.json",
+ "raw_extra": null,
+ "source": "eval/runs_backfill.py"
+}

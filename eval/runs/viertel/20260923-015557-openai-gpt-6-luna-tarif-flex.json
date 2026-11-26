@@ -1,0 +1,43 @@
+{
+ "schema": 1,
+ "benchmark": "viertel",
+ "label": null,
+ "started_at": "2026-09-23T01:55:57",
+ "environment": "local",
+ "code": {
+  "commit": "de6c59a5b",
+  "checked_in": true
+ },
+ "models": {
+  "district_projects": "openai/gpt-6-luna"
+ },
+ "judge": null,
+ "variant": "Tarif flex",
+ "flags": null,
+ "dataset": {
+  "path": "eval/cases_district.json",
+  "sha256": "785ef0f2615b",
+  "cases": 30
+ },
+ "data": "Sitzungen bis 2026-09-16, 9078 Beschlüsse",
+ "metrics": {
+  "quality": 0.9667,
+  "hard_findings": 0,
+  "cases": 30,
+  "verpasst": 1,
+  "ohne_urteil": 0
+ },
+ "cost_usd": 0.001931,
+ "duration_s": 91.3,
+ "latency_ms": {
+  "p50": 15019,
+  "p95": 18490
+ },
+ "purpose": null,
+ "conclusion": null,
+ "comparable": true,
+ "note": "Lauf 1",
+ "raw": "eval/results/pruefstand/viertel/openai-gpt-6-luna-flex-20260923-015557.json",
+ "raw_extra": null,
+ "source": "eval/pruefstand.py"
+}

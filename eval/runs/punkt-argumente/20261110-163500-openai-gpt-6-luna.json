@@ -1,0 +1,39 @@
+{
+ "schema": 1,
+ "benchmark": "punkt-argumente",
+ "label": null,
+ "started_at": "2026-11-10T16:35:00",
+ "environment": "local",
+ "code": {
+  "commit": "877a057be",
+  "checked_in": true
+ },
+ "models": {
+  "item_arguments": "openai/gpt-6-luna"
+ },
+ "judge": null,
+ "variant": null,
+ "flags": null,
+ "dataset": {
+  "path": "eval/punkt_argumente_gold.json",
+  "sha256": "1ea153fa0834",
+  "cases": null
+ },
+ "data": null,
+ "metrics": {
+  "shown": 0.8,
+  "cases": 20
+ },
+ "cost_usd": 0.0111,
+ "duration_s": null,
+ "latency_ms": null,
+ "purpose": null,
+ "conclusion": null,
+ "comparable": true,
+ "note": "Handprüfung anhand der Gegenüberstellung",
+ "raw": "eval/results/punkt_argumente/20261110-1635.json",
+ "raw_extra": [
+  "eval/results/punkt_argumente/20261110-1635.md"
+ ],
+ "source": "eval/runs_backfill.py"
+}

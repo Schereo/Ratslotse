@@ -1,0 +1,43 @@
+{
+ "schema": 1,
+ "benchmark": "video-ergebnisse",
+ "label": null,
+ "started_at": "2026-09-23T02:05:02",
+ "environment": "local",
+ "code": {
+  "commit": "de6c59a5b",
+  "checked_in": true
+ },
+ "models": {
+  "video_results": "openai/gpt-6-luna"
+ },
+ "judge": null,
+ "variant": "Tarif flex",
+ "flags": null,
+ "dataset": {
+  "path": "eval/cases_video.json",
+  "sha256": "98007c3accc2",
+  "cases": 3
+ },
+ "data": "Sitzungen bis 2026-09-16, 9078 Beschlüsse",
+ "metrics": {
+  "quality": 0.8852,
+  "hard_findings": 0,
+  "cases": 61,
+  "verpasst": 7,
+  "ungeprueft": 9
+ },
+ "cost_usd": 0.010239,
+ "duration_s": 234.8,
+ "latency_ms": {
+  "p50": 12840,
+  "p95": 46289
+ },
+ "purpose": null,
+ "conclusion": null,
+ "comparable": true,
+ "note": "Lauf 2",
+ "raw": "eval/results/pruefstand/video-ergebnisse/openai-gpt-6-luna-flex-20260923-020502.json",
+ "raw_extra": null,
+ "source": "eval/pruefstand.py"
+}

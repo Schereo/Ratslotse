@@ -1,0 +1,36 @@
+{
+ "schema": 1,
+ "benchmark": "fakten-deep",
+ "label": "Lauf 2",
+ "started_at": "2026-09-23T13:45:12",
+ "environment": "local",
+ "code": {
+  "commit": "370b4203a",
+  "checked_in": true
+ },
+ "models": {
+  "deep_report": "openai/gpt-6-luna"
+ },
+ "judge": null,
+ "variant": "Aufwand high",
+ "flags": null,
+ "dataset": null,
+ "data": null,
+ "metrics": {
+  "quality": 0.8545,
+  "cases": 55,
+  "kontextfehler": 6,
+  "modellfehler": 2,
+  "erfunden": 0
+ },
+ "cost_usd": 0.2601,
+ "duration_s": null,
+ "latency_ms": null,
+ "purpose": null,
+ "conclusion": null,
+ "comparable": true,
+ "note": "Fälle aus Haushalt und Rat gemischt",
+ "raw": "eval/results/fakten/deep/openai-gpt-6-luna-high-20260923-134512.json",
+ "raw_extra": null,
+ "source": "eval/runs_backfill.py"
+}

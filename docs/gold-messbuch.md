@@ -11,10 +11,17 @@ Der Anlass: Die Belegnotizen hatten im Oktober „+5 Pp“ gebracht und waren f�
 Prod vorgesehen. Im November brachten sie auf Prod nichts und kosteten 8 s je
 Antwort. Warum, ließ sich nur aus Commits und Notizen zusammensuchen (s. u.).
 
+**Seit 26.11.2026 schreibt jeder Gold-Lauf seinen Lauf selbst** (Format:
+`kern/benchmarks.py`) nach `data/eval_runs/ask-gold/` auf dem Server; das
+Admin-Panel dort zeigt ihn unter *Benchmarks → Frag den Rat*, samt Modellen je
+Stufe, Schaltern und Code-Stand. Den Zweck gibt `-f zweck="…"` mit. Die
+Tabelle unten ist als Läufe nach `eval/runs/ask-gold/` übernommen. Begründungen
+und Entscheidungen, die über einen Lauf hinausgehen, bleiben hier.
+
 ## Wie man misst
 
 ```bash
-gh workflow run ops-gold.yml -f umgebung=prod -f weg=ask -f label=<name>          # Prod
+gh workflow run ops-gold.yml -f umgebung=prod -f weg=ask -f label=<name> -f zweck="<warum>"  # Prod
 gh workflow run ops-gold.yml -f umgebung=dev  -f weg=ask -f label=<name> --ref dev  # dev
 ```
 

@@ -516,6 +516,8 @@ ENV_NOT_DOCUMENTED: dict[str, str] = {
     "RATSLOTSE_PROMPT_MITSCHNITT": "Option eines Eval-Laufs (Prompts mitschneiden)",
     "RATSLOTSE_STT_REFERENZ": "Option eines Eval-Laufs (welche Referenz gilt)",
     "PRUEFSTAND_STICHPROBE": "setzt der Prüfstand im Unterprozess eines Laufs",
+    "PRUEFSTAND_ZWECK": "setzt der Prüfstand im Unterprozess eines Laufs (aus --zweck)",
+    "GITHUB_ACTIONS": "setzt GitHub Actions selbst (kern/benchmarks.py erkennt daran die CI)",
 }
 
 #: Variablen in den Tabellen, die NICHT der eigene Code liest.

@@ -1,0 +1,44 @@
+{
+ "schema": 1,
+ "benchmark": "cities-einordnung",
+ "label": null,
+ "started_at": "2026-09-23T00:12:45",
+ "environment": "local",
+ "code": {
+  "commit": "4110f6425",
+  "checked_in": true
+ },
+ "models": {
+  "cities_classify": "deepseek/deepseek-v4-flash"
+ },
+ "judge": null,
+ "variant": null,
+ "flags": null,
+ "dataset": {
+  "path": "eval/cases_cities_transfer.json",
+  "sha256": "933a758c9c65",
+  "cases": 45
+ },
+ "data": "Sitzungen bis 2026-09-16, 9078 Beschlüsse",
+ "metrics": {
+  "quality": 0.86,
+  "hard_findings": null,
+  "cases": 45,
+  "geliefert": 43,
+  "transfer": 69.8,
+  "feld": 76.7
+ },
+ "cost_usd": 0.016018,
+ "duration_s": 1154.6,
+ "latency_ms": {
+  "p50": 35507,
+  "p95": 773178
+ },
+ "purpose": null,
+ "conclusion": null,
+ "comparable": true,
+ "note": "Lauf 2",
+ "raw": "eval/results/pruefstand/cities-einordnung/deepseek-deepseek-v4-flash-20260923-001245.json",
+ "raw_extra": null,
+ "source": "eval/pruefstand.py"
+}

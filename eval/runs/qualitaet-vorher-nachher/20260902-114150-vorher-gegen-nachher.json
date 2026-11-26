@@ -1,0 +1,36 @@
+{
+ "schema": 1,
+ "benchmark": "qualitaet-vorher-nachher",
+ "label": "vorher gegen nachher",
+ "started_at": "2026-09-02T11:41:50",
+ "environment": "unknown",
+ "code": {
+  "commit": "bbf1aa548",
+  "checked_in": true
+ },
+ "models": {},
+ "judge": "google/gemini-3.5-flash",
+ "variant": null,
+ "flags": null,
+ "dataset": null,
+ "data": "data/council-prod.sqlite",
+ "metrics": {
+  "win_rate": 0.5,
+  "ties": 1,
+  "cases": 12
+ },
+ "cost_usd": null,
+ "duration_s": null,
+ "latency_ms": null,
+ "purpose": null,
+ "conclusion": null,
+ "comparable": true,
+ "note": "Zeitpunkt = Commit, mit dem er eingecheckt wurde",
+ "raw": "eval/results/quality/urteile-vorher-vs-nachher.json",
+ "raw_extra": [
+  "eval/results/quality/vorher.json",
+  "eval/results/quality/nachher.json",
+  "eval/results/quality/report-vorher-vs-nachher.md"
+ ],
+ "source": "eval/runs_backfill.py"
+}

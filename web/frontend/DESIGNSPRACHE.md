@@ -1024,7 +1024,8 @@ unten sind der gemeinsame Nenner; die Bausteine dazu stehen in
 
 ## Admin: vom Überblick zur Untersuchung
 
-Fünf Hauptbereiche: Überblick, Nutzung, Menschen, Betrieb und Inhalte.
+Sechs Hauptbereiche: Überblick, Nutzung, Menschen, Betrieb, Inhalte und
+Benchmarks.
 Unterpunkte erscheinen nur im gewählten Bereich. Hash-Links halten die
 Auswahl bei Neuladen und Zurücknavigation, auch im statischen App-Export.
 Kennzahlen im Überblick sind Einstiege in die vollständigen Auswertungen;
@@ -1041,6 +1042,17 @@ zugrunde liegende Abfrage sie tatsächlich ausschließt.
 Verläufe verwenden den gemeinsamen Ablese-Baustein für Maus, Touch und
 Tastatur. Nullwerte bekommen keine dekorative Mindesthöhe. Betriebsprobleme
 tragen einen ausgeschriebenen Status; ein fehlender Lauf gilt als unbekannt.
+
+### Admin: Benchmarks
+
+Je KI-Pipeline eine Karte mit dem Status ihrer wichtigsten Messung
+(*Aktuell*, *Überholt*, *Ungemessen*) und deren Zahl; Pipelines ohne Messung
+stehen gesammelt darunter. Die Pipeline-Seite zeigt zuerst die Stufen (Modell
+heute, Nutzung 30 Tage, gemessen oder nicht), dann je Benchmark die jüngste
+Zahl **mit der heutigen Besetzung** samt Veränderung, den Verlauf über die
+Läufe (gefüllt = heutige Besetzung, hohl = Kandidat oder Variante) und den
+Grund, warum eine Messung überholt ist. Bedingungen und Läufe klappen an der
+Karte auf, ein Lauf in seiner Tabellenzeile — kein Dialog.
 
 ### Admin: E-Mails und Kontodetails
 

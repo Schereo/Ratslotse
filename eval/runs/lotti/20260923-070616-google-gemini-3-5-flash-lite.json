@@ -1,0 +1,43 @@
+{
+ "schema": 1,
+ "benchmark": "lotti",
+ "label": null,
+ "started_at": "2026-09-23T07:06:16",
+ "environment": "local",
+ "code": {
+  "commit": "92b333332",
+  "checked_in": true
+ },
+ "models": {
+  "assistant_explain": "google/gemini-3.5-flash-lite"
+ },
+ "judge": null,
+ "variant": null,
+ "flags": null,
+ "dataset": {
+  "path": "eval/cases_assistant.json",
+  "sha256": "7f3798790205",
+  "cases": 57
+ },
+ "data": "Sitzungen bis 2026-09-16, 9078 Beschlüsse",
+ "metrics": {
+  "quality": 0.9123,
+  "hard_findings": 5,
+  "cases": 57,
+  "hart_sauber": 52,
+  "uebersprungen": 0
+ },
+ "cost_usd": 0.05079,
+ "duration_s": 57.3,
+ "latency_ms": {
+  "p50": 1070,
+  "p95": 2305
+ },
+ "purpose": null,
+ "conclusion": null,
+ "comparable": false,
+ "note": "Archiv „vor-p4a“: älterer Prompt oder ältere Fallliste · Injektion befolgt: injektion-wertung · Lauf 1",
+ "raw": "eval/results/pruefstand/lotti/vor-p4a/google-gemini-3.5-flash-lite-20260923-070616.json",
+ "raw_extra": null,
+ "source": "eval/pruefstand.py"
+}

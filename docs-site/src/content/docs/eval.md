@@ -28,6 +28,18 @@ Docstrings der Dateien: [Referenz: Eval-Läufe](/docs/referenz/eval-laeufe/).
 erwartet`, `FP = zu viel`, `FN = verpasst`, aggregiert über alle Fälle. So werden
 Über- *und* Unter-Matching gleichzeitig gemessen.
 
+## Benchmarks im Admin-Panel
+
+Jede Messung erscheint im Admin-Panel unter *Benchmarks*, gegliedert nach
+KI-Pipeline (Frag den Rat, Gründliche Recherche, Lotti, …). Katalog und
+Format stehen in `kern/benchmarks.py`: Ein **Lauf** ist eine JSON-Datei unter
+`eval/runs/<benchmark>/` mit Modell je Stufe, Fällen samt Prüfsumme,
+Datenstand, Code-Stand, Kennzahlen, Kosten, Zweck und Fazit; `raw` zeigt auf
+das Rohergebnis. Läufe, die auf einem Server entstehen (Gold-Fälle), liegen
+dort unter `data/eval_runs/`. Eine Messung gilt als überholt, wenn das Modell
+einer gemessenen Stufe seither gewechselt hat, die Fälle sich geändert haben
+oder sie älter als 90 Tage ist.
+
 ## Ausführen
 
 Braucht `OPENROUTER_API_KEY` in der Umgebung / `.env` (echte LLM-Calls):

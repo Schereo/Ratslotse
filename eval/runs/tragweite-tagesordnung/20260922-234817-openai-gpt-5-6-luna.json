@@ -1,0 +1,40 @@
+{
+ "schema": 1,
+ "benchmark": "tragweite-tagesordnung",
+ "label": null,
+ "started_at": "2026-09-22T23:48:17",
+ "environment": "local",
+ "code": {
+  "commit": "4110f6425",
+  "checked_in": true
+ },
+ "models": {
+  "impact_rating_agenda": "openai/gpt-5.6-luna"
+ },
+ "judge": null,
+ "variant": null,
+ "flags": null,
+ "dataset": null,
+ "data": "Sitzungen bis 2026-09-16, 9078 Beschlüsse",
+ "metrics": {
+  "quality": null,
+  "hard_findings": null,
+  "cases": 265,
+  "wochen": 5,
+  "bewertet": 265,
+  "spitze_wie_regeln": 1
+ },
+ "cost_usd": 0.017268,
+ "duration_s": 144.3,
+ "latency_ms": {
+  "p50": 9608,
+  "p95": 12103
+ },
+ "purpose": null,
+ "conclusion": null,
+ "comparable": true,
+ "note": "Lauf 2",
+ "raw": "eval/results/pruefstand/tragweite-tagesordnung/openai-gpt-5.6-luna-20260922-234817.json",
+ "raw_extra": null,
+ "source": "eval/pruefstand.py"
+}

@@ -1,0 +1,43 @@
+{
+ "schema": 1,
+ "benchmark": "lotti",
+ "label": null,
+ "started_at": "2026-09-23T08:42:47",
+ "environment": "local",
+ "code": {
+  "commit": "92b333332",
+  "checked_in": true
+ },
+ "models": {
+  "assistant_explain": "openai/gpt-6-luna"
+ },
+ "judge": null,
+ "variant": null,
+ "flags": null,
+ "dataset": {
+  "path": "eval/cases_assistant.json",
+  "sha256": "7f3798790205",
+  "cases": 57
+ },
+ "data": "Sitzungen bis 2026-09-16, 9078 Beschlüsse",
+ "metrics": {
+  "quality": 0.9649,
+  "hard_findings": 2,
+  "cases": 57,
+  "hart_sauber": 55,
+  "uebersprungen": 0
+ },
+ "cost_usd": 0.005273,
+ "duration_s": 182.3,
+ "latency_ms": {
+  "p50": 3995,
+  "p95": 6356
+ },
+ "purpose": null,
+ "conclusion": null,
+ "comparable": false,
+ "note": "Archiv „p4a-zwischenstand“: älterer Prompt oder ältere Fallliste · Lauf 2",
+ "raw": "eval/results/pruefstand/lotti/p4a-zwischenstand/openai-gpt-6-luna-20260923-084247.json",
+ "raw_extra": null,
+ "source": "eval/pruefstand.py"
+}

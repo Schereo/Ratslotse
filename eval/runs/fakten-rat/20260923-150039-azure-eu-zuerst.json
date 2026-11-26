@@ -1,0 +1,41 @@
+{
+ "schema": 1,
+ "benchmark": "fakten-rat",
+ "label": "Azure EU zuerst",
+ "started_at": "2026-09-23T15:00:39",
+ "environment": "local",
+ "code": {
+  "commit": "168c0695e",
+  "checked_in": true
+ },
+ "models": {
+  "qa_answer": "openai/gpt-6-luna",
+  "assistant_explain": "openai/gpt-6-luna"
+ },
+ "judge": null,
+ "variant": null,
+ "flags": null,
+ "dataset": {
+  "path": "eval/cases_fakten_rat.json",
+  "sha256": "66906e8ac709",
+  "cases": 91
+ },
+ "data": null,
+ "metrics": {
+  "quality": 0.5055,
+  "cases": 91,
+  "kontextfehler": 19,
+  "modellfehler": 26,
+  "hard_findings": 0
+ },
+ "cost_usd": null,
+ "duration_s": null,
+ "latency_ms": null,
+ "purpose": null,
+ "conclusion": null,
+ "comparable": true,
+ "note": "aus einem gemeinsamen Lauf über Haushalt und Rat herausgerechnet",
+ "raw": "eval/results/fakten/openai-gpt-6-luna-20260923-150039.json",
+ "raw_extra": null,
+ "source": "eval/runs_backfill.py"
+}

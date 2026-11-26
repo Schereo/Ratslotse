@@ -1,0 +1,46 @@
+{
+ "schema": 1,
+ "benchmark": "wortbeitraege",
+ "label": null,
+ "started_at": "2026-09-23T02:00:16",
+ "environment": "local",
+ "code": {
+  "commit": "de6c59a5b",
+  "checked_in": true
+ },
+ "models": {
+  "speeches": "google/gemini-3.5-flash-lite"
+ },
+ "judge": null,
+ "variant": null,
+ "flags": null,
+ "dataset": {
+  "path": "eval/cases_speeches.json",
+  "sha256": "422b15f40606",
+  "cases": 16
+ },
+ "data": "Sitzungen bis 2026-09-16, 9078 Beschlüsse",
+ "metrics": {
+  "quality": 0.8671,
+  "hard_findings": 0,
+  "cases": 16,
+  "precision": 1.0,
+  "recall": 0.7654,
+  "top_richtig": 0.9301,
+  "partei_ohne_beleg": 0,
+  "fehlgeschlagen": 0
+ },
+ "cost_usd": 0.069556,
+ "duration_s": 72.5,
+ "latency_ms": {
+  "p50": 4359,
+  "p95": 6594
+ },
+ "purpose": null,
+ "conclusion": null,
+ "comparable": false,
+ "note": "Archiv „prompt-bis-2026-09-23“: älterer Prompt oder ältere Fallliste · Lauf 1",
+ "raw": "eval/results/pruefstand/wortbeitraege/prompt-bis-2026-09-23/google-gemini-3.5-flash-lite-20260923-020016.json",
+ "raw_extra": null,
+ "source": "eval/pruefstand.py"
+}

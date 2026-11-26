@@ -1,0 +1,43 @@
+{
+ "schema": 1,
+ "benchmark": "tragweite",
+ "label": null,
+ "started_at": "2026-10-08T08:23:59",
+ "environment": "local",
+ "code": {
+  "commit": "4110f6425",
+  "checked_in": true
+ },
+ "models": {
+  "impact_rating": "anthropic/claude-haiku-5.5"
+ },
+ "judge": null,
+ "variant": null,
+ "flags": null,
+ "dataset": {
+  "path": "scripts/golden_impact.json",
+  "sha256": "288c743eebfe",
+  "cases": 30
+ },
+ "data": "Sitzungen bis 2026-10-08, 9524 Beschlüsse",
+ "metrics": {
+  "quality": 1.0,
+  "hard_findings": null,
+  "cases": 30,
+  "rho": 0.9204,
+  "bewertet": 20
+ },
+ "cost_usd": 0.011289,
+ "duration_s": 84.0,
+ "latency_ms": {
+  "p50": 6233,
+  "p95": 10331
+ },
+ "purpose": null,
+ "conclusion": null,
+ "comparable": true,
+ "note": "Lauf 1",
+ "raw": "eval/results/pruefstand/tragweite/anthropic-claude-haiku-5.5-20261008-082359.json",
+ "raw_extra": null,
+ "source": "eval/pruefstand.py"
+}

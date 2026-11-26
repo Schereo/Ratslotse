@@ -1,0 +1,43 @@
+{
+ "schema": 1,
+ "benchmark": "lotti",
+ "label": null,
+ "started_at": "2026-10-08T09:10:54",
+ "environment": "local",
+ "code": {
+  "commit": "4c42a1d4f",
+  "checked_in": true
+ },
+ "models": {
+  "assistant_explain": "anthropic/claude-haiku-5.5"
+ },
+ "judge": null,
+ "variant": "ohne Denken",
+ "flags": null,
+ "dataset": {
+  "path": "eval/cases_assistant.json",
+  "sha256": "a1928ada32c5",
+  "cases": 64
+ },
+ "data": "Sitzungen bis 2026-10-08, 9524 Beschlüsse",
+ "metrics": {
+  "quality": 0.873,
+  "hard_findings": 4,
+  "cases": 63,
+  "hart_sauber": 59,
+  "uebersprungen": 1
+ },
+ "cost_usd": 0.038411,
+ "duration_s": 108.5,
+ "latency_ms": {
+  "p50": 2112,
+  "p95": 2840
+ },
+ "purpose": null,
+ "conclusion": null,
+ "comparable": true,
+ "note": "Lauf 1",
+ "raw": "eval/results/pruefstand/lotti/anthropic-claude-haiku-5.5-ohne-denken-20261008-091054.json",
+ "raw_extra": null,
+ "source": "eval/pruefstand.py"
+}

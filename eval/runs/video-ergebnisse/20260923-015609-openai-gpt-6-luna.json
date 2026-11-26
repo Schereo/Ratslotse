@@ -1,0 +1,43 @@
+{
+ "schema": 1,
+ "benchmark": "video-ergebnisse",
+ "label": null,
+ "started_at": "2026-09-23T01:56:09",
+ "environment": "local",
+ "code": {
+  "commit": "de6c59a5b",
+  "checked_in": true
+ },
+ "models": {
+  "video_results": "openai/gpt-6-luna"
+ },
+ "judge": null,
+ "variant": null,
+ "flags": null,
+ "dataset": {
+  "path": "eval/cases_video.json",
+  "sha256": "98007c3accc2",
+  "cases": 3
+ },
+ "data": "Sitzungen bis 2026-09-16, 9078 Beschlüsse",
+ "metrics": {
+  "quality": 0.8361,
+  "hard_findings": 0,
+  "cases": 61,
+  "verpasst": 10,
+  "ungeprueft": 8
+ },
+ "cost_usd": 0.051561,
+ "duration_s": 115.5,
+ "latency_ms": {
+  "p50": 7684,
+  "p95": 22255
+ },
+ "purpose": null,
+ "conclusion": null,
+ "comparable": true,
+ "note": "Lauf 1",
+ "raw": "eval/results/pruefstand/video-ergebnisse/openai-gpt-6-luna-20260923-015609.json",
+ "raw_extra": null,
+ "source": "eval/pruefstand.py"
+}

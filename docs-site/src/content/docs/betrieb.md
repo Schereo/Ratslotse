@@ -1113,6 +1113,8 @@ Nur für Eval-Läufe und Werkzeuge von Hand; kein Dienst liest sie.
 |---|---|---|
 | `COUNCIL_GOLD_JUDGE_MODEL` | Richter-Modell der Gold-Läufe (`scripts/eval_deep_gold.py`) | `anthropic/claude-opus-5.5` |
 | `GOLD_OHNE_RICHTER` | `true` lässt den Gold-Lauf von „Frag den Rat“ ohne Richter laufen | nicht gesetzt |
+| `GOLD_ZWECK` | Warum gemessen wird — steht im Lauf und im Admin-Panel unter *Benchmarks* (`ops-gold.yml`, Eingabe `zweck`) | nicht gesetzt |
+| `GOLD_COMMIT` | Code-Stand eines Gold-Laufs, wo kein `.git` liegt (Prod); setzt `ops-gold.yml` | nicht gesetzt |
 | `COUNCIL_QUALITY_JUDGE_MODEL` | Richter der Qualitäts-Suite (`eval/quality_qa.py`) | `google/gemini-3.5-flash` |
 | `RATSLOTSE_TRANSKRIPTE` | Ordner der Referenz-Transkripte für die Transkriptions-Eval | unter `data/` |
 | `VIERTEL_POC_MODEL` | Modell des Probe-Skripts `scripts/viertel_poc.py` | `openai/gpt-5.6-luna` |

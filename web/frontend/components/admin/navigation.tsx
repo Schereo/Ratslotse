@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Activity, BookOpen, LayoutDashboard, Server, Users } from "lucide-react";
+import { Activity, BookOpen, Gauge, LayoutDashboard, Server, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { UnreadBadge, feedbackLabel, useUnreadFeedback } from "@/components/nav";
 
@@ -11,6 +11,7 @@ const GROUPS = [
   { label: "Menschen", icon: Users, views: [["users", "Nutzer*innen"], ["emails", "E-Mails"], ["feedback", "Feedback"], ["news", "Neuigkeiten"]] },
   { label: "Betrieb", icon: Server, views: [["jobs", "Import & Cron-Jobs"], ["fehler", "Fehler"], ["llm", "LLM-Kosten"], ["live", "Live-Probe"]] },
   { label: "Inhalte", icon: BookOpen, views: [["quiz", "Quiz"], ["orte", "Ortskandidaten"], ["viertel", "Viertel-Meldungen"], ["themen", "Themen-Dubletten"]] },
+  { label: "Benchmarks", icon: Gauge, views: [["pipelines", "Pipelines"], ["laeufe", "Alle Läufe"]] },
 ] as const;
 
 export type AdminView = typeof GROUPS[number]["views"][number][0];
@@ -45,7 +46,7 @@ export function AdminNavigation({ view }: { view: AdminView }) {
     views.reduce((sum, [key]) => sum + (badges[key] ?? 0), 0);
   return (
     <div className="mt-6">
-      <nav aria-label="Admin-Bereiche" className="grid grid-cols-3 gap-1 rounded-2xl border border-border bg-card p-1.5 sm:grid-cols-5">
+      <nav aria-label="Admin-Bereiche" className="grid grid-cols-3 gap-1 rounded-2xl border border-border bg-card p-1.5 sm:grid-cols-6">
         {GROUPS.map(({ label, icon: Icon, views }) => {
           const active = label === current.label;
           return (

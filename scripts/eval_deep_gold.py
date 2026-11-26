@@ -20,7 +20,9 @@ Datenbank-Kopie; nur die Ablage des Jobs geht in eine Wegwerf-DB::
     python scripts/eval_deep_gold.py --db /pfad/council.sqlite --label nachher --premium
 
 Braucht ``OPENROUTER_API_KEY`` und fastembed. Ergebnisse unter
-``eval/results/deep_gold/<label>.json``.
+``eval/results/deep_gold/<label>.json`` (lokal) bzw. ``data/eval_gold/deep-<label>.json``
+(auf einem Server — ``eval/`` räumt der Deploy weg), dazu ein Lauf für den
+Benchmark-Bereich im Admin-Panel (``kern/benchmarks.py``).
 """
 from __future__ import annotations
 
@@ -31,6 +33,7 @@ import sys
 import tempfile
 import time
 import uuid
+from datetime import datetime
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -44,6 +47,8 @@ from kern import llm  # noqa: E402
 
 CASES = ROOT / "eval" / "cases_deep_gold.json"
 RESULTS = ROOT / "eval" / "results" / "deep_gold"
+#: Auf den Servern: neben den Läufen von Frag den Rat (``data/`` überlebt den Deploy).
+SERVER_RESULTS = ROOT / "data" / "eval_gold"
 # Richter: Claude Opus 5.5 (01.10.2026). Der Richter läuft nur in unseren
 # Messungen, nie für Nutzer*innen — Kosten und Datenschutz-Routing des
 # Produkts gelten hier nicht. Gemessen an 14 gespeicherten Antworten, je zwei
@@ -205,6 +210,7 @@ def lauf(db: Path, label: str, premium: bool, nur: str | None) -> Path:
     from app import deepresearch
     from council import qa
 
+    start = datetime.now()
     cases = json.loads(CASES.read_text(encoding="utf-8"))
     cases = faelle_waehlen(cases, "deep", nur)
     ergebnisse = []
@@ -242,13 +248,36 @@ def lauf(db: Path, label: str, premium: bool, nur: str | None) -> Path:
                   f"verfehlt {wertung['verfehlt']}, Verstöße {wertung['verstoesse']}, "
                   f"Material fehlt {fehlt} → {'BESTANDEN' if wertung['bestanden'] else 'NICHT bestanden'}"
                   f" ({dauer}s, {job.model})", flush=True)
-    RESULTS.mkdir(parents=True, exist_ok=True)
-    out = RESULTS / f"{label}.json"
+    from kern import benchmarks as bm
+    umgebung = bm.detect_environment()
+    # Auf einem Server nach data/: eval/ räumt der Deploy mit `rsync --delete`
+    # weg — ein Ergebnis unter eval/results/deep_gold/ überlebte dort nur bis
+    # zum nächsten Merge.
+    server = umgebung in ("dev", "prod")
+    ablage = SERVER_RESULTS if server else RESULTS
+    ablage.mkdir(parents=True, exist_ok=True)
+    out = ablage / (f"deep-{label}.json" if server else f"{label}.json")
+    kosten = round(llm.session_cost()["usd"], 3)
     out.write_text(json.dumps({"label": label, "db": str(db), "judge": JUDGE_MODEL,
-                               "kosten_usd": round(llm.session_cost()["usd"], 3),
-                               "cases": ergebnisse}, ensure_ascii=False, indent=1),
+                               "kosten_usd": kosten, "cases": ergebnisse}, ensure_ascii=False, indent=1),
                    encoding="utf-8")
     print(f"→ {out}")
+    n = len(ergebnisse)
+    code = bm.code_state() or ({"commit": os.environ["GOLD_COMMIT"][:9], "from": "workflow"}
+                               if os.environ.get("GOLD_COMMIT") else None)
+    rec = bm.new_run(
+        "deep-gold", label=label, started_at=start, environment=umgebung, code=code or {},
+        metrics={"coverage": round(sum(e["wertung"]["abdeckung"] for e in ergebnisse) / n, 4) if n else None,
+                 "passed": sum(1 for e in ergebnisse if e["wertung"]["bestanden"]), "cases": n},
+        models={"deep_decomposition": qa.EXPAND_MODEL, "deep_report": qa.deep_model_for(premium)},
+        judge=JUDGE_MODEL, variant="Recherche Plus" if premium else None,
+        sample=n if nur else None, comparable=not nur, cost_usd=kosten,
+        duration_s=round((datetime.now() - start).total_seconds()),
+        purpose=os.environ.get("GOLD_ZWECK") or None,
+        raw=(f"server:{umgebung}:" if server else "") + out.relative_to(ROOT).as_posix(),
+        note=f"Teillauf: {nur}" if nur else None, source="scripts/eval_deep_gold.py")
+    rec["code"] = rec["code"] or None
+    print(f"→ {bm.write_run(rec, bm.SERVER_RUNS if server else bm.REPO_RUNS)} (Lauf fürs Admin-Panel)")
     return out
 
 

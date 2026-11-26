@@ -1,0 +1,42 @@
+{
+ "schema": 1,
+ "benchmark": "fakten-rat",
+ "label": "stichprobe-plus-lotti-1",
+ "started_at": "2026-09-23T14:54:39",
+ "environment": "local",
+ "code": {
+  "commit": "59cc796fe",
+  "checked_in": true
+ },
+ "models": {
+  "qa_answer": "openai/gpt-6-luna",
+  "assistant_explain": "openai/gpt-6-luna"
+ },
+ "judge": null,
+ "variant": null,
+ "flags": null,
+ "dataset": {
+  "path": "eval/cases_fakten_rat.json",
+  "sha256": "a2820c491bac",
+  "cases": 91,
+  "sample": 7
+ },
+ "data": null,
+ "metrics": {
+  "quality": 0.7143,
+  "cases": 7,
+  "kontextfehler": 0,
+  "modellfehler": 2,
+  "hard_findings": 0
+ },
+ "cost_usd": null,
+ "duration_s": null,
+ "latency_ms": null,
+ "purpose": null,
+ "conclusion": null,
+ "comparable": false,
+ "note": "aus einem gemeinsamen Lauf über Haushalt und Rat herausgerechnet · Stichprobe (7 Fälle) · ohne ZDR gemessen",
+ "raw": "eval/results/fakten/stichprobe/openai-gpt-6-luna-20260923-145439.json",
+ "raw_extra": null,
+ "source": "eval/runs_backfill.py"
+}

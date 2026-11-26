@@ -1,0 +1,43 @@
+{
+ "schema": 1,
+ "benchmark": "lotti",
+ "label": null,
+ "started_at": "2026-09-22T22:46:27",
+ "environment": "local",
+ "code": {
+  "commit": "4110f6425",
+  "checked_in": true
+ },
+ "models": {
+  "assistant_explain": "google/gemini-3.8-flash"
+ },
+ "judge": null,
+ "variant": null,
+ "flags": null,
+ "dataset": {
+  "path": "eval/cases_assistant.json",
+  "sha256": "776f4affd4d7",
+  "cases": 53
+ },
+ "data": "wie am 22.09.2026 (nicht erfasst)",
+ "metrics": {
+  "quality": 0.9245,
+  "hard_findings": 4,
+  "cases": 53,
+  "hart_sauber": 49,
+  "uebersprungen": 0
+ },
+ "cost_usd": 0.318499,
+ "duration_s": null,
+ "latency_ms": {
+  "p50": 12984,
+  "p95": 62902
+ },
+ "purpose": null,
+ "conclusion": null,
+ "comparable": false,
+ "note": "Archiv „vor-p4a“: älterer Prompt oder ältere Fallliste · Übernommen aus eval/results/assistant/assistant-google-gemini-3.8-flash-20260922-224627.json · Lauf 1",
+ "raw": "eval/results/pruefstand/lotti/vor-p4a/google-gemini-3.8-flash-20260922-224627.json",
+ "raw_extra": null,
+ "source": "eval/pruefstand.py"
+}

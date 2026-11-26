@@ -1,0 +1,43 @@
+{
+ "schema": 1,
+ "benchmark": "cities-aufwand",
+ "label": null,
+ "started_at": "2026-09-22T23:59:13",
+ "environment": "local",
+ "code": {
+  "commit": "4110f6425",
+  "checked_in": true
+ },
+ "models": {
+  "cities_effort": "deepseek/deepseek-v4-flash"
+ },
+ "judge": null,
+ "variant": null,
+ "flags": null,
+ "dataset": {
+  "path": "eval/cases_cities_effort.json",
+  "sha256": "fff1d863dc29",
+  "cases": 40
+ },
+ "data": "Sitzungen bis 2026-09-16, 9078 Beschlüsse",
+ "metrics": {
+  "quality": 0.825,
+  "hard_findings": 0,
+  "cases": 40,
+  "geliefert": 40,
+  "adressat": 97.5
+ },
+ "cost_usd": 0.00622,
+ "duration_s": 312.5,
+ "latency_ms": {
+  "p50": 22812,
+  "p95": 107950
+ },
+ "purpose": null,
+ "conclusion": null,
+ "comparable": true,
+ "note": "Lauf 1",
+ "raw": "eval/results/pruefstand/cities-aufwand/deepseek-deepseek-v4-flash-20260922-235913.json",
+ "raw_extra": null,
+ "source": "eval/pruefstand.py"
+}

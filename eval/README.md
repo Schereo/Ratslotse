@@ -4,6 +4,41 @@ Misst die **Qualität der KI-Extraktion** (Topic-Matching & Filter) gegen
 handgelabelte Ground-Truth-Fälle. Ziel: Änderungen an Prompts oder Modellen
 sollen messbar besser/schlechter werden, statt „gefühlt".
 
+## Benchmarks im Admin-Panel: ein Lauf, ein Format (11/2026)
+
+Jede Messung landet als **Lauf** im Admin-Panel unter *Benchmarks* — je
+KI-Pipeline, mit Modell je Stufe, Fällen samt Prüfsumme, Datenstand,
+Code-Stand, Kosten, Zweck und Fazit. Katalog und Format stehen in
+`kern/benchmarks.py`:
+
+- `PIPELINES` — jedes KI-Feature, zerlegt in Stufen (`_feature`-Namen und
+  woher das Modell kommt). Ein neues `_feature` ohne Pipeline macht
+  `tests/test_benchmarks.py` rot.
+- `BENCHMARKS` — jede Messung: was sie misst, woher die Erwartung kommt,
+  Richter, wo sie läuft, Streuung.
+- **Ein Lauf** ist eine kleine JSON-Datei unter `eval/runs/<benchmark>/`
+  (`kern.benchmarks.new_run` + `write_run`). Das Rohergebnis bleibt, wo es
+  ist; `raw` zeigt darauf. Auf einem Server schreiben die Gold-Läufe nach
+  `data/eval_runs/` (überlebt den Deploy), das Panel dieses Servers zeigt sie.
+
+**Wer schreibt Läufe selbst:** der Prüfstand (`--zweck "<warum>"` landet im
+Lauf), `scripts/eval_ask_gold.py` und `scripts/eval_deep_gold.py`
+(`ops-gold.yml -f zweck=…`). Alle anderen Suiten schreiben weiter nur ihr
+Rohergebnis; `python eval/runs_backfill.py --schreiben` macht daraus Läufe —
+`tests/test_benchmarks.py` meldet jedes Rohergebnis ohne Lauf.
+
+**„Aktuell" heißt: mit der heutigen Besetzung gemessen** — ohne Variante, und
+jede gemessene Stufe hatte das Modell, das der Dienst heute benutzt. Ein
+Kandidat (Haiku gegen Luna) verdrängt die Betriebsmessung nicht. Überholt ist
+eine Messung, wenn das Modell einer Stufe seither gewechselt hat, die
+Falldatei sich geändert hat (Prüfsumme) oder sie älter als 90 Tage ist.
+
+**Zweck und Fazit gehören in den Lauf.** `purpose` ist die Frage, die der Lauf
+beantworten soll („Bringen die Belegnotizen ohne den Aussprache-Ausbau
+etwas?"), `conclusion` die Antwort — auch „kein Unterschied". Nachtragen
+heißt: die Datei unter `eval/runs/` bearbeiten; der Rückimport überschreibt
+nichts.
+
 ## Neues Modell erschienen? Ein Befehl.
 
 ```bash

@@ -1,0 +1,39 @@
+{
+ "schema": 1,
+ "benchmark": "ask-gold",
+ "label": "okt-diaet-a",
+ "started_at": "2026-10-17T12:02:00",
+ "environment": "dev",
+ "code": null,
+ "models": {
+  "qa_analysis": "google/gemini-3.1-flash-lite",
+  "qa_query_expansion": "google/gemini-3.1-flash-lite",
+  "qa_nachrecherche": "google/gemini-3.1-flash-lite",
+  "qa_answer": "openai/gpt-6-luna"
+ },
+ "judge": "anthropic/claude-opus-5.5",
+ "variant": null,
+ "flags": null,
+ "dataset": null,
+ "data": null,
+ "metrics": {
+  "coverage": 0.55,
+  "passed": 11,
+  "context_recall": 0.6414,
+  "evidence_in_prompt": 127,
+  "evidence_total": 198,
+  "omitted": 55,
+  "median_s": 34,
+  "cases": 27
+ },
+ "cost_usd": null,
+ "duration_s": null,
+ "latency_ms": null,
+ "purpose": "+ Kontext-Diät (#1725)",
+ "conclusion": null,
+ "comparable": true,
+ "note": "aus dem Messbuch übernommen; Uhrzeit nicht erfasst (Reihenfolge wie dort). Modelle laut Messbuch (Analyse bis #1783 Gemini 3.1 Flash Lite, danach GPT-5.6 Luna).",
+ "raw": "server:dev:data/eval_gold/ask-okt-diaet-a.json",
+ "raw_extra": null,
+ "source": "docs/gold-messbuch.md"
+}

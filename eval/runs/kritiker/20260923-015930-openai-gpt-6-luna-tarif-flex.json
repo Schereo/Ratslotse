@@ -1,0 +1,43 @@
+{
+ "schema": 1,
+ "benchmark": "kritiker",
+ "label": null,
+ "started_at": "2026-09-23T01:59:30",
+ "environment": "local",
+ "code": {
+  "commit": "de6c59a5b",
+  "checked_in": true
+ },
+ "models": {
+  "social_critic": "openai/gpt-6-luna"
+ },
+ "judge": null,
+ "variant": "Tarif flex",
+ "flags": null,
+ "dataset": {
+  "path": "eval/cases_critic.json",
+  "sha256": "4c54c3310b82",
+  "cases": 18
+ },
+ "data": "Sitzungen bis 2026-09-16, 9078 Beschlüsse",
+ "metrics": {
+  "quality": 1.0,
+  "hard_findings": 0,
+  "cases": 18,
+  "zu_unrecht_verworfen": 0,
+  "ausfaelle": 0
+ },
+ "cost_usd": 0.002385,
+ "duration_s": 80.9,
+ "latency_ms": {
+  "p50": 3895,
+  "p95": 8447
+ },
+ "purpose": null,
+ "conclusion": null,
+ "comparable": true,
+ "note": "Lauf 2",
+ "raw": "eval/results/pruefstand/kritiker/openai-gpt-6-luna-flex-20260923-015930.json",
+ "raw_extra": null,
+ "source": "eval/pruefstand.py"
+}

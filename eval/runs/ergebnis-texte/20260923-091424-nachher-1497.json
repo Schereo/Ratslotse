@@ -1,0 +1,31 @@
+{
+ "schema": 1,
+ "benchmark": "ergebnis-texte",
+ "label": "nachher-1497",
+ "started_at": "2026-09-23T09:14:24",
+ "environment": "local",
+ "code": {
+  "commit": "064616925",
+  "checked_in": true
+ },
+ "models": {},
+ "judge": null,
+ "variant": null,
+ "flags": null,
+ "dataset": null,
+ "data": null,
+ "metrics": {
+  "passed_share": 0.975,
+  "cases": 80
+ },
+ "cost_usd": null,
+ "duration_s": null,
+ "latency_ms": null,
+ "purpose": null,
+ "conclusion": null,
+ "comparable": true,
+ "note": "Textarten: simple_summary, summary",
+ "raw": "eval/results/ergebnis_texte/20260923-092052-nachher-1497.json",
+ "raw_extra": null,
+ "source": "eval/runs_backfill.py"
+}
