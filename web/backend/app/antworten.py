@@ -4443,6 +4443,23 @@ class NumberOfTheWeekAmount(TypedDict):
     window_days: int
 
 
+class NumberOfTheWeekBudget(TypedDict):
+    """Eine Zahl aus dem Haushaltsentwurf, der gerade beraten wird — nur vom
+    Lauf ``zahl_der_woche`` und nur mit dem Schalter ``haushaltsentwurf-befunde``."""
+    kind: Literal["budget_draft"]
+    #: Ohne Vorzeichen — der Satz sagt, ob es fehlt oder ausgegeben wird.
+    value: float
+    unit: str
+    #: Ein Satz in Alltagssprache, beginnt mit „So viel …“.
+    sentence: str
+    budget_year: int | None
+    ksinr: int
+    item_number: str
+    session_date: str
+    committee: str | None
+    window_days: int
+
+
 class NumberOfTheWeekCount(TypedDict):
     kind: Literal["count"]
     count: int
@@ -4453,7 +4470,7 @@ class NumberOfTheWeekCount(TypedDict):
     sentence: str | None
 
 
-NumberOfTheWeek = NumberOfTheWeekAmount | NumberOfTheWeekCount
+NumberOfTheWeek = NumberOfTheWeekBudget | NumberOfTheWeekAmount | NumberOfTheWeekCount
 
 
 class BudgetProducts(TypedDict):

@@ -8219,6 +8219,26 @@ def test_zahl_der_woche_liest_die_gewaehlte_karte(client):
     cs.close()
 
 
+def test_zahl_der_woche_aus_dem_haushalt_nur_mit_schalter(client, monkeypatch):
+    _register(client)
+    heute = date.today()
+    karte = {"kind": "budget_draft", "value": 170.1, "unit": "Mio. €",
+             "sentence": "So viel mehr will die Stadt 2027 ausgeben, als sie einnimmt.", "budget_year": 2027,
+             "ksinr": 98, "item_number": "Ö 7", "session_date": heute.isoformat(),
+             "committee": "Ausschuss für Finanzen und Beteiligungen", "window_days": 7}
+    cs = CouncilStore(COUNCIL_DB)
+    cs.save_week_number(heute.isoformat(), ["h1s0"], "h1s0", karte, "m", 0.007)
+    cs.close()
+    monkeypatch.setenv("FEATURE_FLAGS", "")
+    assert client.get("/api/council/zahl-der-woche").json()["kind"] != "budget_draft"
+    monkeypatch.setenv("FEATURE_FLAGS", "haushaltsentwurf-befunde")
+    assert client.get("/api/council/zahl-der-woche").json() == karte
+    cs = CouncilStore(COUNCIL_DB)
+    with cs._conn:
+        cs._conn.execute("DELETE FROM council_week_numbers")
+    cs.close()
+
+
 def test_ask_zusagen_auch_wenn_der_plan_keine_debatten_will(client, monkeypatch):
     """„Wann kommen öffentliche Trinkwasserspender?“ ist eine Terminfrage, und der
     Rechercheplan schaltet für sie die Debatten ab. Die Antwort steht aber in

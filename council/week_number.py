@@ -8,9 +8,10 @@ Haushaltsentwurf vorgestellt wird, sei eine Zahl daraus spannend. Befund-Sätze
 EINEN Lauf (Cron ``zahl_der_woche``, täglich):
 
 1. **Kandidaten sammeln** (ohne Modell): die größten angenommenen
-   Beschluss-Beträge der letzten sieben Tage (sonst 30) und die Zahl der
-   Beschlüsse als Rückfall. (Die Befunde eines Haushaltsentwurfs kommen dazu,
-   sobald es sie gibt — sie liegen auf dev.)
+   Beschluss-Beträge der letzten sieben Tage (sonst 30), mit Schalter
+   ``haushaltsentwurf-befunde`` die geprüften Befunde, Eckzahlen und Sätze
+   eines Haushaltsentwurfs, der gerade beraten wird, und die Zahl der
+   Beschlüsse als Rückfall.
 2. **Wählen und schreiben** (``MODEL``): eine Zahl, ein Satz, der mit „So
    viel …“ beginnt.
 3. **Prüfen im Code**: Die Zahl steht beim Kandidaten, die Einheit stimmt,
@@ -31,7 +32,7 @@ import re
 from datetime import date, timedelta
 
 from council.plan_judge import cost_usd
-from kern import llm, prompts
+from kern import features, llm, prompts
 
 _log = logging.getLogger(__name__)
 
@@ -69,9 +70,41 @@ _EURO = {"€", "euro", "eur"}
 
 # ---- Kandidaten ------------------------------------------------------------------
 
+def _budget(store, today: date) -> list[dict]:
+    """Die geprüften Angaben des Haushaltsentwurfs, der gerade beraten wird
+    (Sitzung höchstens sieben Tage entfernt) — nur mit dem Schalter."""
+    if not features.an("haushaltsentwurf-befunde"):
+        return []
+    for p in store.budget_report_items((today - timedelta(days=WINDOW_DAYS)).isoformat(),
+                                       (today + timedelta(days=WINDOW_DAYS)).isoformat()):
+        befunde = store.item_budget_findings(p["ksinr"], p["item_number"])
+        if not befunde:
+            continue
+        stored = store.budget_draft_findings(befunde["document_id"]) or {}
+        payload = stored.get("payload") or {}
+        year = payload.get("budget_year")
+        base = {"kind": "budget", "context": f"Haushaltsentwurf {year}" if year else "Haushaltsentwurf",
+                "budget_year": year, "ksinr": p["ksinr"], "item_number": p["item_number"],
+                "session_date": p["session_date"], "committee": p["committee"]}
+        did = befunde["document_id"]
+        out = []
+        for i, f in enumerate(payload.get("findings") or []):
+            k = f["key_figure"]
+            out.append({**base, "id": f"h{did}b{i}", "value": k["value"], "unit": k["unit"],
+                        "label": k["label"], "title": f["title"], "text": f["text"]})
+        gesamt = payload.get("overview") or {}
+        for i, f in enumerate(gesamt.get("facts") or []):
+            out.append({**base, "id": f"h{did}e{i}", "value": f["value"], "unit": f["unit"],
+                        "label": f["label"], "quote": f.get("quote")})
+        for i, x in enumerate(gesamt.get("statements") or []):
+            out.append({**base, "id": f"h{did}s{i}", "text": x["text"], "quote": x["quote"]})
+        return out
+    return []
+
+
 def candidates(store, today: date | None = None) -> list[dict]:
     today = today or date.today()
-    out: list[dict] = []
+    out = _budget(store, today)
     for days in (WINDOW_DAYS, 30):
         seit = (today - timedelta(days=days)).isoformat()
         rows, gesehen = [], set()
@@ -152,6 +185,8 @@ def check(raw: dict, cands: list[dict]) -> tuple[dict | None, str | None]:
     jahre = set(_YEAR_RE.findall(satz))
     if not jahre <= set(_YEAR_RE.findall(quelle)):
         return None, "Jahr steht nicht beim Kandidaten"
+    if c["kind"] == "budget" and not jahre:
+        return None, "Jahr fehlt"
     return card(c, value, unit, satz), None
 
 
@@ -163,8 +198,12 @@ def card(c: dict, value: float, unit: str, sentence: str) -> dict:
         return {"kind": "amount", "amount_eur": float(c["value"]), "decision_id": c["decision_id"],
                 "title": c["title"], "sentence": sentence, "session_date": c["session_date"],
                 "window_days": c["window_days"]}
-    return {"kind": "count", "count": int(c["value"]), "window_days": c["window_days"],
-            "date_from": c["date_from"], "sentence": sentence}
+    if c["kind"] == "count":
+        return {"kind": "count", "count": int(c["value"]), "window_days": c["window_days"],
+                "date_from": c["date_from"], "sentence": sentence}
+    return {"kind": "budget_draft", "value": value, "unit": unit, "sentence": sentence,
+            "budget_year": c["budget_year"], "ksinr": c["ksinr"], "item_number": c["item_number"],
+            "session_date": c["session_date"], "committee": c["committee"], "window_days": WINDOW_DAYS}
 
 
 # ---- Lauf ------------------------------------------------------------------------

@@ -16647,6 +16647,36 @@ export interface components {
             /** Window Days */
             window_days: number;
         };
+        /**
+         * NumberOfTheWeekBudget
+         * @description Eine Zahl aus dem Haushaltsentwurf, der gerade beraten wird — nur vom
+         *     Lauf ``zahl_der_woche`` und nur mit dem Schalter ``haushaltsentwurf-befunde``.
+         */
+        NumberOfTheWeekBudget: {
+            /** Budget Year */
+            budget_year: number | null;
+            /** Committee */
+            committee: string | null;
+            /** Item Number */
+            item_number: string;
+            /**
+             * Kind
+             * @constant
+             */
+            kind: "budget_draft";
+            /** Ksinr */
+            ksinr: number;
+            /** Sentence */
+            sentence: string;
+            /** Session Date */
+            session_date: string;
+            /** Unit */
+            unit: string;
+            /** Value */
+            value: number;
+            /** Window Days */
+            window_days: number;
+        };
         /** NumberOfTheWeekCount */
         NumberOfTheWeekCount: {
             /** Count */
@@ -29090,7 +29120,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["NumberOfTheWeekAmount"] | components["schemas"]["NumberOfTheWeekCount"];
+                    "application/json": components["schemas"]["NumberOfTheWeekBudget"] | components["schemas"]["NumberOfTheWeekAmount"] | components["schemas"]["NumberOfTheWeekCount"];
                 };
             };
         };
@@ -33452,4 +33482,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: ff9e9348b03a6305277fd17278028c3dcfe3dae8d11694845ab23026ec75f523
+// vertrag-sha256: 51ee5e1c2aae8aa468a2200df0f9c0653bd8730b2a255016712ef4e8d1458db1

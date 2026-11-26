@@ -576,6 +576,21 @@ class UnterlagenMixin(StoreBasis):
                  json.dumps(payload, ensure_ascii=False) if payload is not None else None, cost_usd,
                  datetime.now(UTC).isoformat(timespec="seconds")))
 
+    def budget_report_items(self, since: str, until: str) -> list[dict]:
+        """Punkte mit einem Vorbericht unter den Unterlagen (am Punkt oder an
+        seiner Vorlage), deren Sitzung im Zeitraum liegt — jüngste zuerst. Die
+        „Zahl der Woche“ sucht darunter einen Haushaltsentwurf mit Befunden."""
+        return [dict(r) for r in self._conn.execute(
+            "SELECT DISTINCT a.ksinr, a.item_number, s.session_date, s.committee "
+            "FROM council_agenda_items a JOIN council_sessions s ON s.ksinr = a.ksinr "
+            "WHERE s.session_date BETWEEN ? AND ? AND a.is_public = 1 AND ("
+            " EXISTS (SELECT 1 FROM council_agenda_attachments aa WHERE aa.ksinr = a.ksinr "
+            "  AND aa.item_number = a.item_number AND aa.label LIKE '%Vorbericht%')"
+            " OR EXISTS (SELECT 1 FROM council_templates t JOIN council_attachments ca ON ca.kvonr = t.kvonr "
+            "  WHERE t.template_number = a.template_number AND COALESCE(a.template_number, '') != '' "
+            "  AND ca.label LIKE '%Vorbericht%')) "
+            "ORDER BY s.session_date DESC", (since, until))]
+
     def item_budget_findings(self, ksinr: int, item_number: str) -> dict | None:
         """Die Befunde für die Punkt-Seite: aus dem Vorbericht unter den
         Unterlagen des Punkts (auch an einer anderen Station seiner Vorlage)."""

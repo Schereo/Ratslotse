@@ -585,7 +585,9 @@ def zahl_der_woche(
     from datetime import timedelta
     today = date.today()
     gewaehlt = store.latest_week_number((today - timedelta(days=6)).isoformat())
-    if gewaehlt:
+    # Eine Karte aus dem Haushaltsentwurf nur mit dessen Schalter.
+    if gewaehlt and (gewaehlt["payload"].get("kind") != "budget_draft"
+                     or features.an("haushaltsentwurf-befunde")):
         return gewaehlt["payload"]
     for days in (7, 30):
         top = store.top_amount_since((today - timedelta(days=days)).isoformat())

@@ -114,7 +114,7 @@ JOBS: list[dict] = [
     {
         "key": "zahl_der_woche",
         "label": "Zahl der Woche",
-        "description": "Wählt für „Heute“ aus den Beschluss-Beträgen der letzten sieben Tage und der Zahl der Beschlüsse eine Zahl und schreibt sie in Alltagssprache. Kostet LLM nur, wenn ein Kandidat dazukam.",
+        "description": "Wählt für „Heute“ aus den Beschluss-Beträgen der letzten sieben Tage, dem Haushaltsentwurf (mit Schalter) und der Zahl der Beschlüsse eine Zahl und schreibt sie in Alltagssprache. Kostet LLM nur, wenn ein Kandidat dazukam.",
         "schedule": "täglich 11:30 Uhr",
         "max_age_h": 30,
     },

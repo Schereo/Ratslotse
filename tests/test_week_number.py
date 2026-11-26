@@ -4,8 +4,8 @@ Tim, 25.11.2026: Vorlagentitel und Befund-Sätze sind „keine Alltagssprache“
 und statt zweier Lösungen soll es ein System geben, das täglich läuft. Was
 hier festgehalten wird:
 
-* Kandidaten kommen aus Beschluss-Beträgen (nur angenommene) und der Zahl
-  der Beschlüsse.
+* Kandidaten kommen aus Beschluss-Beträgen (nur angenommene), dem
+  Haushaltsentwurf (nur mit Schalter) und der Zahl der Beschlüsse.
 * Den Satz schreibt das Modell; Zahl, Einheit, Jahr und Fachwörter hält der Code.
 * Neu gewählt wird nur, wenn sich die Kandidaten ändern — sonst kein Aufruf.
 """
@@ -18,7 +18,7 @@ from types import SimpleNamespace
 import pytest
 
 from council import week_number as wn
-from council.scraper import CouncilSession
+from council.scraper import AgendaItem, CouncilSession
 from council.store import CouncilStore
 
 HEUTE = date(2026, 11, 25)
@@ -122,3 +122,61 @@ def test_lauf_ohne_gueltigen_vorschlag_speichert_nichts(store, monkeypatch):
     _antworten(monkeypatch, *[{"id": "d1", "value": 59000, "unit": "€", "sentence": "Überplanmäßige Bewilligung."}] * 2)
     assert wn.run(store, HEUTE)["verworfen"] == 1
     assert store.latest_week_number("2000-01-01") is None
+
+
+# ---- Haushaltsentwurf (Schalter haushaltsentwurf-befunde) ------------------------
+
+VORBERICHT = {"findings": [{"key_figure": {"value": -200.3, "unit": "Mio. €", "label": "Fehlbedarf 2030, Plan"},
+                            "title": "Laut Plan bleibt das Jahresergebnis bis 2030 negativ", "text": "…"}],
+              "overview": {"facts": [{"value": 939.1, "unit": "Mio. €",
+                                      "label": "Ordentliche Aufwendungen 2027, Plan"}],
+                           "statements": [{"text": "Für 2027 plant die Stadt ein negatives Jahresergebnis von "
+                                                   "rund 170,1 Mio. €.", "quote": "…"}]},
+              "budget_year": 2027}
+
+
+def _vorbericht(store, monkeypatch):
+    monkeypatch.setenv("FEATURE_FLAGS", "haushaltsentwurf-befunde")
+    punkt = AgendaItem(item_number="Ö 7", title="Haushalt 2027 - Verwaltungsentwurf - Bericht",
+                       template_number="26/0835", kvonr=None, is_public=True,
+                       anlagen=[{"label": "2027 001 Vw Vorbericht Haushalt 2027",
+                                 "url": "https://ratsinfo.oldenburg.de/bi/getfile.asp?id=316689&type=do"}])
+    store.save_session(CouncilSession(ksinr=4642, committee="Ausschuss für Finanzen und Beteiligungen",
+                                      session_date=(HEUTE - timedelta(days=2)).isoformat(), session_time="17:00",
+                                      location="PFL", agenda_items=[punkt]))
+    store.save_budget_draft_findings(316689, "h", status="ok", payload=VORBERICHT, model="m", verify_model="v",
+                                     cost_usd=0.05, prompt_version=2)
+
+
+def test_haushaltsentwurf_nur_mit_schalter(store, monkeypatch):
+    _beschluss(store, 1, 59000)
+    _vorbericht(store, monkeypatch)
+    ids = [c["id"] for c in wn.candidates(store, HEUTE)]
+    assert ids[:3] == ["h316689b0", "h316689e0", "h316689s0"] and "d1" in ids
+    monkeypatch.setenv("FEATURE_FLAGS", "")
+    assert not any(c["kind"] == "budget" for c in wn.candidates(store, HEUTE))
+
+
+@pytest.mark.parametrize("raw, grund", [
+    ({"id": "h316689s0", "value": 170.1, "unit": "Mio. €",
+      "sentence": "So viel mehr will die Stadt 2027 ausgeben, als sie einnimmt."}, None),
+    ({"id": "h316689e0", "value": 939.1, "unit": "Mio. €", "sentence": "So viel Geld will die Stadt 2027 ausgeben."},
+     None),
+    ({"id": "h316689b0", "value": 200.3, "unit": "Mio. €", "sentence": "So viel soll der Fehlbedarf 2030 betragen."},
+     "Fachwort"),
+    ({"id": "h316689s0", "value": 171, "unit": "Mio. €", "sentence": "So viel soll der Stadt 2027 fehlen."},
+     "steht nicht"),
+    ({"id": "h316689s0", "value": 170.1, "unit": "Mio. €", "sentence": "So viel soll der Stadt 2028 fehlen."},
+     "Jahr steht nicht"),
+    ({"id": "h316689s0", "value": 170.1, "unit": "Mio. €", "sentence": "So viel soll der Stadt fehlen."}, "Jahr fehlt"),
+    ({"id": "h316689e0", "value": 939.1, "unit": "%", "sentence": "So viel Geld will die Stadt 2027 ausgeben."},
+     "Einheit"),
+])
+def test_haushaltssatz_wird_geprueft(store, monkeypatch, raw, grund):
+    _vorbericht(store, monkeypatch)
+    karte, warum = wn.check(raw, wn.candidates(store, HEUTE))
+    if grund is None:
+        assert warum is None and karte["kind"] == "budget_draft" and karte["sentence"] == raw["sentence"]
+        assert (karte["ksinr"], karte["item_number"], karte["budget_year"]) == (4642, "Ö 7", 2027)
+    else:
+        assert karte is None and grund in warum
