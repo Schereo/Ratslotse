@@ -139,8 +139,14 @@ def check(raw: dict, cands: list[dict]) -> tuple[dict | None, str | None]:
     satz = " ".join(str(raw.get("sentence") or "").split())
     if not re.match(r"So viele?\b", satz) or len(satz) > MAX_CHARS:
         return None, "Satz beginnt nicht mit „So viel“ oder ist zu lang"
-    if _numbers(satz):
-        return None, "Satz wiederholt eine Zahl"
+    # Die große Zahl steht schon da; eine andere Zahl darf es nur geben, wenn
+    # sie beim Kandidaten steht („in den letzten 90 Tagen“, Prod 26.11.2026).
+    erlaubt = _numbers(quelle)
+    for x in _numbers(satz):
+        if any(abs(x - y) <= max(0.051, y * 0.005) for y in pool):
+            return None, "Satz wiederholt die Zahl"
+        if x not in erlaubt:
+            return None, f"Zahl {x} im Satz steht nicht beim Kandidaten"
     if m := JARGON_RE.search(satz):
         return None, f"Fachwort {m.group(0)!r}"
     jahre = set(_YEAR_RE.findall(satz))
