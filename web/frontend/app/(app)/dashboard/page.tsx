@@ -158,8 +158,12 @@ export default function DashboardPage() {
             <div className="inhalt-auf">
               <p className="font-display text-[40px] font-extrabold leading-none tracking-tight text-signal">
                 <CountUpEuro amount={zahl.amount_eur} /></p>
+              {/* Wofür das Geld ist, in Alltagssprache (Lauf zahl_der_woche,
+                  sonst erster Satz der Kurzfassung) — statt des Vorlagentitels.
+                  Tim, 25.11.2026: „beschlossen für: Überplanmäßige Bewilligung
+                  … Teilhaushalt 02, Budget 10“ sagt niemandem etwas. */}
               <p className="mt-2 line-clamp-3 flex-1 text-hinweis text-muted-foreground">
-                beschlossen für: {zahl.title}
+                {zahl.sentence ?? `beschlossen für: ${zahl.title}`}
               </p>
               <Link
                 href={decisionHref(zahl.decision_id)}
@@ -182,7 +186,7 @@ export default function DashboardPage() {
               </p>
               <p className="mt-2 flex-1 text-hinweis text-muted-foreground">
                 {zahl.count > 0
-                  ? `${zahl.count === 1 ? "Beschluss" : "Beschlüsse"} in den letzten ${zahl.window_days} Tagen.`
+                  ? zahl.sentence ?? `${zahl.count === 1 ? "Beschluss" : "Beschlüsse"} in den letzten ${zahl.window_days} Tagen.`
                   : "Noch keine neuen Beschlüsse — die Protokolle erscheinen meist ein bis drei Wochen nach einer Sitzung."}
               </p>
               {/* Design 28a/S5: Die auffälligste Zahl des Screens war in dieser

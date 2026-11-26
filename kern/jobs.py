@@ -112,6 +112,13 @@ JOBS: list[dict] = [
         "max_age_h": 30,
     },
     {
+        "key": "zahl_der_woche",
+        "label": "Zahl der Woche",
+        "description": "Wählt für „Heute“ aus den Beschluss-Beträgen der letzten sieben Tage und der Zahl der Beschlüsse eine Zahl und schreibt sie in Alltagssprache. Kostet LLM nur, wenn ein Kandidat dazukam.",
+        "schedule": "täglich 11:30 Uhr",
+        "max_age_h": 30,
+    },
+    {
         "key": "social_kartentexte",
         "label": "Kartentexte (Tagesordnung)",
         "description": "Ein erklärender Satz je inhaltlichem Tagesordnungspunkt der nächsten drei Wochen — der einzige Text, der die ganze Vorlage samt Anlagen liest. Kostet LLM, schreibt nie zweimal dasselbe.",

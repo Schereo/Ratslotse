@@ -4334,6 +4334,10 @@ class NumberOfTheWeekAmount(TypedDict):
     amount_eur: float
     decision_id: int
     title: str
+    #: Ein Satz in Alltagssprache, wofür das Geld ist — vom Lauf
+    #: ``zahl_der_woche`` („So viel …“) oder, ohne ihn, der erste Satz von
+    #: „Lotti erklärt's einfach“. ``None`` ohne beides; dann steht der Titel da.
+    sentence: str | None
     session_date: str | None
     window_days: int
 
@@ -4344,6 +4348,8 @@ class NumberOfTheWeekCount(TypedDict):
     window_days: int
     #: Erster Tag des gezählten Fensters — Ziel des Links auf die Liste.
     date_from: NotRequired[str]
+    #: Vom Lauf ``zahl_der_woche``; ``None`` in der eigenen Rechnung von „Heute“.
+    sentence: str | None
 
 
 NumberOfTheWeek = NumberOfTheWeekAmount | NumberOfTheWeekCount
