@@ -151,6 +151,7 @@ const FEATURE_LABELS: Record<string, string> = {
   program_stance: "Wahlprogramme zum Punkt einordnen",
   program_stance_verify: "Wahlprogramme zum Punkt prüfen",
   simple_summary: "Lotti erklärt's einfach",
+  week_number: "Zahl der Woche",
   social_card_text: "Social-Kartentext",
   social_critic: "Social-Kritiker",
   speeches: "Wortbeiträge",

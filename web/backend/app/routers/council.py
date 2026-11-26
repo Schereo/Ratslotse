@@ -546,21 +546,49 @@ def fundstueck(
     }
 
 
+#: Kürzel, hinter denen ein Punkt keinen Satz beendet („9,5 Mio. Euro“).
+_KUERZEL_RE = re.compile(r"(?:\b(?:Mio|Mrd|Tsd|Nr|Abs|bzw|ca|Dr|St|vgl|ggf|inkl|zzgl|Std|Min)|\d|\b[a-zA-Z]\.[a-zA-Z])$")
+
+
+def _erster_satz(text: str | None) -> str | None:
+    """Erster Satz der Kurzfassung für die Zahl der Woche — ``None`` ohne
+    Kurzfassung. Ein Punkt hinter „Mio“, einer Ziffer oder „z.B“ beendet
+    keinen Satz (``kern.knowledge.erster_satz`` schnitte bei „9,5 Mio.“)."""
+    sauber = " ".join((text or "").split())
+    if not sauber:
+        return None
+    for m in re.finditer(r"[.!?](?=\s+[A-ZÄÖÜ„])", sauber):
+        if m.group() == "." and _KUERZEL_RE.search(sauber[:m.start()]):
+            continue
+        return sauber[:m.end()]
+    return sauber
+
+
 @router.get("/zahl-der-woche")
 def zahl_der_woche(
     _user: dict = Depends(require_active),
     store: CouncilStore = Depends(get_council_store),
 ) -> NumberOfTheWeek:
-    """RL-905: größter Beschluss-Betrag der letzten 7 Tage (Fallback 30);
-    ganz ohne Treffer zählt die Karte die Beschlüsse der Woche. Die Satz-
-    Formulierung übernimmt das Frontend — hier nur Rohdaten."""
+    """RL-905: Die Karte, die der Lauf ``zahl_der_woche`` zuletzt gewählt und
+    in Alltagssprache geschrieben hat (``council/week_number.py``) — wenn sie
+    höchstens sechs Tage alt ist. Sonst rechnet „Heute“ selbst: größter
+    Beschluss-Betrag der letzten 7 Tage (Fallback 30) mit dem ersten Satz der
+    Kurzfassung, ganz ohne Betrag die Zahl der Beschlüsse.
+
+    Tim, 25.11.2026: „59.000 € — beschlossen für: Überplanmäßige Bewilligung
+    … Teilhaushalt 02, Budget 10“ sage niemandem etwas — und es soll ein
+    System sein, das die Zahlen regelmäßig mit einfachen Texten erzeugt."""
     from datetime import timedelta
     today = date.today()
+    gewaehlt = store.latest_week_number((today - timedelta(days=6)).isoformat())
+    if gewaehlt:
+        return gewaehlt["payload"]
     for days in (7, 30):
         top = store.top_amount_since((today - timedelta(days=days)).isoformat())
         if top:
             return {"kind": "amount", "amount_eur": top["amount_eur"],
                     "decision_id": top["id"], "title": top["title"],
+                    "sentence": _erster_satz(top.get("simple_summary")),
                     "session_date": top["session_date"], "window_days": days}
     # Ohne Betrag die Zahl der Beschlüsse — im kleinsten Fenster, in dem es
     # überhaupt welche gibt. Bis 10/2026 immer 7 Tage: Nach Sommerpause und
@@ -574,9 +602,9 @@ def zahl_der_woche(
         seit = (today - timedelta(days=days)).isoformat()
         anzahl = store.count_decisions_since(seit)
         if anzahl:
-            return {"kind": "count", "count": anzahl, "window_days": days, "date_from": seit}
+            return {"kind": "count", "count": anzahl, "window_days": days, "date_from": seit, "sentence": None}
     return {"kind": "count", "count": 0, "window_days": 90,
-            "date_from": (today - timedelta(days=90)).isoformat()}
+            "date_from": (today - timedelta(days=90)).isoformat(), "sentence": None}
 
 
 @router.get("/budget/products")

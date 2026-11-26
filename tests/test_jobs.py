@@ -97,6 +97,7 @@ def test_registry_deckt_die_cron_eintraege_ab():
         "antraege_nachzuegler",  # Änderungsanträge vom Vortag/Sitzungstag, 11/13/16/18 Uhr
         "vorlagen_dossiers",     # Dossiers der Vorlagen, 10 und 15 Uhr
         "social_kartentexte",  # ein Satz je Tagesordnungspunkt (LLM), täglich 7:45
+        "zahl_der_woche",     # Zahl der Woche für „Heute“ (LLM bei neuem Kandidaten), 11:30
         "render_plaene",    # P1: Planzeichnungen als Bilder, sonntags 4:30
         "check_finanzdaten",  # neue Haushalts-Jahrgänge, alle zwei Wochen
         # Der einzige Job, der selbst herunterlädt (oldenburg.de), alle vier
