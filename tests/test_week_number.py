@@ -60,6 +60,10 @@ def test_kandidaten_aus_allen_quellen(store, monkeypatch):
     ({"id": "d1", "value": 59000, "unit": "€", "sentence": "So viel gibt die Stadt 2025 für StartJob aus."},
      "Jahr steht nicht"),
     ({"id": "d1", "value": 59000, "unit": "€", "sentence": "Die Stadt gibt mehr für StartJob aus."}, "So viel"),
+    ({"id": "c7", "value": 1, "unit": "Beschlüsse",
+      "sentence": "So viele Beschlüsse fassten Rat und Ausschüsse in den letzten 7 Tagen."}, None),
+    ({"id": "c7", "value": 1, "unit": "Beschlüsse",
+      "sentence": "So viele Beschlüsse fassten Rat und Ausschüsse in den letzten 14 Tagen."}, "steht nicht"),
     ({"id": "x9", "value": 1, "unit": "€", "sentence": "So viel."}, "unbekannt"),
 ])
 def test_satz_wird_im_code_geprueft(store, monkeypatch, raw, grund):
