@@ -114,6 +114,7 @@ export default defineConfig({
 						{ slug: 'tippspiel' },
 						{ slug: 'app-und-konten' },
 						{ slug: 'mcp' },
+						{ slug: 'alternativen' },
 					],
 				},
 				{
