@@ -1,0 +1,38 @@
+{
+ "schema": 1,
+ "benchmark": "watcher",
+ "label": null,
+ "started_at": "2026-06-17T12:15:35",
+ "environment": "unknown",
+ "code": {
+  "commit": "bbf1aa548",
+  "checked_in": true
+ },
+ "models": {},
+ "judge": null,
+ "variant": null,
+ "flags": null,
+ "dataset": {
+  "path": "eval/cases_watcher.json",
+  "sha256": "12e96f680fa6",
+  "cases": 5
+ },
+ "data": null,
+ "metrics": {
+  "quality": 1.0,
+  "hard_findings": 0,
+  "cases": 3,
+  "precision": 1.0,
+  "recall": 1.0
+ },
+ "cost_usd": null,
+ "duration_s": null,
+ "latency_ms": null,
+ "purpose": null,
+ "conclusion": null,
+ "comparable": true,
+ "note": "Modell nicht erfasst; Fallliste von damals (drei Fälle)",
+ "raw": "eval/results/watcher/2026-06-17_12-15-35.json",
+ "raw_extra": null,
+ "source": "eval/runs_backfill.py"
+}

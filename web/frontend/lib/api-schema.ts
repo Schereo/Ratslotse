@@ -435,6 +435,47 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/benchmarks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Benchmarks Overview
+         * @description Alle Pipelines mit ihren Stufen (Modell heute, Nutzung 30 Tage) und alle
+         *     Benchmarks mit Status und ihren Läufen in Kurzform.
+         */
+        get: operations["benchmarks_overview_api_admin_benchmarks_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/benchmarks/{key}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Benchmark Runs
+         * @description Die Läufe eines Benchmarks vollständig, neueste zuerst.
+         */
+        get: operations["benchmark_runs_api_admin_benchmarks__key__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/cities": {
         parameters: {
             query?: never;
@@ -7715,6 +7756,252 @@ export interface components {
             /** Verified */
             verified: number;
         };
+        /**
+         * AdminBenchmark
+         * @description Ein Benchmark samt Status (``kern.benchmarks.overview``).
+         */
+        AdminBenchmark: {
+            /** Also */
+            also: string[];
+            /** Cases */
+            cases: components["schemas"]["AdminBenchmarkCases"][];
+            /** Command */
+            command: string;
+            /** Hard */
+            hard: string | null;
+            /** Judge */
+            judge: string | null;
+            /** Key */
+            key: string;
+            /**
+             * AdminBenchmarkRunRow
+             * @description Kurzform eines Laufs (``kern.benchmarks.run_row``).
+             */
+            latest: {
+                /** Benchmark */
+                benchmark: string;
+                /** Cases */
+                cases: number | null;
+                /** Comparable */
+                comparable: boolean;
+                /** Cost Usd */
+                cost_usd: number | null;
+                /** Current */
+                current: boolean;
+                /** Environment */
+                environment: string;
+                /** Hard */
+                hard: number | null;
+                /** Has Conclusion */
+                has_conclusion: boolean;
+                /** Id */
+                id: string;
+                /** Label */
+                label: string | null;
+                /** Model */
+                model: string | null;
+                /** Origin */
+                origin: string;
+                /** Sample */
+                sample: number | null;
+                /** Started At */
+                started_at: string;
+                /** Value */
+                value: number | null;
+                /** Variant */
+                variant: string | null;
+            } | null;
+            /** Log */
+            log: string | null;
+            /** Measures */
+            measures: string;
+            metric: components["schemas"]["AdminBenchmarkMetric"];
+            /** Noise */
+            noise: string | null;
+            /** Pipeline */
+            pipeline: string;
+            /**
+             * AdminBenchmarkRunRow
+             * @description Kurzform eines Laufs (``kern.benchmarks.run_row``).
+             */
+            previous: {
+                /** Benchmark */
+                benchmark: string;
+                /** Cases */
+                cases: number | null;
+                /** Comparable */
+                comparable: boolean;
+                /** Cost Usd */
+                cost_usd: number | null;
+                /** Current */
+                current: boolean;
+                /** Environment */
+                environment: string;
+                /** Hard */
+                hard: number | null;
+                /** Has Conclusion */
+                has_conclusion: boolean;
+                /** Id */
+                id: string;
+                /** Label */
+                label: string | null;
+                /** Model */
+                model: string | null;
+                /** Origin */
+                origin: string;
+                /** Sample */
+                sample: number | null;
+                /** Started At */
+                started_at: string;
+                /** Value */
+                value: number | null;
+                /** Variant */
+                variant: string | null;
+            } | null;
+            /** Reasons */
+            reasons: components["schemas"]["AdminBenchmarkReason"][];
+            /** Runs */
+            runs: components["schemas"]["AdminBenchmarkRunRow"][];
+            /** Runs On */
+            runs_on: string;
+            /** Secondary */
+            secondary: components["schemas"]["AdminBenchmarkMetric"][];
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "ok" | "stale" | "none";
+            /** Steps */
+            steps: string[];
+            /** Title */
+            title: string;
+            /** Truth */
+            truth: string;
+        };
+        /**
+         * AdminBenchmarkCases
+         * @description Eine Falldatei, wie sie HEUTE im Repo liegt (Prüfsumme, Fallzahl).
+         */
+        AdminBenchmarkCases: {
+            /** Cases */
+            cases: number | null;
+            /** Path */
+            path: string;
+            /** Sha256 */
+            sha256: string | null;
+        };
+        /** AdminBenchmarkInvalid */
+        AdminBenchmarkInvalid: {
+            /** Id */
+            id: string;
+            /** Origin */
+            origin: string;
+            /** Problems */
+            problems: string[];
+        };
+        /** AdminBenchmarkMetric */
+        AdminBenchmarkMetric: {
+            /** Higher Is Better */
+            higher_is_better: boolean;
+            /** Key */
+            key: string;
+            /** Label */
+            label: string;
+            /** Unit */
+            unit: string;
+        };
+        /**
+         * AdminBenchmarkReason
+         * @description Warum eine Messung überholt ist (``kern.benchmarks.assess``).
+         */
+        AdminBenchmarkReason: {
+            /** Days */
+            days?: number;
+            /** Kind */
+            kind: string;
+            /** Now */
+            now?: string;
+            /** Path */
+            path?: string;
+            /** Step */
+            step?: string;
+            /** Then */
+            then?: string;
+            /** Variant */
+            variant?: string | null;
+        };
+        /**
+         * AdminBenchmarkRunRow
+         * @description Kurzform eines Laufs (``kern.benchmarks.run_row``).
+         */
+        AdminBenchmarkRunRow: {
+            /** Benchmark */
+            benchmark: string;
+            /** Cases */
+            cases: number | null;
+            /** Comparable */
+            comparable: boolean;
+            /** Cost Usd */
+            cost_usd: number | null;
+            /** Current */
+            current: boolean;
+            /** Environment */
+            environment: string;
+            /** Hard */
+            hard: number | null;
+            /** Has Conclusion */
+            has_conclusion: boolean;
+            /** Id */
+            id: string;
+            /** Label */
+            label: string | null;
+            /** Model */
+            model: string | null;
+            /** Origin */
+            origin: string;
+            /** Sample */
+            sample: number | null;
+            /** Started At */
+            started_at: string;
+            /** Value */
+            value: number | null;
+            /** Variant */
+            variant: string | null;
+        };
+        /**
+         * AdminBenchmarkRuns
+         * @description ``GET /api/admin/benchmarks/{key}`` — die Läufe vollständig, neueste zuerst.
+         *
+         *     Ein Lauf ist das Format aus ``kern/benchmarks.py::new_run`` (Schema 1) plus
+         *     ``id``, ``origin`` und ``current``. Bewusst ``dict[str, Any]``: Das Format
+         *     darf um Felder wachsen, ohne dass hier still etwas wegfällt.
+         */
+        AdminBenchmarkRuns: {
+            /** Key */
+            key: string;
+            /** Runs */
+            runs: {
+                [key: string]: unknown;
+            }[];
+        };
+        /**
+         * AdminBenchmarks
+         * @description ``GET /api/admin/benchmarks`` — Pipelines, Benchmarks, Läufe in Kurzform.
+         */
+        AdminBenchmarks: {
+            /** Benchmarks */
+            benchmarks: components["schemas"]["AdminBenchmark"][];
+            /** Github */
+            github: string;
+            /** Invalid */
+            invalid: components["schemas"]["AdminBenchmarkInvalid"][];
+            /** Pipelines */
+            pipelines: components["schemas"]["AdminPipeline"][];
+            /** Runs Total */
+            runs_total: number;
+            /** Stale After Days */
+            stale_after_days: number;
+        };
         /** AdminClientShare */
         AdminClientShare: {
             /** Client */
@@ -8633,6 +8920,49 @@ export interface components {
             skipped: number;
             /** Version */
             version: string;
+        };
+        /** AdminPipeline */
+        AdminPipeline: {
+            /** Benchmarks */
+            benchmarks: string[];
+            /** Headline */
+            headline: string | null;
+            /** Key */
+            key: string;
+            /** Measured Steps */
+            measured_steps: number;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "ok" | "stale" | "none";
+            /** Steps */
+            steps: components["schemas"]["AdminPipelineStep"][];
+            /** Summary */
+            summary: string;
+            /** Title */
+            title: string;
+        };
+        /** AdminPipelineStep */
+        AdminPipelineStep: {
+            /** Benchmarks */
+            benchmarks: string[];
+            /** Calls 30D */
+            calls_30d: number;
+            /** Cost 30D */
+            cost_30d: number;
+            /** Features */
+            features: string[];
+            /** Key */
+            key: string;
+            /** Label */
+            label: string;
+            /** Llm */
+            llm: boolean;
+            /** Model */
+            model: string | null;
+            /** Models 30D */
+            models_30d: string[];
         };
         /**
          * AdminPlaceCandidate
@@ -24054,6 +24384,57 @@ export interface operations {
             };
         };
     };
+    benchmarks_overview_api_admin_benchmarks_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminBenchmarks"];
+                };
+            };
+        };
+    };
+    benchmark_runs_api_admin_benchmarks__key__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminBenchmarkRuns"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     cities_stats_api_admin_cities_get: {
         parameters: {
             query?: never;
@@ -33482,4 +33863,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 51ee5e1c2aae8aa468a2200df0f9c0653bd8730b2a255016712ef4e8d1458db1
+// vertrag-sha256: afdb10f5793937bf4c810bc8655935bc5b781671cf0b11fc972483a9404a4e38

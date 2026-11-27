@@ -1,0 +1,41 @@
+{
+ "schema": 1,
+ "benchmark": "fakten-haushalt",
+ "label": "P4a Luna low",
+ "started_at": "2026-09-23T10:47:16",
+ "environment": "local",
+ "code": {
+  "commit": "168c0695e",
+  "checked_in": true
+ },
+ "models": {
+  "qa_answer": "openai/gpt-6-luna",
+  "assistant_explain": "openai/gpt-6-luna"
+ },
+ "judge": null,
+ "variant": null,
+ "flags": null,
+ "dataset": {
+  "path": "eval/cases_fakten_haushalt.json",
+  "sha256": "41a61d07e688",
+  "cases": 142
+ },
+ "data": null,
+ "metrics": {
+  "quality": 0.8873,
+  "cases": 142,
+  "kontextfehler": 2,
+  "modellfehler": 14,
+  "hard_findings": 0
+ },
+ "cost_usd": null,
+ "duration_s": null,
+ "latency_ms": null,
+ "purpose": null,
+ "conclusion": null,
+ "comparable": true,
+ "note": "aus einem gemeinsamen Lauf über Haushalt und Rat herausgerechnet",
+ "raw": "eval/results/fakten/openai-gpt-6-luna-20260923-104716.json",
+ "raw_extra": null,
+ "source": "eval/runs_backfill.py"
+}

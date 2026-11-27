@@ -1,0 +1,43 @@
+{
+ "schema": 1,
+ "benchmark": "lotti",
+ "label": null,
+ "started_at": "2026-10-08T09:14:22",
+ "environment": "local",
+ "code": {
+  "commit": "4c42a1d4f",
+  "checked_in": true
+ },
+ "models": {
+  "assistant_explain": "anthropic/claude-haiku-5.5"
+ },
+ "judge": null,
+ "variant": "Aufwand low",
+ "flags": null,
+ "dataset": {
+  "path": "eval/cases_assistant.json",
+  "sha256": "a1928ada32c5",
+  "cases": 64
+ },
+ "data": "Sitzungen bis 2026-10-08, 9524 Beschlüsse",
+ "metrics": {
+  "quality": 0.8254,
+  "hard_findings": 4,
+  "cases": 63,
+  "hart_sauber": 59,
+  "uebersprungen": 1
+ },
+ "cost_usd": 0.057234,
+ "duration_s": 317.1,
+ "latency_ms": {
+  "p50": 6424,
+  "p95": 10767
+ },
+ "purpose": null,
+ "conclusion": null,
+ "comparable": true,
+ "note": "Lauf 1",
+ "raw": "eval/results/pruefstand/lotti/anthropic-claude-haiku-5.5-aufwand-low-20261008-091422.json",
+ "raw_extra": null,
+ "source": "eval/pruefstand.py"
+}

@@ -1,0 +1,43 @@
+{
+ "schema": 1,
+ "benchmark": "lotti",
+ "label": null,
+ "started_at": "2026-09-23T08:12:47",
+ "environment": "local",
+ "code": {
+  "commit": "92b333332",
+  "checked_in": true
+ },
+ "models": {
+  "assistant_explain": "google/gemini-2.5-flash"
+ },
+ "judge": null,
+ "variant": null,
+ "flags": null,
+ "dataset": {
+  "path": "eval/cases_assistant.json",
+  "sha256": "7f3798790205",
+  "cases": 57
+ },
+ "data": "Sitzungen bis 2026-09-16, 9078 Beschlüsse",
+ "metrics": {
+  "quality": 0.9123,
+  "hard_findings": 5,
+  "cases": 57,
+  "hart_sauber": 52,
+  "uebersprungen": 0
+ },
+ "cost_usd": 0.037857,
+ "duration_s": 58.2,
+ "latency_ms": {
+  "p50": 1105,
+  "p95": 2004
+ },
+ "purpose": null,
+ "conclusion": null,
+ "comparable": false,
+ "note": "Archiv „p4a-zwischenstand“: älterer Prompt oder ältere Fallliste · Lauf 2",
+ "raw": "eval/results/pruefstand/lotti/p4a-zwischenstand/google-gemini-2.5-flash-20260923-081247.json",
+ "raw_extra": null,
+ "source": "eval/pruefstand.py"
+}

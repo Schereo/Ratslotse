@@ -12,9 +12,10 @@
 # Fragen zählen als Fragen des Rauchproben-Kontos (WEB_ADMIN_EMAIL), wie
 # ops-frage-probe.yml.
 #
-# Ergebnisse liegen danach unter data/eval_gold/ (ask-<label>.json) bzw.
-# eval/results/deep_gold/<label>.json auf dem Server; das Log zeigt je Fall
-# Abdeckung, verfehlte Fakten, Verstöße und fehlendes Material.
+# Ergebnisse liegen danach unter data/eval_gold/ (ask-<label>.json bzw.
+# deep-<label>.json) auf dem Server, je Lauf eine Karte unter data/eval_runs/ —
+# das Admin-Panel des Servers zeigt sie unter „Benchmarks". Das Log zeigt je
+# Fall Abdeckung, verfehlte Fakten, Verstöße und fehlendes Material.
 name: "Ops: Gold-Fälle messen"
 
 on:
@@ -46,6 +47,10 @@ on:
         description: "Nur die Suche messen (Kontext-Recall), ohne Richter-Modell — nur Frag den Rat"
         type: boolean
         default: false
+      zweck:
+        description: "Warum gemessen wird — steht im Lauf und im Admin-Panel (Benchmarks)"
+        type: string
+        default: ""
 
 concurrency:
   group: ops-gold-${{ inputs.umgebung }}
@@ -68,6 +73,9 @@ jobs:
           NUR: ${{ inputs.nur }}
           BEFREIEN: ${{ inputs.befreien }}
           OHNE_RICHTER: ${{ inputs.ohne_richter }}
+          ZWECK: ${{ inputs.zweck }}
+          # Der Code-Stand des Laufs: Prod bekommt beim Deploy kein .git mit.
+          COMMIT: ${{ github.sha }}
         uses: ./.github/actions/ssh
         with:
           host: ${{ inputs.umgebung == 'prod' && secrets.VPS_HOST || secrets.VPS_DEV_HOST }}
@@ -81,7 +89,7 @@ jobs:
           proxy_port: ${{ secrets.VPS_SSH_PORT }}
           command_timeout: 60m
           # Eingaben über `envs` und geprüft, nicht als `${{ … }}` im Skripttext.
-          envs: WEG,LABEL,NUR,BEFREIEN,OHNE_RICHTER
+          envs: WEG,LABEL,NUR,BEFREIEN,OHNE_RICHTER,ZWECK,COMMIT
           script: |
             set -e
             cd ~/app
@@ -95,6 +103,9 @@ jobs:
             # Als Umgebungsvariable statt Schalter — die Aufrufe unten sind
             # wegen zsh schon je Kombination ausgeschrieben.
             export GOLD_OHNE_RICHTER="$OHNE_RICHTER"
+            # Zweck und Code-Stand für den Lauf im Admin-Panel (data/eval_runs/).
+            # Über die Umgebung statt als Schalter, aus demselben zsh-Grund.
+            export GOLD_ZWECK="$ZWECK" GOLD_COMMIT="$COMMIT"
             # Die Login-Shell auf dem Server ist zsh: Ein unquotiertes
             # "--nur $NUR" in einer Variablen wird dort NICHT in zwei Argumente
             # geteilt (01.10.2026: „unrecognized arguments: --nur …“). Deshalb

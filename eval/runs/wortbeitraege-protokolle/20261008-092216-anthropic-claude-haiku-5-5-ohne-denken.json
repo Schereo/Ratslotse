@@ -1,0 +1,48 @@
+{
+ "schema": 1,
+ "benchmark": "wortbeitraege-protokolle",
+ "label": null,
+ "started_at": "2026-10-08T09:22:16",
+ "environment": "local",
+ "code": {
+  "commit": "4c42a1d4f",
+  "checked_in": true
+ },
+ "models": {
+  "speeches": "anthropic/claude-haiku-5.5"
+ },
+ "judge": null,
+ "variant": "ohne Denken",
+ "flags": null,
+ "dataset": {
+  "path": "eval/cases_speeches_protokolle.json",
+  "sha256": "66c316af11e1",
+  "cases": 9
+ },
+ "data": "Sitzungen bis 2026-10-08, 9524 Beschlüsse",
+ "metrics": {
+  "quality": 0.8059,
+  "hard_findings": 3,
+  "cases": 9,
+  "recall_ohne_mandat": 0.7921,
+  "antwort_in_rede": 78,
+  "fremd_zugeschrieben": 0.0517,
+  "zahlen_erhalten": 0.172,
+  "begriffe_erhalten": 0.2645,
+  "beitraege": 930,
+  "fehlgeschlagen": 0
+ },
+ "cost_usd": 0.086638,
+ "duration_s": 393.0,
+ "latency_ms": {
+  "p50": 28026,
+  "p95": 52974
+ },
+ "purpose": null,
+ "conclusion": null,
+ "comparable": true,
+ "note": "Lauf 1",
+ "raw": "eval/results/pruefstand/wortbeitraege-protokolle/anthropic-claude-haiku-5.5-ohne-denken-20261008-092216.json",
+ "raw_extra": null,
+ "source": "eval/pruefstand.py"
+}

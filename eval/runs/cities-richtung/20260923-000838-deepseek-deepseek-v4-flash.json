@@ -1,0 +1,41 @@
+{
+ "schema": 1,
+ "benchmark": "cities-richtung",
+ "label": null,
+ "started_at": "2026-09-23T00:08:38",
+ "environment": "local",
+ "code": {
+  "commit": "4110f6425",
+  "checked_in": true
+ },
+ "models": {
+  "cities_stance": "deepseek/deepseek-v4-flash"
+ },
+ "judge": null,
+ "variant": null,
+ "flags": null,
+ "dataset": {
+  "path": "eval/cases_cities_stance.json",
+  "sha256": "531dfd8ec3c9",
+  "cases": 46
+ },
+ "data": "Sitzungen bis 2026-09-16, 9078 Beschlüsse",
+ "metrics": {
+  "quality": 0.9348,
+  "hard_findings": 0,
+  "cases": 46
+ },
+ "cost_usd": 0.009854,
+ "duration_s": 877.9,
+ "latency_ms": {
+  "p50": 10283,
+  "p95": 73444
+ },
+ "purpose": null,
+ "conclusion": null,
+ "comparable": true,
+ "note": "Lauf 1",
+ "raw": "eval/results/pruefstand/cities-richtung/deepseek-deepseek-v4-flash-20260923-000838.json",
+ "raw_extra": null,
+ "source": "eval/pruefstand.py"
+}

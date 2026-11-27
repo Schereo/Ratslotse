@@ -1,0 +1,48 @@
+{
+ "schema": 1,
+ "benchmark": "wortbeitraege-protokolle",
+ "label": null,
+ "started_at": "2026-09-30T22:17:30",
+ "environment": "local",
+ "code": {
+  "commit": "6a461ebdd",
+  "checked_in": true
+ },
+ "models": {
+  "speeches": "openai/gpt-6-luna"
+ },
+ "judge": null,
+ "variant": null,
+ "flags": null,
+ "dataset": {
+  "path": "eval/cases_speeches_protokolle.json",
+  "sha256": "66c316af11e1",
+  "cases": 9
+ },
+ "data": "Sitzungen bis 2026-09-30, 9119 Beschlüsse",
+ "metrics": {
+  "quality": 0.8867,
+  "hard_findings": 0,
+  "cases": 9,
+  "recall_ohne_mandat": 0.9373,
+  "antwort_in_rede": 0,
+  "fremd_zugeschrieben": 0.1014,
+  "zahlen_erhalten": 0.185,
+  "begriffe_erhalten": 0.2907,
+  "beitraege": 896,
+  "fehlgeschlagen": 0
+ },
+ "cost_usd": 0.053319,
+ "duration_s": 703.5,
+ "latency_ms": {
+  "p50": 55488,
+  "p95": 85789
+ },
+ "purpose": null,
+ "conclusion": null,
+ "comparable": true,
+ "note": "Lauf 2",
+ "raw": "eval/results/pruefstand/wortbeitraege-protokolle/openai-gpt-6-luna-20260930-221730.json",
+ "raw_extra": null,
+ "source": "eval/pruefstand.py"
+}

@@ -1,0 +1,43 @@
+{
+ "schema": 1,
+ "benchmark": "ki-frage-antwort",
+ "label": null,
+ "started_at": "2026-10-08T09:12:36",
+ "environment": "local",
+ "code": {
+  "commit": "4c42a1d4f",
+  "checked_in": true
+ },
+ "models": {
+  "qa_answer": "openai/gpt-6-luna"
+ },
+ "judge": null,
+ "variant": "Aufwand low",
+ "flags": null,
+ "dataset": {
+  "path": "eval/cases_qa.json",
+  "sha256": "ce5ad1cf45ad",
+  "cases": 22
+ },
+ "data": "Sitzungen bis 2026-10-08, 9524 Beschlüsse",
+ "metrics": {
+  "quality": 0.3806,
+  "hard_findings": 0,
+  "cases": 20,
+  "mindestens_einer": 0.9,
+  "zitiert_erwartet": 18
+ },
+ "cost_usd": 0.006685,
+ "duration_s": 33.9,
+ "latency_ms": {
+  "p50": 1500,
+  "p95": 2933
+ },
+ "purpose": null,
+ "conclusion": null,
+ "comparable": true,
+ "note": "Lauf 1",
+ "raw": "eval/results/pruefstand/ki-frage-antwort/openai-gpt-6-luna-aufwand-low-20261008-091236.json",
+ "raw_extra": null,
+ "source": "eval/pruefstand.py"
+}

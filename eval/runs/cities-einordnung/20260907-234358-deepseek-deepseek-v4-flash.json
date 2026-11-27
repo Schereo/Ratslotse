@@ -1,0 +1,39 @@
+{
+ "schema": 1,
+ "benchmark": "cities-einordnung",
+ "label": null,
+ "started_at": "2026-09-07T23:43:58",
+ "environment": "local",
+ "code": {
+  "commit": "9988c4c3a",
+  "checked_in": true
+ },
+ "models": {
+  "cities_classify": "deepseek/deepseek-v4-flash"
+ },
+ "judge": null,
+ "variant": null,
+ "flags": null,
+ "dataset": {
+  "path": "eval/cases_cities_transfer.json",
+  "sha256": "933a758c9c65",
+  "cases": 45
+ },
+ "data": null,
+ "metrics": {
+  "quality": 0.841,
+  "transfer": 81.8,
+  "field": 86.4,
+  "cases": 45
+ },
+ "cost_usd": 0.0126,
+ "duration_s": 254,
+ "latency_ms": null,
+ "purpose": null,
+ "conclusion": null,
+ "comparable": true,
+ "note": "Prompt-Fassung 2",
+ "raw": "eval/results/cities_transfer/2026-09-07_23-43-58.json",
+ "raw_extra": null,
+ "source": "eval/runs_backfill.py"
+}

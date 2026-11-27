@@ -1,0 +1,46 @@
+{
+ "schema": 1,
+ "benchmark": "wortbeitraege",
+ "label": null,
+ "started_at": "2026-10-08T09:31:24",
+ "environment": "local",
+ "code": {
+  "commit": "de6c59a5b",
+  "checked_in": true
+ },
+ "models": {
+  "speeches": "anthropic/claude-haiku-5.5"
+ },
+ "judge": null,
+ "variant": "Aufwand high",
+ "flags": null,
+ "dataset": {
+  "path": "eval/cases_speeches.json",
+  "sha256": "422b15f40606",
+  "cases": 16
+ },
+ "data": "Sitzungen bis 2026-10-08, 9524 Beschlüsse",
+ "metrics": {
+  "quality": 0.9882,
+  "hard_findings": 0,
+  "cases": 16,
+  "precision": 0.9767,
+  "recall": 1.0,
+  "top_richtig": 1.0,
+  "partei_ohne_beleg": 0,
+  "fehlgeschlagen": 0
+ },
+ "cost_usd": 0.060859,
+ "duration_s": 381.8,
+ "latency_ms": {
+  "p50": 21690,
+  "p95": 46339
+ },
+ "purpose": null,
+ "conclusion": null,
+ "comparable": true,
+ "note": "Lauf 1",
+ "raw": "eval/results/pruefstand/wortbeitraege/anthropic-claude-haiku-5.5-aufwand-high-20261008-093124.json",
+ "raw_extra": null,
+ "source": "eval/pruefstand.py"
+}

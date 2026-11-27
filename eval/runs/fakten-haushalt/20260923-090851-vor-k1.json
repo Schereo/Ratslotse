@@ -1,0 +1,41 @@
+{
+ "schema": 1,
+ "benchmark": "fakten-haushalt",
+ "label": "vor K1",
+ "started_at": "2026-09-23T09:08:51",
+ "environment": "local",
+ "code": {
+  "commit": "afa16ed8e",
+  "checked_in": true
+ },
+ "models": {
+  "qa_answer": "openai/gpt-6-luna",
+  "assistant_explain": "openai/gpt-6-luna"
+ },
+ "judge": null,
+ "variant": null,
+ "flags": null,
+ "dataset": {
+  "path": "eval/cases_fakten_haushalt.json",
+  "sha256": "41a61d07e688",
+  "cases": 142
+ },
+ "data": null,
+ "metrics": {
+  "quality": 0.7324,
+  "cases": 142,
+  "kontextfehler": 29,
+  "modellfehler": 9,
+  "hard_findings": 0
+ },
+ "cost_usd": 0.1303,
+ "duration_s": null,
+ "latency_ms": null,
+ "purpose": null,
+ "conclusion": null,
+ "comparable": true,
+ "note": "ohne ZDR gemessen",
+ "raw": "eval/results/fakten/openai-gpt-6-luna-20260923-090851.json",
+ "raw_extra": null,
+ "source": "eval/runs_backfill.py"
+}

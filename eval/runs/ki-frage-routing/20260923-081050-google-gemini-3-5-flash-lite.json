@@ -1,0 +1,42 @@
+{
+ "schema": 1,
+ "benchmark": "ki-frage-routing",
+ "label": null,
+ "started_at": "2026-09-23T08:10:50",
+ "environment": "local",
+ "code": {
+  "commit": "4110f6425",
+  "checked_in": true
+ },
+ "models": {
+  "qa_analysis": "google/gemini-3.5-flash-lite"
+ },
+ "judge": null,
+ "variant": null,
+ "flags": null,
+ "dataset": {
+  "path": "eval/cases_qa_routing.json",
+  "sha256": "f363385ab7ce",
+  "cases": 30
+ },
+ "data": "Sitzungen bis 2026-09-16, 9078 Beschlüsse",
+ "metrics": {
+  "quality": 0.9667,
+  "hard_findings": 0,
+  "cases": 30,
+  "f1": 0.9969
+ },
+ "cost_usd": 0.027567,
+ "duration_s": 33.8,
+ "latency_ms": {
+  "p50": 1111,
+  "p95": 1542
+ },
+ "purpose": null,
+ "conclusion": null,
+ "comparable": true,
+ "note": "Lauf 2",
+ "raw": "eval/results/pruefstand/ki-frage-routing/google-gemini-3.5-flash-lite-20260923-081050.json",
+ "raw_extra": null,
+ "source": "eval/pruefstand.py"
+}

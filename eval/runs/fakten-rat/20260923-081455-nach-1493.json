@@ -1,0 +1,41 @@
+{
+ "schema": 1,
+ "benchmark": "fakten-rat",
+ "label": "nach #1493",
+ "started_at": "2026-09-23T08:14:55",
+ "environment": "local",
+ "code": {
+  "commit": "168c0695e",
+  "checked_in": true
+ },
+ "models": {
+  "qa_answer": "google/gemini-2.5-flash",
+  "assistant_explain": "google/gemini-2.5-flash"
+ },
+ "judge": null,
+ "variant": null,
+ "flags": null,
+ "dataset": {
+  "path": "eval/cases_fakten_rat.json",
+  "sha256": "66906e8ac709",
+  "cases": 91
+ },
+ "data": null,
+ "metrics": {
+  "quality": 0.4725,
+  "cases": 91,
+  "kontextfehler": 30,
+  "modellfehler": 18,
+  "hard_findings": 0
+ },
+ "cost_usd": null,
+ "duration_s": null,
+ "latency_ms": null,
+ "purpose": null,
+ "conclusion": null,
+ "comparable": true,
+ "note": "aus einem gemeinsamen Lauf über Haushalt und Rat herausgerechnet",
+ "raw": "eval/results/fakten/google-gemini-2.5-flash-20260923-081455.json",
+ "raw_extra": null,
+ "source": "eval/runs_backfill.py"
+}

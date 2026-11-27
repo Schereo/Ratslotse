@@ -1,0 +1,43 @@
+{
+ "schema": 1,
+ "benchmark": "kritiker",
+ "label": null,
+ "started_at": "2026-09-23T01:55:24",
+ "environment": "local",
+ "code": {
+  "commit": "de6c59a5b",
+  "checked_in": true
+ },
+ "models": {
+  "social_critic": "openai/gpt-6-luna"
+ },
+ "judge": null,
+ "variant": null,
+ "flags": null,
+ "dataset": {
+  "path": "eval/cases_critic.json",
+  "sha256": "4c54c3310b82",
+  "cases": 18
+ },
+ "data": "Sitzungen bis 2026-09-16, 9078 Beschlüsse",
+ "metrics": {
+  "quality": 0.9444,
+  "hard_findings": 0,
+  "cases": 18,
+  "zu_unrecht_verworfen": 1,
+  "ausfaelle": 0
+ },
+ "cost_usd": 0.008496,
+ "duration_s": 91.4,
+ "latency_ms": {
+  "p50": 4688,
+  "p95": 12952
+ },
+ "purpose": null,
+ "conclusion": null,
+ "comparable": true,
+ "note": "Lauf 1",
+ "raw": "eval/results/pruefstand/kritiker/openai-gpt-6-luna-20260923-015524.json",
+ "raw_extra": null,
+ "source": "eval/pruefstand.py"
+}

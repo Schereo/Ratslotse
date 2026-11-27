@@ -27,7 +27,9 @@ Zustell-Ausfall lautlos für immer.
 - Immer über `llm.chat_complete` / `chat_stream`, nie ein eigener Client. Dort
   hängen Auth, Retry, das DSGVO-Provider-Routing und die Kostenzählung.
 - `_feature="…"` mitgeben. Ohne den Wert gibt es kein Kostentracking, und ein
-  Name ohne Gegenstück im Admin-Frontend macht einen Test rot.
+  Name ohne Gegenstück im Admin-Frontend macht einen Test rot. Ein **neuer**
+  Name gehört außerdem als Stufe in eine Pipeline in `benchmarks.py` — sonst
+  fehlt er im Benchmark-Bereich des Admin-Panels (`tests/test_benchmarks.py`).
 - **Neues Modell heißt: Eintrag in `MODEL_PARAMS`.** Bei Reasoning-Modellen
   ohne Token-Floor kommt die Antwort sporadisch leer zurück
   (`finish_reason='length'`), und zwar ohne Fehler.

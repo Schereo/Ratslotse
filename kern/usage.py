@@ -320,3 +320,35 @@ def dashboard(budget_monthly: float = 40.0) -> dict:
         "budget_pct": pct,
         "budget_level": level,
     }
+
+
+def per_feature(days: int = 30) -> dict[str, dict]:
+    """Aufrufe, Kosten und Modelle je Feature der letzten ``days`` Tage.
+
+    Für den Benchmark-Bereich: Welches Modell hat in einer Stufe wirklich
+    geantwortet (``models``, häufigstes zuerst), und was kostet sie im
+    Betrieb? Kosten wie :func:`summary` — echt, wo vorhanden, sonst geschätzt.
+    """
+    from datetime import datetime, timedelta
+    seit_ts = (datetime.now(UTC) - timedelta(days=days)).strftime("%Y-%m-%d %H:%M:%S")
+    try:
+        conn = _connect()
+        rows = conn.execute(
+            "SELECT feature, model, COUNT(*) calls, COALESCE(SUM(cost_usd),0) creal, "
+            "COALESCE(SUM(CASE WHEN cost_usd IS NULL THEN prompt_tokens END),0) pin_est, "
+            "COALESCE(SUM(CASE WHEN cost_usd IS NULL THEN completion_tokens END),0) pout_est "
+            "FROM llm_usage WHERE ts >= ? GROUP BY feature, model", (seit_ts,)).fetchall()
+        conn.close()
+    except Exception:  # noqa: BLE001 — Kostenmessung ist nie load-bearing
+        return {}
+    aus: dict[str, dict] = {}
+    for r in rows:
+        f = aus.setdefault(r["feature"], {"calls": 0, "cost": 0.0, "models": {}})
+        f["calls"] += r["calls"]
+        f["cost"] += r["creal"] + _cost(r["model"], r["pin_est"], r["pout_est"])
+        if r["model"]:
+            f["models"][r["model"]] = f["models"].get(r["model"], 0) + r["calls"]
+    for f in aus.values():
+        f["cost"] = round(f["cost"], 4)
+        f["models"] = [m for m, _ in sorted(f["models"].items(), key=lambda x: -x[1])]
+    return aus

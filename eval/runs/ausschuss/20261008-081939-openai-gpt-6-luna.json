@@ -1,0 +1,42 @@
+{
+ "schema": 1,
+ "benchmark": "ausschuss",
+ "label": null,
+ "started_at": "2026-10-08T08:19:39",
+ "environment": "local",
+ "code": {
+  "commit": "4110f6425",
+  "checked_in": true
+ },
+ "models": {
+  "committee_summary": "openai/gpt-6-luna"
+ },
+ "judge": null,
+ "variant": null,
+ "flags": null,
+ "dataset": {
+  "path": "eval/cases_committee.json",
+  "sha256": "0944514958dd",
+  "cases": 3
+ },
+ "data": "Sitzungen bis 2026-10-08, 9524 Beschlüsse",
+ "metrics": {
+  "quality": 1.0,
+  "hard_findings": 0,
+  "cases": 3,
+  "f1": 1.0
+ },
+ "cost_usd": 8.5e-05,
+ "duration_s": 5.3,
+ "latency_ms": {
+  "p50": 1826,
+  "p95": 3478
+ },
+ "purpose": null,
+ "conclusion": null,
+ "comparable": true,
+ "note": "Lauf 2",
+ "raw": "eval/results/pruefstand/ausschuss/openai-gpt-6-luna-20261008-081939.json",
+ "raw_extra": null,
+ "source": "eval/pruefstand.py"
+}

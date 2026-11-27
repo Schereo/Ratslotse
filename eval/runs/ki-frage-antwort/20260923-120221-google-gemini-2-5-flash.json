@@ -1,0 +1,43 @@
+{
+ "schema": 1,
+ "benchmark": "ki-frage-antwort",
+ "label": null,
+ "started_at": "2026-09-23T12:02:21",
+ "environment": "local",
+ "code": {
+  "commit": "92b333332",
+  "checked_in": true
+ },
+ "models": {
+  "qa_answer": "google/gemini-2.5-flash"
+ },
+ "judge": null,
+ "variant": null,
+ "flags": null,
+ "dataset": {
+  "path": "eval/cases_qa.json",
+  "sha256": "ce5ad1cf45ad",
+  "cases": 22
+ },
+ "data": "Sitzungen bis 2026-09-30, 9091 Beschlüsse",
+ "metrics": {
+  "quality": 0.7366,
+  "hard_findings": 0,
+  "cases": 20,
+  "mindestens_einer": 0.95,
+  "zitiert_erwartet": 19
+ },
+ "cost_usd": 0.022451,
+ "duration_s": 32.7,
+ "latency_ms": {
+  "p50": 1609,
+  "p95": 2195
+ },
+ "purpose": null,
+ "conclusion": null,
+ "comparable": true,
+ "note": "Lauf 1",
+ "raw": "eval/results/pruefstand/ki-frage-antwort/google-gemini-2.5-flash-20260923-120221.json",
+ "raw_extra": null,
+ "source": "eval/pruefstand.py"
+}

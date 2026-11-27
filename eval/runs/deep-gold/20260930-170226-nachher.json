@@ -1,0 +1,39 @@
+{
+ "schema": 1,
+ "benchmark": "deep-gold",
+ "label": "nachher",
+ "started_at": "2026-09-30T17:02:26",
+ "environment": "unknown",
+ "code": {
+  "commit": "3503ec29d",
+  "checked_in": true
+ },
+ "models": {
+  "deep_report": "openai/gpt-6-luna"
+ },
+ "judge": "google/gemini-2.5-flash",
+ "variant": null,
+ "flags": null,
+ "dataset": {
+  "path": "eval/cases_deep_gold.json",
+  "sha256": "bfff92cddf0a",
+  "cases": 1,
+  "sample": 1
+ },
+ "data": "wie vorher, aber Wortbeiträge der Sitzungen 4441, 4444, 4664, 4692 mit dem Code aus #1585–#1590 neu extrahiert (Verwaltungsantworten als eigene Einträge)",
+ "metrics": {
+  "coverage": 0.7,
+  "passed": 1,
+  "cases": 1
+ },
+ "cost_usd": 0.005,
+ "duration_s": null,
+ "latency_ms": null,
+ "purpose": null,
+ "conclusion": null,
+ "comparable": false,
+ "note": "Teillauf (1 Fall) — Zeitpunkt = Commit, mit dem er eingecheckt wurde",
+ "raw": "eval/results/deep_gold/nachher.json",
+ "raw_extra": null,
+ "source": "eval/runs_backfill.py"
+}

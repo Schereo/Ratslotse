@@ -1,0 +1,48 @@
+{
+ "schema": 1,
+ "benchmark": "wortbeitraege-protokolle",
+ "label": null,
+ "started_at": "2026-09-30T11:29:10",
+ "environment": "local",
+ "code": {
+  "commit": "6a461ebdd",
+  "checked_in": true
+ },
+ "models": {
+  "speeches": "google/gemini-3.5-flash-lite"
+ },
+ "judge": null,
+ "variant": null,
+ "flags": null,
+ "dataset": {
+  "path": "eval/cases_speeches_protokolle.json",
+  "sha256": "66c316af11e1",
+  "cases": 9
+ },
+ "data": "Sitzungen bis 2026-09-30, 9119 Beschlüsse",
+ "metrics": {
+  "quality": 0.8693,
+  "hard_findings": 0,
+  "cases": 9,
+  "recall_ohne_mandat": 0.7921,
+  "antwort_in_rede": 22,
+  "fremd_zugeschrieben": 0.0763,
+  "zahlen_erhalten": 0.1474,
+  "begriffe_erhalten": 0.2267,
+  "beitraege": 811,
+  "fehlgeschlagen": 0
+ },
+ "cost_usd": 0.255185,
+ "duration_s": 229.2,
+ "latency_ms": {
+  "p50": 18461,
+  "p95": 29966
+ },
+ "purpose": null,
+ "conclusion": null,
+ "comparable": true,
+ "note": "Lauf 1",
+ "raw": "eval/results/pruefstand/wortbeitraege-protokolle/google-gemini-3.5-flash-lite-20260930-112910.json",
+ "raw_extra": null,
+ "source": "eval/pruefstand.py"
+}

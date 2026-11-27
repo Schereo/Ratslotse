@@ -1,0 +1,43 @@
+{
+ "schema": 1,
+ "benchmark": "lotti",
+ "label": null,
+ "started_at": "2026-09-23T11:55:12",
+ "environment": "local",
+ "code": {
+  "commit": "92b333332",
+  "checked_in": true
+ },
+ "models": {
+  "assistant_explain": "openai/gpt-6-luna"
+ },
+ "judge": null,
+ "variant": null,
+ "flags": null,
+ "dataset": {
+  "path": "eval/cases_assistant.json",
+  "sha256": "7f3798790205",
+  "cases": 57
+ },
+ "data": "Sitzungen bis 2026-09-30, 9091 Beschlüsse",
+ "metrics": {
+  "quality": 0.9825,
+  "hard_findings": 1,
+  "cases": 57,
+  "hart_sauber": 56,
+  "uebersprungen": 0
+ },
+ "cost_usd": 0.0091,
+ "duration_s": 243.7,
+ "latency_ms": {
+  "p50": 5046,
+  "p95": 8797
+ },
+ "purpose": null,
+ "conclusion": null,
+ "comparable": true,
+ "note": "Lauf 2",
+ "raw": "eval/results/pruefstand/lotti/openai-gpt-6-luna-20260923-115512.json",
+ "raw_extra": null,
+ "source": "eval/pruefstand.py"
+}

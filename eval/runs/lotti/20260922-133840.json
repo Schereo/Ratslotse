@@ -1,0 +1,35 @@
+{
+ "schema": 1,
+ "benchmark": "lotti",
+ "label": null,
+ "started_at": "2026-09-22T13:38:40",
+ "environment": "local",
+ "code": {
+  "commit": "c12c83e04",
+  "checked_in": true
+ },
+ "models": {},
+ "judge": null,
+ "variant": null,
+ "flags": null,
+ "dataset": {
+  "path": "eval/cases_assistant.json",
+  "sha256": "f07f24f409e2",
+  "cases": 39
+ },
+ "data": null,
+ "metrics": {
+  "quality": 0.9767,
+  "cases": 43
+ },
+ "cost_usd": null,
+ "duration_s": null,
+ "latency_ms": null,
+ "purpose": null,
+ "conclusion": null,
+ "comparable": false,
+ "note": "früher Lauf vor dem Prüfstand: ältere Fallliste, Modell nicht erfasst",
+ "raw": "eval/results/assistant-20260922-133840.json",
+ "raw_extra": null,
+ "source": "eval/runs_backfill.py"
+}

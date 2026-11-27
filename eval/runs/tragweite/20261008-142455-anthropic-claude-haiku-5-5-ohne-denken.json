@@ -1,0 +1,43 @@
+{
+ "schema": 1,
+ "benchmark": "tragweite",
+ "label": null,
+ "started_at": "2026-10-08T14:24:55",
+ "environment": "local",
+ "code": {
+  "commit": "4110f6425",
+  "checked_in": true
+ },
+ "models": {
+  "impact_rating": "anthropic/claude-haiku-5.5"
+ },
+ "judge": null,
+ "variant": "ohne Denken",
+ "flags": null,
+ "dataset": {
+  "path": "scripts/golden_impact.json",
+  "sha256": "288c743eebfe",
+  "cases": 30
+ },
+ "data": "Sitzungen bis 2026-10-08, 9524 Beschlüsse",
+ "metrics": {
+  "quality": 0.95,
+  "hard_findings": null,
+  "cases": 30,
+  "rho": 0.946,
+  "bewertet": 20
+ },
+ "cost_usd": 0.00764,
+ "duration_s": 51.1,
+ "latency_ms": {
+  "p50": 5324,
+  "p95": 10196
+ },
+ "purpose": null,
+ "conclusion": null,
+ "comparable": true,
+ "note": "Lauf 2",
+ "raw": "eval/results/pruefstand/tragweite/anthropic-claude-haiku-5.5-ohne-denken-20261008-142455.json",
+ "raw_extra": null,
+ "source": "eval/pruefstand.py"
+}

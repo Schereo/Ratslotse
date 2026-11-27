@@ -1,0 +1,39 @@
+{
+ "schema": 1,
+ "benchmark": "ask-gold",
+ "label": "okt-notizen-a",
+ "started_at": "2026-10-18T12:00:00",
+ "environment": "dev",
+ "code": null,
+ "models": {
+  "qa_analysis": "google/gemini-3.1-flash-lite",
+  "qa_query_expansion": "google/gemini-3.1-flash-lite",
+  "qa_nachrecherche": "google/gemini-3.1-flash-lite",
+  "qa_answer": "openai/gpt-6-luna"
+ },
+ "judge": "anthropic/claude-opus-5.5",
+ "variant": null,
+ "flags": null,
+ "dataset": null,
+ "data": null,
+ "metrics": {
+  "coverage": 0.59,
+  "passed": 13,
+  "context_recall": 0.6364,
+  "evidence_in_prompt": 126,
+  "evidence_total": 198,
+  "omitted": 45,
+  "median_s": 32,
+  "cases": 27
+ },
+ "cost_usd": null,
+ "duration_s": null,
+ "latency_ms": null,
+ "purpose": "+ Belegnotizen und 24 statt 6 Beiträge Aussprache (#1726)",
+ "conclusion": "Misst zwei Änderungen auf einmal — der Gewinn ließ sich später nicht den Notizen zuschreiben.",
+ "comparable": true,
+ "note": "aus dem Messbuch übernommen",
+ "raw": "server:dev:data/eval_gold/ask-okt-notizen-a.json",
+ "raw_extra": null,
+ "source": "docs/gold-messbuch.md"
+}

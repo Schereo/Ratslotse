@@ -1,0 +1,42 @@
+{
+ "schema": 1,
+ "benchmark": "ki-frage-routing",
+ "label": null,
+ "started_at": "2026-09-22T23:48:12",
+ "environment": "local",
+ "code": {
+  "commit": "4110f6425",
+  "checked_in": true
+ },
+ "models": {
+  "qa_analysis": "deepseek/deepseek-v4-flash"
+ },
+ "judge": null,
+ "variant": "ohne Denken",
+ "flags": null,
+ "dataset": {
+  "path": "eval/cases_qa_routing.json",
+  "sha256": "f363385ab7ce",
+  "cases": 30
+ },
+ "data": "Sitzungen bis 2026-09-16, 9078 Beschlüsse",
+ "metrics": {
+  "quality": 0.9,
+  "hard_findings": 0,
+  "cases": 30,
+  "f1": 0.9845
+ },
+ "cost_usd": 0.003193,
+ "duration_s": 288.9,
+ "latency_ms": {
+  "p50": 9035,
+  "p95": 14199
+ },
+ "purpose": null,
+ "conclusion": null,
+ "comparable": false,
+ "note": "Archiv „vor-p4a“: älterer Prompt oder ältere Fallliste · Lauf 1",
+ "raw": "eval/results/pruefstand/ki-frage-routing/vor-p4a/deepseek-deepseek-v4-flash-ohne-denken-20260922-234812.json",
+ "raw_extra": null,
+ "source": "eval/pruefstand.py"
+}

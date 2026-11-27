@@ -1,0 +1,43 @@
+{
+ "schema": 1,
+ "benchmark": "watcher",
+ "label": null,
+ "started_at": "2026-09-22T23:42:39",
+ "environment": "local",
+ "code": {
+  "commit": "4110f6425",
+  "checked_in": true
+ },
+ "models": {
+  "council_watcher": "openai/gpt-5.6-luna"
+ },
+ "judge": null,
+ "variant": null,
+ "flags": null,
+ "dataset": {
+  "path": "eval/cases_watcher.json",
+  "sha256": "12e96f680fa6",
+  "cases": 5
+ },
+ "data": "Sitzungen bis 2026-09-16, 9078 Beschlüsse",
+ "metrics": {
+  "quality": 0.8571,
+  "hard_findings": 5,
+  "cases": 5,
+  "precision": 0.75,
+  "recall": 1.0
+ },
+ "cost_usd": 0.002444,
+ "duration_s": 280.0,
+ "latency_ms": {
+  "p50": 50578,
+  "p95": 142248
+ },
+ "purpose": null,
+ "conclusion": null,
+ "comparable": true,
+ "note": "Lauf 2",
+ "raw": "eval/results/pruefstand/watcher/openai-gpt-5.6-luna-20260922-234239.json",
+ "raw_extra": null,
+ "source": "eval/pruefstand.py"
+}

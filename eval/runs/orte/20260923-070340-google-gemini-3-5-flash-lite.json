@@ -1,0 +1,43 @@
+{
+ "schema": 1,
+ "benchmark": "orte",
+ "label": null,
+ "started_at": "2026-09-23T07:03:40",
+ "environment": "local",
+ "code": {
+  "commit": "37ac4e924",
+  "checked_in": true
+ },
+ "models": {
+  "decision_places": "google/gemini-3.5-flash-lite"
+ },
+ "judge": null,
+ "variant": null,
+ "flags": null,
+ "dataset": {
+  "path": "eval/cases_locations.json",
+  "sha256": "63e4008f1948",
+  "cases": 20
+ },
+ "data": "Sitzungen bis 2026-09-16, 9078 Beschlüsse",
+ "metrics": {
+  "quality": 1.0,
+  "hard_findings": 0,
+  "cases": 20,
+  "precision": 1.0,
+  "recall": 1.0
+ },
+ "cost_usd": 0.003599,
+ "duration_s": 4.0,
+ "latency_ms": {
+  "p50": 676,
+  "p95": 3302
+ },
+ "purpose": null,
+ "conclusion": null,
+ "comparable": true,
+ "note": "Lauf 1",
+ "raw": "eval/results/pruefstand/orte/google-gemini-3.5-flash-lite-20260923-070340.json",
+ "raw_extra": null,
+ "source": "eval/pruefstand.py"
+}

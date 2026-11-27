@@ -1,0 +1,43 @@
+{
+ "schema": 1,
+ "benchmark": "tragweite",
+ "label": null,
+ "started_at": "2026-09-22T23:43:28",
+ "environment": "local",
+ "code": {
+  "commit": "4110f6425",
+  "checked_in": true
+ },
+ "models": {
+  "impact_rating": "openai/gpt-5.6-luna"
+ },
+ "judge": null,
+ "variant": null,
+ "flags": null,
+ "dataset": {
+  "path": "scripts/golden_impact.json",
+  "sha256": "288c743eebfe",
+  "cases": 30
+ },
+ "data": "Sitzungen bis 2026-09-16, 9078 Beschlüsse",
+ "metrics": {
+  "quality": 0.9,
+  "hard_findings": null,
+  "cases": 30,
+  "rho": 0.858,
+  "bewertet": 30
+ },
+ "cost_usd": 0.002024,
+ "duration_s": 19.2,
+ "latency_ms": {
+  "p50": 9123,
+  "p95": 10079
+ },
+ "purpose": null,
+ "conclusion": null,
+ "comparable": true,
+ "note": "Lauf 2",
+ "raw": "eval/results/pruefstand/tragweite/openai-gpt-5.6-luna-20260922-234328.json",
+ "raw_extra": null,
+ "source": "eval/pruefstand.py"
+}

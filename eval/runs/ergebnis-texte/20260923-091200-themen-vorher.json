@@ -1,0 +1,31 @@
+{
+ "schema": 1,
+ "benchmark": "ergebnis-texte",
+ "label": "themen-vorher",
+ "started_at": "2026-09-23T09:12:00",
+ "environment": "local",
+ "code": {
+  "commit": "064616925",
+  "checked_in": true
+ },
+ "models": {},
+ "judge": null,
+ "variant": null,
+ "flags": null,
+ "dataset": null,
+ "data": null,
+ "metrics": {
+  "passed_share": 0.425,
+  "cases": 40
+ },
+ "cost_usd": null,
+ "duration_s": null,
+ "latency_ms": null,
+ "purpose": null,
+ "conclusion": null,
+ "comparable": true,
+ "note": "Textarten: themen",
+ "raw": "eval/results/ergebnis_texte/20260923-091316-themen-vorher.json",
+ "raw_extra": null,
+ "source": "eval/runs_backfill.py"
+}

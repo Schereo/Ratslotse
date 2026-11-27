@@ -1706,6 +1706,134 @@ class AdminLlmUsage(TypedDict):
     budget_level: Literal["ok", "warn", "over"]
 
 
+class AdminBenchmarkMetric(TypedDict):
+    key: str
+    label: str
+    #: share (0–1) · count · seconds · ratio · none (Lauf zum Lesen, ohne Zahl)
+    unit: str
+    higher_is_better: bool
+
+
+class AdminBenchmarkCases(TypedDict):
+    """Eine Falldatei, wie sie HEUTE im Repo liegt (Prüfsumme, Fallzahl)."""
+    path: str
+    sha256: str | None
+    cases: int | None
+
+
+class AdminBenchmarkRunRow(TypedDict):
+    """Kurzform eines Laufs (``kern.benchmarks.run_row``)."""
+    id: str
+    benchmark: str
+    #: repo = ``eval/runs/`` · server = ``data/eval_runs/`` dieses Servers
+    origin: str
+    started_at: str
+    environment: str
+    label: str | None
+    variant: str | None
+    model: str | None
+    value: float | None
+    hard: int | None
+    cases: int | None
+    sample: int | None
+    cost_usd: float | None
+    comparable: bool
+    #: Lief mit der heutigen Besetzung (Modelle je Stufe, ohne Variante).
+    current: bool
+    has_conclusion: bool
+
+
+class AdminBenchmarkReason(TypedDict):
+    """Warum eine Messung überholt ist (``kern.benchmarks.assess``)."""
+    #: model · cases · age · variant · not_comparable
+    kind: str
+    step: NotRequired[str]
+    then: NotRequired[str]
+    now: NotRequired[str]
+    path: NotRequired[str]
+    days: NotRequired[int]
+    variant: NotRequired[str | None]
+
+
+class AdminBenchmark(TypedDict):
+    """Ein Benchmark samt Status (``kern.benchmarks.overview``)."""
+    key: str
+    pipeline: str
+    also: list[str]
+    title: str
+    measures: str
+    metric: AdminBenchmarkMetric
+    secondary: list[AdminBenchmarkMetric]
+    steps: list[str]
+    cases: list[AdminBenchmarkCases]
+    truth: str
+    judge: str | None
+    runs_on: str
+    command: str
+    noise: str | None
+    hard: str | None
+    log: str | None
+    #: ok · stale · none
+    status: Literal["ok", "stale", "none"]
+    reasons: list[AdminBenchmarkReason]
+    latest: AdminBenchmarkRunRow | None
+    previous: AdminBenchmarkRunRow | None
+    runs: list[AdminBenchmarkRunRow]
+
+
+class AdminPipelineStep(TypedDict):
+    key: str
+    label: str
+    features: list[str]
+    #: Das Modell laut Konfiguration dieses Dienstes; None = unbekannt.
+    model: str | None
+    #: False = Stufe ohne Sprachmodell (Suche, Regeln).
+    llm: bool
+    calls_30d: int
+    cost_30d: float
+    #: Wer laut ``llm_usage`` wirklich geantwortet hat, häufigstes zuerst.
+    models_30d: list[str]
+    benchmarks: list[str]
+
+
+class AdminPipeline(TypedDict):
+    key: str
+    title: str
+    summary: str
+    steps: list[AdminPipelineStep]
+    benchmarks: list[str]
+    headline: str | None
+    status: Literal["ok", "stale", "none"]
+    measured_steps: int
+
+
+class AdminBenchmarkInvalid(TypedDict):
+    id: str
+    origin: str
+    problems: list[str]
+
+
+class AdminBenchmarks(TypedDict):
+    """``GET /api/admin/benchmarks`` — Pipelines, Benchmarks, Läufe in Kurzform."""
+    pipelines: list[AdminPipeline]
+    benchmarks: list[AdminBenchmark]
+    runs_total: int
+    invalid: list[AdminBenchmarkInvalid]
+    stale_after_days: int
+    github: str
+
+
+class AdminBenchmarkRuns(TypedDict):
+    """``GET /api/admin/benchmarks/{key}`` — die Läufe vollständig, neueste zuerst.
+
+    Ein Lauf ist das Format aus ``kern/benchmarks.py::new_run`` (Schema 1) plus
+    ``id``, ``origin`` und ``current``. Bewusst ``dict[str, Any]``: Das Format
+    darf um Felder wachsen, ohne dass hier still etwas wegfällt.
+    """
+    key: str
+    runs: list[dict[str, Any]]
+
+
 class AdminSeries(TypedDict):
     total: int
     series: list[int]

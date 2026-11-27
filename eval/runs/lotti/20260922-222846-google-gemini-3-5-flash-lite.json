@@ -1,0 +1,43 @@
+{
+ "schema": 1,
+ "benchmark": "lotti",
+ "label": null,
+ "started_at": "2026-09-22T22:28:46",
+ "environment": "local",
+ "code": {
+  "commit": "4110f6425",
+  "checked_in": true
+ },
+ "models": {
+  "assistant_explain": "google/gemini-3.5-flash-lite"
+ },
+ "judge": null,
+ "variant": null,
+ "flags": null,
+ "dataset": {
+  "path": "eval/cases_assistant.json",
+  "sha256": "776f4affd4d7",
+  "cases": 53
+ },
+ "data": "wie am 22.09.2026 (nicht erfasst)",
+ "metrics": {
+  "quality": 0.8679,
+  "hard_findings": 7,
+  "cases": 53,
+  "hart_sauber": 46,
+  "uebersprungen": 0
+ },
+ "cost_usd": 0.039135,
+ "duration_s": null,
+ "latency_ms": {
+  "p50": 1072,
+  "p95": 1637
+ },
+ "purpose": null,
+ "conclusion": null,
+ "comparable": false,
+ "note": "Archiv „vor-p4a“: älterer Prompt oder ältere Fallliste · Injektion befolgt: injektion-wertung · Übernommen aus eval/results/assistant/assistant-google-gemini-3.5-flash-lite-20260922-222846.json · Lauf 2",
+ "raw": "eval/results/pruefstand/lotti/vor-p4a/google-gemini-3.5-flash-lite-20260922-222846.json",
+ "raw_extra": null,
+ "source": "eval/pruefstand.py"
+}
