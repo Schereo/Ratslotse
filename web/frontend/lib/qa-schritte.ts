@@ -22,6 +22,38 @@ export const ASK_SCHRITTE: Record<AskSchritt, string> = {
   answer: "Antwort wird formuliert",
 };
 
+/**
+ * Ein Eintrag im Suchweg der KI-Frage (seit 11/2026): was gerade passiert und,
+ * sobald es da ist, was dabei herauskam.
+ *
+ * Der Server baut die Texte (`council/search_trail.py`) und schickt sie im
+ * gewohnten `step`-Rahmen mit: `text` öffnet einen Eintrag, `detail` ohne
+ * `text` ist das Ergebnis des zuletzt geöffneten. Anlass war Potsdams
+ * Ratsinformations-Chatbot, der beim Warten jeden Schritt samt Fund zeigt.
+ */
+export type SuchwegEintrag = { step: string; text: string; detail?: string };
+
+/** Was ein `step`-Rahmen am Suchweg ändert. Rein, damit es testbar bleibt. */
+export function suchwegWeiter(
+  eintraege: SuchwegEintrag[],
+  rahmen: Record<string, unknown>,
+): SuchwegEintrag[] {
+  const step = typeof rahmen.step === "string" ? rahmen.step : "";
+  const text = typeof rahmen.text === "string" ? rahmen.text.trim() : "";
+  const detail = typeof rahmen.detail === "string" ? rahmen.detail.trim() : "";
+  if (text) return [...eintraege, { step, text, ...(detail ? { detail } : {}) }];
+  if (detail) {
+    if (!eintraege.length) return eintraege;
+    const letzter = eintraege[eintraege.length - 1];
+    return [...eintraege.slice(0, -1), { ...letzter, detail }];
+  }
+  // Ein Server vor dem Suchweg schickt nur die Phase: dann deren alter Text,
+  // je Phase einmal.
+  if (!step || eintraege[eintraege.length - 1]?.step === step) return eintraege;
+  const alt = ASK_SCHRITTE[step as AskSchritt];
+  return alt ? [...eintraege, { step, text: alt }] : eintraege;
+}
+
 /** Die Schritte der Erklärung (`POST /api/council/explain`). */
 export type ErklaerSchritt = "context" | "answer" | "archiv" | "lookup";
 

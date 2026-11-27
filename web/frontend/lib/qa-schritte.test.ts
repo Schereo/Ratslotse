@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { ASK_SCHRITTE, ERKLAER_SCHRITTE, lottiSchrittText } from "./qa-schritte";
+import { ASK_SCHRITTE, ERKLAER_SCHRITTE, lottiSchrittText, suchwegWeiter } from "./qa-schritte";
 
 describe("lottiSchrittText", () => {
   it("nennt für die Erklärung, was gerade passiert", () => {
@@ -58,5 +58,41 @@ describe("Nachschlagen", () => {
     expect(lottiSchrittText("lookup", false, "Lotti sieht die Reihe „Schulden“ an"))
       .toBe("Lotti sieht die Reihe „Schulden“ an");
     expect(lottiSchrittText("lookup")).toBe(ERKLAER_SCHRITTE.lookup);
+  });
+});
+
+describe("suchwegWeiter", () => {
+  const ablauf = (...rahmen: Record<string, unknown>[]) =>
+    rahmen.reduce(suchwegWeiter, [] as ReturnType<typeof suchwegWeiter>);
+
+  it("ein Text öffnet einen Eintrag, ein Ergebnis hängt am zuletzt geöffneten", () => {
+    expect(ablauf(
+      { step: "expand", text: "Frage einordnen" },
+      { step: "expand", detail: "Suchbegriffe: Radweg" },
+      { step: "search", text: "Beschlüsse durchsuchen" },
+      { step: "search", detail: "12 Beschlüsse gefunden" },
+      { step: "answer", text: "Antwort schreiben" },
+    )).toEqual([
+      { step: "expand", text: "Frage einordnen", detail: "Suchbegriffe: Radweg" },
+      { step: "search", text: "Beschlüsse durchsuchen", detail: "12 Beschlüsse gefunden" },
+      { step: "answer", text: "Antwort schreiben" },
+    ]);
+  });
+
+  it("ein Ergebnis ohne offenen Eintrag wird verworfen, ohne Absturz", () => {
+    expect(ablauf({ step: "search", detail: "3 gefunden" })).toEqual([]);
+  });
+
+  it("ein Server ohne Suchweg bekommt die alten Phasen-Texte, je Phase einmal", () => {
+    expect(ablauf({ step: "expand" }, { step: "search" }, { step: "search" }, { step: "answer" }))
+      .toEqual([
+        { step: "expand", text: ASK_SCHRITTE.expand },
+        { step: "search", text: ASK_SCHRITTE.search },
+        { step: "answer", text: ASK_SCHRITTE.answer },
+      ]);
+  });
+
+  it("unbekannte Phase ohne Text bleibt weg", () => {
+    expect(ablauf({ step: "irgendwas" })).toEqual([]);
   });
 });

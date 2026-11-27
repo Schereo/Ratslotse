@@ -871,6 +871,15 @@ Aktionsleiste.
   Anschlag gedimmt, nicht versteckt (sonst springt der Indikator).
 - Fortschritt: Häkchen grün ✓ → Spinner (12 px, primary) → gepunkteter Kreis
   (ausstehend); Playful-Zwischenwort erlaubt („Protokolle querlesen …").
+- **Suchweg der KI-Frage** (seit 11/2026, `components/suchweg.tsx`): In der
+  Ladekarte neben der denkenden Lotti eine Liste, je Schritt eine Zeile
+  (Infinitiv: „Beschlüsse durchsuchen") mit Häkchen bzw. Spinner und darunter,
+  eingerückt und muted, das Ergebnis („40 Beschlüsse gefunden: …", höchstens
+  drei Zeilen). Kommende Schritte zeigt sie nicht — welche Kanäle eine Frage
+  braucht, weiß erst der Server unterwegs. Sobald die Antwort schreibt, steht
+  über ihr nur noch die stille Zeile „Suchweg · N Schritte ⌄"; aufgeklappt
+  dieselbe Liste in einer Karte (Rahmen 1 px, bg-card/60). Zahl vor Titeln,
+  damit beim Kürzen die Menge bleibt.
 - Fehler/Limits: immer mit Ausweg (Retry, „Als schnelle Frage", Countdown) und
   ohne Datenverlust („Frage steht wieder im Eingabefeld").
 - Ehrliche Mengen: nie „viele", immer Zahl + Zeitraum.

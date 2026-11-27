@@ -14,6 +14,18 @@ als Ereignis-Strom: Schritte (`step`), die Quellen (`sources`), der Text in
 Stücken (`token`), Folgefragen (`suggestions`) und am Ende `done` mit den
 zitierten Beschlüssen. Web und App lesen denselben Strom.
 
+**Der Suchweg** (seit 11/2026): Jeder Schritt meldet, was gerade passiert und
+was dabei herauskam: „Beschlüsse durchsuchen“ und darunter „40 Beschlüsse
+gefunden: …“, dann Lücken, Anlagen, Presse, Wortbeiträge, Akte, Haushalt, je
+nachdem, welche Kanäle die Frage braucht. Die Texte baut der Server
+(`council/search_trail.py`) und schickt sie im gewohnten `step`-Rahmen:
+`text` öffnet einen Eintrag, `detail` ohne `text` ist das Ergebnis des
+zuletzt geöffneten. `step` bleibt eine der drei Phasen `expand`, `search`,
+`answer`, die ausgelieferte App liest also weiter nur die Phase. Das Web
+zeigt die Liste in der Ladekarte und danach zugeklappt über der Antwort
+(`components/suchweg.tsx`). Vorbild war der Ratsinformations-Chatbot der
+Stadt Potsdam (siehe [Alternativen](/docs/alternativen/#ris-bot-potsdam)).
+
 Einzelne Aspekte haben eigene Abschnitte auf der Seite
 [KI-Pipeline](/docs/ki-pipeline/): die
 [Rückfrage bei Fragen ohne Gegenstand](/docs/ki-pipeline/#frag-den-rat-wenn-die-frage-keinen-gegenstand-nennt),
