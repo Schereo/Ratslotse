@@ -1,0 +1,1163 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ratslotse-Vortrag</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/5.1.0/reset.min.css" integrity="sha384-8g3WNUREoaLv+QfRi7MIf7/mmCR/jTS1HCBsSyBV85F0pPPVXcIedXY1TQUlgS8e" crossorigin="anonymous">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/5.1.0/reveal.min.css" integrity="sha384-1RYZY7bWr47av1F0MzHgCbqOI7hIwg9dvdmXpRYIaK1mf1sxSE8pReydle4L0NAK" crossorigin="anonymous">
+<style>
+/* Layout: 1280×720 Folien wie Ratslotse-Seiten — helle Seite, weiße Karten,
+   Titel auf Hafenblau mit Wellenlinien. Je Aussage ein Icon, ein Stichwort, höchstens eine Zeile. */
+:root {
+  --page: hsl(204 45% 97.5%);
+  --stage: hsl(205 42% 96.5%);
+  --card: #ffffff;
+  --rule: hsl(208 32% 89%);
+  --line: hsl(206 40% 94%);
+  --ink: hsl(212 55% 11%);
+  --ink-2: hsl(212 55% 20%);
+  --muted: hsl(207 18% 38.5%);
+  --leise: hsl(207 20% 72%);
+  --hafen: hsl(205 92% 34%);
+  --hafen-tint: hsl(205 92% 34% / .09);
+  --hafen-rand: hsl(205 92% 34% / .22);
+  --signal: #ce4709;
+  --signal-ink: #9a3412;
+  --signal-tint: hsl(19 92% 42% / .10);
+  --signal-rand: hsl(19 92% 42% / .22);
+  --ok: #15803d;
+  --ok-tint: #dcfce7;
+  --ok-rand: hsl(142 70% 30% / .25);
+  --warn: #92400e;
+  --warn-tint: #fef3c7;
+  --warn-rand: #fde68a;
+  --bad: #b91c1c;
+  --bad-tint: #fef2f2;
+  --bad-rand: #fecaca;
+  --weiss: #ffffff;
+  --weiss-2: hsl(204 60% 92%);
+  --font-display: "Bricolage Grotesque", "Inter", system-ui, sans-serif;
+  --font-text: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --takt-weg: 260ms;
+  --takt-buehne: 340ms;
+  --ease-out-strong: cubic-bezier(.23, 1, .32, 1);
+  --ease-in-out-strong: cubic-bezier(.77, 0, .175, 1);
+  color-scheme: light;
+}
+html, body { background: var(--page); color: var(--ink); }
+.reveal-viewport { background: var(--page); }
+.reveal { font-family: var(--font-text); font-size: 24px; color: var(--ink); }
+.reveal .slides { text-align: left; }
+.reveal .slides > section { box-sizing: border-box; height: 720px; padding: 0; }
+.reveal ::selection { background: var(--hafen-rand); }
+.reveal img { max-width: 100%; }
+.reveal a { color: var(--hafen); text-decoration: none; }
+.reveal a:focus-visible { outline: 3px solid var(--signal); outline-offset: 3px; border-radius: 4px; }
+.reveal .controls { color: var(--hafen); }
+.reveal .progress { color: var(--hafen); height: 4px; }
+.reveal .slide-number { background: transparent; color: var(--muted); font-family: var(--font-mono); font-size: 13px; right: 96px; bottom: 18px; }
+.reveal .slide-number a { color: inherit; text-decoration: none; }
+.reveal.blau-aktiv .slide-number, .reveal.blau-aktiv .controls { color: var(--weiss-2); }
+.icon { width: 24px; height: 24px; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+/* Rahmen */
+.frame { position: relative; height: 100%; box-sizing: border-box; padding: 54px 72px 64px; display: flex; flex-direction: column; gap: 26px; }
+.kicker { font-family: var(--font-mono); font-size: 15px; font-weight: 500; letter-spacing: .08em; text-transform: uppercase; color: var(--hafen); margin: 0; }
+.reveal h1, .reveal h2, .reveal h3 { font-family: var(--font-display); color: inherit; margin: 0; text-wrap: balance; letter-spacing: -.015em; text-transform: none; }
+.reveal h2 { font-size: 50px; font-weight: 700; line-height: 1.08; }
+.reveal h3 { font-size: 24px; font-weight: 700; line-height: 1.2; }
+.reveal p { margin: 0; line-height: 1.5; }
+.meta { font-family: var(--font-mono); font-size: 14px; color: var(--muted); letter-spacing: .02em; line-height: 1.5; }
+.fuss { position: absolute; left: 72px; bottom: 22px; display: flex; align-items: center; gap: 10px; font-family: var(--font-mono); font-size: 13px; color: var(--muted); }
+.fuss img { width: 22px; height: 22px; border-radius: 6px; }
+.kopf { display: flex; flex-direction: column; gap: 12px; }
+.unterzeile-k { font-size: 22px; color: var(--muted); line-height: 1.4; margin-top: -4px; }
+.spalten { display: grid; gap: 40px; flex: 1; min-height: 0; }
+.spalten > * { min-width: 0; }
+
+/* Icon-Kachel */
+.reveal .ikon, .ikon { width: 52px; height: 52px; border-radius: 15px; display: grid !important; place-items: center; place-content: center; line-height: 0; background: var(--hafen-tint); color: var(--hafen); flex: none; }
+.ikon .icon { width: 28px; height: 28px; }
+.ikon.gross { width: 68px; height: 68px; border-radius: 20px; }
+.ikon.gross .icon { width: 36px; height: 36px; }
+.ikon.klein { width: 40px; height: 40px; border-radius: 12px; }
+.ikon.klein .icon { width: 22px; height: 22px; }
+.ikon.warn { background: var(--warn-tint); color: var(--warn); }
+.ikon.ok { background: var(--ok-tint); color: var(--ok); }
+.ikon.bad { background: var(--bad-tint); color: var(--bad); }
+.ikon.signal { background: var(--signal-tint); color: var(--signal-ink); }
+.ikon.grau { background: var(--line); color: var(--muted); }
+.ikon.weiss { background: var(--card); }
+
+/* Zeilen: Icon + Stichwort + kurze Zeile */
+.zeilen { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 16px; }
+.zeilen li { display: flex; align-items: center; gap: 16px; }
+.zeilen b { display: block; font-family: var(--font-display); font-size: 23px; line-height: 1.2; color: var(--ink); }
+.zeilen small { display: block; font-size: 17px; color: var(--muted); line-height: 1.35; margin-top: 2px; }
+.zeilen.eng { gap: 12px; }
+.zeilen.eng b { font-size: 21px; }
+.zeilen.mini { gap: 10px; }
+.zeilen.mini li { gap: 12px; align-items: flex-start; }
+.zeilen.mini b { font-size: 18px; }
+.zeilen.mini small { font-size: 15px; color: var(--ink-2); }
+
+/* Karten */
+.karte { background: var(--card); border: 1px solid var(--rule); border-radius: 18px; padding: 22px 24px; display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.karte.betont { border: 2px solid var(--hafen); box-shadow: 0 16px 40px hsl(205 80% 30% / .10); }
+.karte-kopf { display: flex; align-items: center; gap: 14px; }
+.karte-kopf h3 { flex: 1; }
+.raster { display: grid; gap: 16px; }
+.raster > * { min-width: 0; }
+.r2 { grid-template-columns: repeat(2, 1fr); }
+.r3 { grid-template-columns: repeat(3, 1fr); }
+.r4 { grid-template-columns: repeat(4, 1fr); }
+.kachel { background: var(--card); border: 1px solid var(--rule); border-radius: 18px; padding: 20px 22px; display: flex; flex-direction: column; gap: 12px; }
+.kachel b { font-family: var(--font-display); font-size: 23px; line-height: 1.2; }
+.kachel small { font-size: 17px; line-height: 1.4; color: var(--muted); margin-top: -6px; }
+.kachel.quer { flex-direction: row; align-items: center; gap: 16px; }
+.kachel.quer > span:not(.ikon):not(.badge) { display: flex; flex-direction: column; gap: 2px; }
+.kachel.quer small { margin-top: 0; }
+
+.badge { font-family: var(--font-mono); font-size: 12px; font-weight: 500; letter-spacing: .06em; text-transform: uppercase; padding: 3px 8px; border-radius: 6px; border: 1px solid transparent; white-space: nowrap; line-height: 1.4; }
+.badge.cloud { color: var(--signal-ink); background: var(--signal-tint); border-color: var(--signal-rand); }
+.badge.lokal { color: var(--hafen); background: var(--hafen-tint); border-color: var(--hafen-rand); }
+.badge.code { color: var(--muted); background: var(--line); border-color: var(--rule); }
+.badge.ok { color: var(--ok); background: var(--ok-tint); border-color: var(--ok-rand); }
+.badge.warn { color: var(--warn); background: var(--warn-tint); border-color: var(--warn-rand); }
+.pille { display: inline-flex; align-items: center; gap: 8px; padding: 7px 14px; border-radius: 999px; background: var(--card); border: 1px solid var(--rule); color: var(--ink-2); font-size: 17px; }
+.pille .icon { width: 18px; height: 18px; color: var(--hafen); }
+.leiste { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+
+/* Blaue Flächen */
+.blau { color: var(--weiss); }
+.blau .kicker { color: var(--weiss-2); }
+.wellen { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.wellen path { fill: none; stroke: var(--weiss); stroke-opacity: .13; stroke-width: 1.6; }
+.titel .frame { justify-content: center; padding-right: 520px; gap: 22px; }
+.titel h1 { font-size: 132px; font-weight: 800; line-height: .95; letter-spacing: -.03em; }
+.titel .unterzeile { font-size: 30px; line-height: 1.35; color: var(--weiss); max-width: 22ch; font-weight: 500; }
+.titel .autor { font-size: 20px; color: var(--weiss-2); margin-top: 18px; }
+.lotti-gross { position: absolute; right: 40px; bottom: 30px; width: 470px; height: 470px; }
+.moin { position: absolute; right: 380px; top: 150px; background: var(--card); color: var(--ink); font-family: var(--font-display); font-weight: 700; font-size: 30px; padding: 12px 22px; border-radius: 18px 18px 4px 18px; box-shadow: 0 10px 30px hsl(207 90% 15% / .25); }
+
+/* Screenshot-Folien */
+.bild-folie { display: grid; grid-template-columns: 0.8fr 1.2fr; gap: 44px; flex: 1; min-height: 0; align-items: center; }
+.bild-folie > * { min-width: 0; }
+.bild-folie .bild { border-radius: 20px; overflow: hidden; box-shadow: 0 24px 60px hsl(207 70% 20% / .18); }
+.bild-folie .bild img { display: block; width: 100%; height: auto; }
+.browser { margin: 0; border-radius: 14px; overflow: hidden; border: 1px solid var(--rule); background: var(--card); box-shadow: 0 20px 50px hsl(207 70% 20% / .14); display: flex; flex-direction: column; }
+.browser-leiste { display: flex; align-items: center; gap: 7px; padding: 9px 14px; background: var(--line); border-bottom: 1px solid var(--rule); }
+.browser-leiste i { width: 10px; height: 10px; border-radius: 50%; background: var(--leise); }
+.browser-leiste .url { margin-left: 8px; flex: 1; min-width: 0; font-family: var(--font-mono); font-size: 13px; color: var(--muted); background: var(--card); border-radius: 7px; padding: 4px 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.browser img { display: block; width: 100%; height: auto; }
+
+/* Flussgrafik quer (Idee, Darmstadt) */
+.fluss-quer { display: grid; align-items: center; gap: 14px; }
+.fluss-quer > * { min-width: 0; }
+.fluss-quer .pfeil { color: var(--leise); display: grid; place-items: center; }
+.fluss-quer .pfeil .icon { width: 34px; height: 34px; stroke-width: 2.2; }
+.dok-stapel { display: flex; flex-direction: column; gap: 10px; }
+.dok { display: flex; align-items: center; gap: 12px; background: var(--card); border: 1px solid var(--rule); border-radius: 14px; padding: 10px 14px; font-size: 19px; font-weight: 600; }
+.mitte-karte { background: var(--card); border: 2px solid var(--signal-rand); border-radius: 22px; padding: 24px; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 12px; box-shadow: 0 18px 40px hsl(19 80% 30% / .10); }
+.mitte-karte b { font-family: var(--font-display); font-size: 28px; }
+.mitte-karte small { font-size: 17px; color: var(--muted); line-height: 1.4; }
+.zahlenzeile { display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; padding-top: 16px; border-top: 1px solid var(--rule); }
+.zahlenzeile div { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.zahlenzeile b { font-family: var(--font-display); font-weight: 700; font-size: 36px; line-height: 1; color: var(--hafen); font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+.zahlenzeile span { font-size: 16px; color: var(--muted); }
+
+/* Zeitleiste mit Icon-Marken */
+.zeitleiste { position: relative; display: grid; grid-template-columns: repeat(6, 1fr); gap: 18px; }
+.zeitleiste::before { content: ""; position: absolute; left: 0; right: 0; top: 23px; height: 2px; background: var(--rule); }
+.station { position: relative; display: flex; flex-direction: column; gap: 6px; padding-top: 62px; }
+.station .marke { position: absolute; top: 0; left: 0; width: 48px; height: 48px; border-radius: 50%; background: var(--card); border: 2px solid var(--hafen); color: var(--hafen); display: grid; place-items: center; box-sizing: border-box; }
+.station .marke .icon { width: 24px; height: 24px; }
+.station.jetzt .marke { background: var(--hafen); color: var(--weiss); box-shadow: 0 0 0 6px var(--hafen-tint); }
+.station.verworfen .marke { border-style: dashed; border-color: var(--leise); color: var(--muted); }
+.station .wann { font-family: var(--font-mono); font-size: 14px; color: var(--hafen); font-weight: 500; }
+.station.verworfen .wann { color: var(--muted); }
+.station b { font-family: var(--font-display); font-size: 21px; line-height: 1.2; }
+.station small { font-size: 16px; line-height: 1.4; color: var(--muted); }
+.station .badge { align-self: flex-start; }
+.eckdaten { display: flex; gap: 48px; margin-top: auto; padding-top: 20px; border-top: 1px solid var(--rule); }
+.eckdaten div { display: flex; flex-direction: column; gap: 4px; }
+.eckdaten b { font-family: var(--font-display); font-size: 38px; color: var(--hafen); line-height: 1; font-variant-numeric: tabular-nums; }
+.eckdaten span { font-size: 16px; color: var(--muted); }
+
+/* Große Kennzahlen */
+.kennzahl { background: var(--card); border: 1px solid var(--rule); border-radius: 20px; padding: 26px 26px 24px; display: flex; flex-direction: column; gap: 14px; }
+.kennzahl .wert { font-family: var(--font-display); font-weight: 800; font-size: 76px; line-height: .95; color: var(--hafen); letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
+.kennzahl .wert.signal { color: var(--signal); }
+.kennzahl b { font-family: var(--font-display); font-size: 24px; line-height: 1.2; }
+.kennzahl small { font-size: 17px; color: var(--muted); line-height: 1.4; }
+.kennzahl .fussnote { margin-top: auto; font-family: var(--font-mono); font-size: 13px; color: var(--muted); padding-top: 12px; border-top: 1px solid var(--line); }
+
+/* Pipeline */
+.frage-chip { align-self: flex-start; display: inline-flex; align-items: center; gap: 12px; background: var(--card); border: 1px solid var(--hafen-rand); border-radius: 14px 14px 14px 4px; padding: 12px 18px; font-size: 21px; color: var(--ink); box-shadow: 0 2px 10px hsl(205 60% 30% / .06); }
+.frage-chip .icon { width: 20px; height: 20px; color: var(--hafen); }
+.pipe { position: relative; display: grid; grid-template-columns: repeat(6, 1fr); gap: 16px; }
+.pipe-linie { position: absolute; left: calc(100% / 12); right: calc(100% / 12); top: 25px; height: 3px; background: var(--rule); border-radius: 2px; overflow: hidden; }
+.pipe-linie i { position: absolute; inset: 0; background: var(--hafen); transform-origin: left center; transform: scaleX(0); transition: transform var(--takt-buehne) var(--ease-in-out-strong); }
+.node { position: relative; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 10px; }
+.node .punkt { width: 52px; height: 52px; border-radius: 50%; background: var(--card); border: 2px solid var(--rule); display: grid; place-items: center; font-family: var(--font-display); font-weight: 700; font-size: 22px; color: var(--muted); transition: background var(--takt-weg) var(--ease-out-strong), border-color var(--takt-weg), color var(--takt-weg), transform var(--takt-weg) var(--ease-out-strong); }
+.node .name { font-family: var(--font-display); font-weight: 700; font-size: 21px; color: var(--ink); }
+.node.is-done .punkt { background: var(--hafen); border-color: var(--hafen); color: var(--weiss); }
+.node.is-active .punkt { background: var(--hafen); border-color: var(--hafen); color: var(--weiss); transform: scale(1.14); box-shadow: 0 0 0 6px var(--hafen-tint); }
+.panels { position: relative; flex: 1; min-height: 0; background: var(--card); border: 1px solid var(--rule); border-radius: 18px; overflow: hidden; }
+.panel { position: absolute; inset: 0; padding: 28px 34px; display: grid; grid-template-columns: 1fr 1.15fr; gap: 40px; align-items: center; opacity: 0; transform: translateY(10px); transition: opacity var(--takt-weg) var(--ease-out-strong), transform var(--takt-weg) var(--ease-out-strong); pointer-events: none; }
+.panel > * { min-width: 0; }
+.panel.is-active { opacity: 1; transform: none; }
+.panel .text { display: flex; flex-direction: column; gap: 12px; }
+.panel .text p { font-size: 21px; line-height: 1.5; color: var(--ink-2); }
+.panel .text h3 { font-size: 27px; }
+.panel.intro { grid-template-columns: 1fr; }
+.legende { display: flex; gap: 28px; flex-wrap: wrap; margin-top: 6px; }
+.legende span { display: inline-flex; align-items: center; gap: 10px; font-size: 18px; color: var(--ink-2); }
+.chips { display: flex; flex-wrap: wrap; gap: 10px; }
+.chip { font-size: 18px; padding: 7px 14px; border-radius: 999px; background: var(--hafen-tint); border: 1px solid var(--hafen-rand); color: var(--hafen); font-weight: 500; }
+.chip.ort { background: var(--ok-tint); border-color: var(--ok-rand); color: var(--ok); }
+.chip.warn { background: var(--warn-tint); border-color: var(--warn-rand); color: var(--warn); }
+.wege { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.weg { background: var(--stage); border: 1px solid var(--rule); border-radius: 12px; padding: 14px 16px; display: flex; flex-direction: column; gap: 6px; }
+.weg b { font-family: var(--font-display); font-size: 19px; }
+.weg span { font-size: 16px; color: var(--muted); line-height: 1.4; }
+.rangliste { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.rangliste li { display: grid; grid-template-columns: 28px 1fr; gap: 12px; align-items: start; font-size: 17px; line-height: 1.35; }
+.rangliste .fn { width: 24px; height: 24px; border-radius: 6px; background: var(--hafen); color: var(--weiss); font-size: 13px; font-weight: 700; display: grid; place-items: center; margin-top: 1px; }
+.rangliste .m { display: block; font-family: var(--font-mono); font-size: 13px; color: var(--muted); }
+.kontext { background: var(--stage); border: 1px dashed var(--hafen-rand); border-radius: 12px; padding: 16px 18px; display: flex; flex-direction: column; gap: 9px; font-size: 17px; color: var(--ink-2); }
+.kontext .zeile { display: flex; gap: 10px; align-items: center; }
+.kontext .zeile::before { content: ""; width: 8px; height: 8px; border-radius: 2px; background: var(--hafen); flex: none; }
+.kontext .stand { font-family: var(--font-mono); font-size: 14px; color: var(--signal-ink); }
+.antwort { font-size: 19px; line-height: 1.6; color: var(--ink-2); background: var(--stage); border-radius: 12px; padding: 16px 20px; border: 1px solid var(--rule); }
+.fu { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 4px; background: var(--hafen-tint); color: var(--hafen); font-size: 11px; font-weight: 700; vertical-align: 2px; margin-left: 2px; }
+.fu.weg-damit { background: var(--bad-tint); color: var(--bad); text-decoration: line-through; }
+.pruefliste { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; font-size: 18px; }
+.pruefliste li { display: flex; align-items: center; gap: 12px; }
+.pruefliste .gut .icon { color: var(--ok); }
+.pruefliste .schlecht .icon, .pruefliste .schlecht { color: var(--bad); }
+
+/* Sprechblasen & Haken */
+.sprechblase { border-radius: 14px 14px 14px 4px; padding: 14px 18px; font-size: 19px; line-height: 1.5; }
+.sprechblase.erfunden { background: var(--bad-tint); border: 1px dashed hsl(0 70% 45% / .35); color: var(--ink-2); }
+.sprechblase.belegt { background: var(--hafen-tint); border: 1px solid var(--hafen-rand); color: var(--ink-2); }
+.sprechblase small { display: block; margin-top: 6px; font-family: var(--font-mono); font-size: 13px; }
+.sprechblase.erfunden small { color: var(--bad); }
+.sprechblase.belegt small { color: var(--hafen); }
+.haken { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.haken li { display: flex; gap: 12px; align-items: center; font-size: 19px; color: var(--ink-2); line-height: 1.35; }
+.haken .icon { width: 22px; height: 22px; }
+.haken .plus .icon { color: var(--ok); }
+.haken .minus .icon { color: var(--bad); }
+.haken .warnung .icon { color: var(--warn); }
+.beispiel { display: flex; align-items: flex-start; gap: 10px; }
+.beispiel .icon { width: 22px; height: 22px; margin-top: 12px; }
+.beispiel.gut .icon { color: var(--ok); }
+.beispiel.schlecht .icon { color: var(--bad); }
+.beispiel .sprechblase { flex: 1; font-size: 17px; padding: 10px 14px; }
+.beispiel.gut .sprechblase { background: var(--ok-tint); border: 1px solid var(--ok-rand); }
+.beispiel.schlecht .sprechblase { background: var(--bad-tint); border: 1px dashed hsl(0 70% 45% / .35); }
+
+/* Messgrafiken */
+.meter { display: flex; align-items: center; gap: 12px; margin-top: 6px; }
+.meter .spur { position: relative; flex: 1; height: 12px; border-radius: 6px; background: var(--line); overflow: hidden; }
+.meter .spur i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 6px; background: var(--warn); }
+.meter span { font-family: var(--font-mono); font-size: 14px; color: var(--muted); white-space: nowrap; }
+.einheiten { display: grid; gap: 8px 12px; align-items: center; }
+.einheiten .wer { font-size: 17px; color: var(--ink-2); }
+.punktreihe { display: flex; gap: 5px; }
+.punktreihe i { width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--hafen); box-sizing: border-box; }
+.punktreihe i.voll { background: var(--hafen); }
+.punktreihe.alt i { border-color: var(--leise); }
+.punktreihe.alt i.voll { background: var(--leise); }
+.einheiten .wert { font-family: var(--font-display); font-weight: 700; font-size: 20px; font-variant-numeric: tabular-nums; }
+.balken-liste { display: grid; grid-template-columns: 1fr; gap: 8px; align-items: center; }
+.balken-liste .wer { font-size: 17px; color: var(--ink-2); line-height: 1.3; }
+.balken { position: relative; height: 24px; }
+.balken i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 0 4px 4px 0; background: var(--leise); }
+.balken i.fokus { background: var(--hafen); }
+.balken span { position: absolute; top: 50%; transform: translateY(-50%); font-family: var(--font-display); font-weight: 700; font-size: 18px; color: var(--ink); font-variant-numeric: tabular-nums; }
+
+/* Fluss der Datenaufbereitung */
+.fluss { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.fluss li { position: relative; background: var(--card); border: 1px solid var(--rule); border-radius: 14px; padding: 12px 16px; display: flex; align-items: center; gap: 14px; }
+.fluss li + li { margin-top: 26px; }
+.fluss li + li::before { content: ""; position: absolute; left: 50%; top: -22px; width: 2px; height: 18px; background: var(--hafen); }
+.fluss li + li::after { content: ""; position: absolute; left: calc(50% - 5px); top: -9px; border: 6px solid transparent; border-top-color: var(--hafen); border-bottom: 0; }
+.fluss b { display: block; font-family: var(--font-display); font-size: 20px; }
+.fluss small { display: block; font-size: 15px; color: var(--muted); line-height: 1.35; }
+
+/* Ampel (Recht) */
+.ampel { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; flex: 1; min-height: 0; }
+.ampel > * { min-width: 0; }
+.ampel-spalte { border-radius: 18px; padding: 18px 20px; display: flex; flex-direction: column; gap: 14px; border: 1px solid; }
+.ampel-spalte.gruen { background: var(--ok-tint); border-color: var(--ok-rand); }
+.ampel-spalte.gelb { background: var(--warn-tint); border-color: var(--warn-rand); }
+.ampel-spalte.rot { background: var(--bad-tint); border-color: var(--bad-rand); }
+.ampel-kopf { display: flex; align-items: center; gap: 12px; }
+.ampel-kopf .lampe { width: 18px; height: 18px; border-radius: 50%; box-shadow: 0 0 0 5px hsl(0 0% 100% / .7); }
+.gruen .lampe { background: var(--ok); }
+.gelb .lampe { background: #d97706; }
+.rot .lampe { background: var(--bad); }
+.ampel-kopf b { font-family: var(--font-display); font-size: 22px; }
+.hebel { display: flex; align-items: center; gap: 14px; background: var(--card); border: 1px solid var(--hafen-rand); border-radius: 14px; padding: 12px 18px; font-size: 18px; color: var(--ink-2); }
+.hebel b { color: var(--ink); }
+
+/* Schichten */
+.schichten { display: flex; flex-direction: column; gap: 10px; }
+.schicht { display: flex; align-items: center; gap: 14px; padding: 12px 16px; border-radius: 14px; border: 1px solid var(--rule); background: var(--card); }
+.schicht > span:not(.ikon):not(.badge) { flex: 1; min-width: 0; }
+.schicht b { display: block; font-family: var(--font-display); font-size: 20px; line-height: 1.25; }
+.schicht small { display: block; font-size: 15px; color: var(--muted); }
+.schicht.anpassen { background: var(--warn-tint); border-color: var(--warn-rand); }
+.schicht.adapter { background: var(--hafen-tint); border-color: var(--hafen-rand); }
+.oparl-kurz { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.oparl-kurz div { background: var(--card); border: 1px solid var(--rule); border-radius: 14px; padding: 14px 16px; display: flex; flex-direction: column; gap: 6px; }
+.oparl-kurz b { font-family: var(--font-display); font-size: 46px; line-height: 1; color: var(--hafen); font-variant-numeric: tabular-nums; }
+.oparl-kurz span { font-size: 16px; line-height: 1.4; color: var(--ink-2); }
+
+/* Kette Darmstadt */
+.glied { background: var(--card); border: 1px solid var(--rule); border-radius: 18px; padding: 20px; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 10px; }
+.glied b { font-family: var(--font-display); font-size: 22px; line-height: 1.2; }
+.glied small { font-size: 16px; color: var(--muted); line-height: 1.35; }
+
+/* Danke */
+.danke .frame { justify-content: center; padding-right: 600px; gap: 22px; }
+.danke h2 { font-size: 96px; line-height: 1; }
+.links { list-style: none; margin: 12px 0 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+.links li { display: flex; gap: 14px; align-items: baseline; font-size: 24px; }
+.links .wozu { font-family: var(--font-mono); font-size: 14px; letter-spacing: .06em; text-transform: uppercase; color: var(--weiss-2); width: 150px; flex: none; }
+.blau .links a { color: var(--weiss); text-decoration: underline; text-decoration-color: hsl(0 0% 100% / .4); text-underline-offset: 5px; }
+.ideen-karte { position: absolute; right: 72px; top: 130px; width: 470px; background: var(--card); color: var(--ink); border-radius: 20px; padding: 24px 26px; display: flex; flex-direction: column; gap: 16px; box-shadow: 0 18px 48px hsl(207 90% 12% / .28); }
+.ideen-karte h3 { font-size: 24px; }
+.lotti-klein { position: absolute; right: 120px; bottom: 10px; width: 190px; height: 190px; }
+
+/* Fragmente im Ratslotse-Takt */
+.reveal .slides section .fragment.hoch { opacity: 0; visibility: hidden; transform: translateY(14px); transition: opacity var(--takt-buehne) var(--ease-out-strong), transform var(--takt-buehne) var(--ease-out-strong), visibility 0s linear var(--takt-buehne); }
+.reveal .slides section .fragment.hoch.visible { opacity: 1; visibility: inherit; transform: none; transition-delay: 0s; }
+.reveal .slides section .fragment.schritt { display: none; }
+
+.kostenliste { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.kostenliste li { display: flex; align-items: center; gap: 14px; padding: 11px 0; border-bottom: 1px solid var(--line); }
+.kostenliste li > span:nth-child(2) { flex: 1; min-width: 0; }
+.kostenliste b { display: block; font-family: var(--font-display); font-size: 20px; line-height: 1.2; }
+.kostenliste small { display: block; font-size: 15px; color: var(--muted); }
+.kostenliste .betrag { font-family: var(--font-display); font-weight: 700; font-size: 26px; color: var(--hafen); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.kostenliste li.summe { border-bottom: 0; border-top: 2px solid var(--rule); margin-top: 4px; }
+.kostenliste li.summe .betrag { font-size: 34px; color: var(--ink); }
+.monate { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; align-items: end; height: 250px; border-bottom: 1px solid var(--rule); }
+.monat { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 8px; height: 100%; }
+.monat .wert { font-family: var(--font-display); font-weight: 700; font-size: 20px; font-variant-numeric: tabular-nums; color: var(--ink); }
+.monat .saeule { display: block; width: 60px; border-radius: 6px 6px 0 0; background: var(--hafen); }
+.monat .saeule.teil { background: repeating-linear-gradient(45deg, var(--hafen) 0 6px, hsl(205 92% 34% / .5) 6px 12px); }
+.monat-namen { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; text-align: center; font-family: var(--font-mono); font-size: 14px; color: var(--muted); margin-top: -6px; }
+.sprechblase.luecke { background: var(--warn-tint); border: 1px dashed #d97706; color: var(--ink-2); }
+.sprechblase.luecke small { color: var(--warn); }
+@media (prefers-reduced-motion: reduce) {
+  .pipe-linie i, .node .punkt, .panel, .reveal .slides section .fragment.hoch { transition: none !important; }
+}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-pfeil" viewBox="0 0 24 24"><path d="M4 12h14M13 6l6 6-6 6"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+  <symbol id="i-warn" viewBox="0 0 24 24"><path d="M12 4l9 16H3z"/><path d="M12 10v4M12 17.5v.01"/></symbol>
+  <symbol id="i-suche" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></symbol>
+  <symbol id="i-frage" viewBox="0 0 24 24"><path d="M21 12a8 8 0 0 1-11.8 7L4 20l1.1-4.6A8 8 0 1 1 21 12z"/></symbol>
+  <symbol id="i-kalender" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/></symbol>
+  <symbol id="i-glocke" viewBox="0 0 24 24"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20.5a2 2 0 0 0 4 0"/></symbol>
+  <symbol id="i-karte" viewBox="0 0 24 24"><path d="M9 4L3.5 6v14L9 18l6 2 5.5-2V4L15 6z"/><path d="M9 4v14M15 6v14"/></symbol>
+  <symbol id="i-euro" viewBox="0 0 24 24"><path d="M17.5 6.5A7 7 0 1 0 17.5 17.5"/><path d="M4 10.5h9M4 13.5h9"/></symbol>
+  <symbol id="i-handy" viewBox="0 0 24 24"><rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M11 18.5h2"/></symbol>
+  <symbol id="i-stecker" viewBox="0 0 24 24"><path d="M9 3v5M15 3v5M6 8h12v3a6 6 0 0 1-12 0z"/><path d="M12 17v4"/></symbol>
+  <symbol id="i-person" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4.5 20.5a7.5 7.5 0 0 1 15 0"/></symbol>
+  <symbol id="i-gruppe" viewBox="0 0 24 24"><circle cx="9" cy="8.5" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 5.2a3.5 3.5 0 0 1 0 6.6M18 14.2A6.5 6.5 0 0 1 21.5 20"/></symbol>
+  <symbol id="i-buch" viewBox="0 0 24 24"><path d="M12 6.5C10 5 7 4.5 3.5 5v13c3.5-.5 6.5 0 8.5 1.5 2-1.5 5-2 8.5-1.5V5C17 4.5 14 5 12 6.5z"/><path d="M12 6.5v13"/></symbol>
+  <symbol id="i-code" viewBox="0 0 24 24"><path d="M8 7l-5 5 5 5M16 7l5 5-5 5M13.5 4l-3 16"/></symbol>
+  <symbol id="i-roboter" viewBox="0 0 24 24"><rect x="4" y="8" width="16" height="11" rx="3"/><path d="M12 4v4M9 13h.01M15 13h.01M9 16.5h6"/></symbol>
+  <symbol id="i-schild" viewBox="0 0 24 24"><path d="M12 3l7.5 3v5.5c0 4.5-3.2 8-7.5 9.5-4.3-1.5-7.5-5-7.5-9.5V6z"/></symbol>
+  <symbol id="i-liste" viewBox="0 0 24 24"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M4.5 6h.01M4.5 12h.01M4.5 18h.01"/></symbol>
+  <symbol id="i-funke" viewBox="0 0 24 24"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M18.5 16l.7 2 2 .7-2 .7-.7 2-.7-2-2-.7 2-.7z"/></symbol>
+  <symbol id="i-zeitung" viewBox="0 0 24 24"><path d="M4 5h13v14a2 2 0 0 0 2 2H6a2 2 0 0 1-2-2z"/><path d="M17 9h3v10a2 2 0 0 1-2 2"/><path d="M7.5 9h6M7.5 12.5h6M7.5 16h4"/></symbol>
+  <symbol id="i-uhr" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></symbol>
+  <symbol id="i-offen" viewBox="0 0 24 24"><rect x="4.5" y="11" width="15" height="10" rx="2"/><path d="M8 11V7.5a4 4 0 0 1 7.7-1.5"/></symbol>
+  <symbol id="i-schloss" viewBox="0 0 24 24"><rect x="4.5" y="11" width="15" height="10" rx="2"/><path d="M8 11V7.5a4 4 0 0 1 8 0V11"/></symbol>
+  <symbol id="i-dokument" viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4M9 12h6M9 16h6"/></symbol>
+  <symbol id="i-beschluss" viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4"/><path d="M9 14l2 2 4-4"/></symbol>
+  <symbol id="i-mikro" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/></symbol>
+  <symbol id="i-megafon" viewBox="0 0 24 24"><path d="M3.5 10v4h3l7 4V6l-7 4z"/><path d="M17 9a4 4 0 0 1 0 6"/><path d="M6.5 14l1 5h2.5l-1-5"/></symbol>
+  <symbol id="i-puzzle" viewBox="0 0 24 24"><path d="M4 8h4a2 2 0 1 1 4 0h4v4a2 2 0 1 1 0 4v4H4z"/></symbol>
+  <symbol id="i-rettung" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="3.5"/><path d="M5.9 5.9l3.6 3.6M14.5 14.5l3.6 3.6M18.1 5.9l-3.6 3.6M9.5 14.5l-3.6 3.6"/></symbol>
+  <symbol id="i-tabelle" viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="15" rx="2"/><path d="M3.5 9.5h17M3.5 14.5h17M9.5 9.5v10"/></symbol>
+  <symbol id="i-scan" viewBox="0 0 24 24"><path d="M4 8V5.5A1.5 1.5 0 0 1 5.5 4H8M16 4h2.5A1.5 1.5 0 0 1 20 5.5V8M20 16v2.5a1.5 1.5 0 0 1-1.5 1.5H16M8 20H5.5A1.5 1.5 0 0 1 4 18.5V16"/><path d="M7.5 12h9"/></symbol>
+  <symbol id="i-welt" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.5 2.6 3.8 5.4 3.8 8.5s-1.3 5.9-3.8 8.5c-2.5-2.6-3.8-5.4-3.8-8.5s1.3-5.9 3.8-8.5z"/></symbol>
+  <symbol id="i-eu" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5l1.1 2.3 2.5.4-1.8 1.8.4 2.5-2.2-1.2-2.2 1.2.4-2.5-1.8-1.8 2.5-.4z"/></symbol>
+  <symbol id="i-haus" viewBox="0 0 24 24"><path d="M4 11l8-7 8 7v9H4z"/><path d="M10 20v-5h4v5"/></symbol>
+  <symbol id="i-ziel" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r=".8"/></symbol>
+  <symbol id="i-blitz" viewBox="0 0 24 24"><path d="M13 3L5 13.5h6L10 21l8-10.5h-6z"/></symbol>
+  <symbol id="i-herz" viewBox="0 0 24 24"><path d="M12 20s-7.5-4.5-7.5-10A4.5 4.5 0 0 1 12 7a4.5 4.5 0 0 1 7.5 3c0 5.5-7.5 10-7.5 10z"/></symbol>
+  <symbol id="i-kopie" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5.5A1.5 1.5 0 0 0 14.5 4h-9A1.5 1.5 0 0 0 4 5.5v9A1.5 1.5 0 0 0 5.5 16H8"/></symbol>
+  <symbol id="i-paragraf" viewBox="0 0 24 24"><path d="M14.5 5.5c-.6-1-1.6-1.5-2.8-1.5-1.8 0-3.2 1.1-3.2 2.7 0 3.6 7 3 7 7 0 1.2-.7 2.1-1.8 2.6M9.5 18.5c.6 1 1.6 1.5 2.8 1.5 1.8 0 3.2-1.1 3.2-2.7 0-3.6-7-3-7-7 0-1.2.7-2.1 1.8-2.6"/></symbol>
+  <symbol id="i-radiergummi" viewBox="0 0 24 24"><path d="M15 4l5 5-9.5 9.5H6L3.5 16z"/><path d="M10 8.5l5 5M10.5 20h9"/></symbol>
+  <symbol id="i-handschlag" viewBox="0 0 24 24"><path d="M3 11l4-4 4 2 3-2 7 5"/><path d="M7 7l-4 4 6 6 2-1 2 2 6-5"/><path d="M12 15l2 2M14 13l2 2"/></symbol>
+</svg>
+
+<div class="reveal">
+<div class="slides">
+
+<!-- ============================================================ TITEL -->
+<section class="titel blau" data-background-gradient="linear-gradient(160deg, hsl(205 70% 48%) 0%, hsl(205 92% 34%) 48%, hsl(207 90% 24%) 100%)" data-blau>
+  <div class="frame">
+    <svg class="wellen" viewBox="0 0 1280 720" preserveAspectRatio="none" aria-hidden="true"></svg>
+    <p class="kicker">Vortrag · Stand November 2026</p>
+    <h1>Ratslotse</h1>
+    <p class="unterzeile">Was die Stadt entscheidet. Verständlich, durchsuchbar und mit Quellen.</p>
+    <p class="autor">Erfahrungen aus Entwicklung und Betrieb · Tim Sigl</p>
+    <div class="moin">Moin!</div>
+    <img class="lotti-gross" src="img/lotti-winkt.webp" alt="Lotti, die Lotsenmöwe von Ratslotse, winkt">
+  </div>
+  <aside class="notes">
+    Begrüßung. Kurz vorstellen: wer ich bin und warum ich Ratslotse baue.
+    Ablauf: rund 20 Minuten (Entstehung, Zielgruppen, wie die KI antwortet, Daten, Antwortqualität, Datenschutz und Recht, Übertragbarkeit), danach Zeit für Fragen.
+    Lotti ist das Maskottchen, eine Lotsenmöwe. Lotsen bringen Schiffe durch schwieriges Fahrwasser. Daher der Name.
+    Bedienung: Pfeiltasten, Esc = Übersicht, F = Vollbild, S = diese Notizen (nur bei lokal geöffneter Datei).
+  </aside>
+</section>
+
+<!-- ============================================================ 01 RIS -->
+<section>
+  <div class="frame">
+    <div class="kopf">
+      <p class="kicker">01 · Ausgangslage</p>
+      <h2>So sieht das Ratsinformationssystem aus</h2>
+    </div>
+    <div class="bild-folie">
+      <ul class="zeilen">
+        <li><span class="ikon warn"><svg class="icon"><use href="#i-puzzle"/></svg></span><span><b>Statisch und verstreut</b><small>Listen und PDFs über viele Seiten und Jahre</small></span></li>
+        <li><span class="ikon warn"><svg class="icon"><use href="#i-suche"/></svg></span><span><b>Schwer durchsuchbar</b><small>nur mit dem richtigen Stichwort</small></span></li>
+        <li><span class="ikon warn"><svg class="icon"><use href="#i-buch"/></svg></span><span><b>Verwaltungssprache</b><small>für viele schwer verständlich</small></span></li>
+      </ul>
+      <figure class="browser">
+        <div class="browser-leiste"><i></i><i></i><i></i><span class="url">ratsinfo.oldenburg.de/bi/vo0050.asp?__kvonr=25416</span></div>
+        <img src="img/ris-vorlage.webp" alt="Ratsinformationssystem der Stadt Oldenburg: Seite der Vorlage 22/0905 „Stadionneubau Maastrichter Straße – Bericht“ mit Betreff, Vorlagennummer, Art und einem Download-Knopf">
+      </figure>
+    </div>
+    <div class="fuss"><img src="img/marke.png" alt="">Ratslotse</div>
+  </div>
+  <aside class="notes">
+    So sieht die Quelle aus: das Ratsinformationssystem der Stadt Oldenburg (SessionNet), hier die Vorlage 22/0905 zum Stadionneubau.
+    Alles ist da, aber als Ablage, nicht als Auskunft. Vorlage, Beratungen, Protokolle und Anlagen liegen auf verschiedenen Seiten, oft über Jahre verteilt.
+    Dieselbe Stadion-Vorlage taucht später in Ratslotse wieder auf, dort mit Kurzfassung, Abstimmung und dem ganzen Vorgang.
+    Kritik bitte sachlich: Das System erfüllt seinen Zweck als amtliche Ablage. Es ist nur nicht dafür gebaut, Fragen zu beantworten.
+  </aside>
+</section>
+
+<!-- ============================================================ 01 IDEE -->
+<section data-countup>
+  <div class="frame">
+    <div class="kopf">
+      <p class="kicker">01 · Die Idee</p>
+      <h2>Die Antwort steht schon in den Dokumenten der Stadt</h2>
+    </div>
+    <div class="fluss-quer" style="grid-template-columns: 1fr auto 1.05fr auto 1.15fr; flex: 1;">
+      <div class="dok-stapel">
+        <span class="dok"><span class="ikon klein"><svg class="icon"><use href="#i-beschluss"/></svg></span>Beschlüsse</span>
+        <span class="dok"><span class="ikon klein"><svg class="icon"><use href="#i-dokument"/></svg></span>Vorlagen</span>
+        <span class="dok"><span class="ikon klein"><svg class="icon"><use href="#i-mikro"/></svg></span>Protokolle</span>
+        <span class="dok"><span class="ikon klein"><svg class="icon"><use href="#i-megafon"/></svg></span>Pressemitteilungen</span>
+      </div>
+      <span class="pfeil"><svg class="icon"><use href="#i-pfeil"/></svg></span>
+      <div class="mitte-karte fragment hoch" data-fragment-index="1">
+        <span class="ikon gross signal"><svg class="icon"><use href="#i-frage"/></svg></span>
+        <b>Frag den Rat</b>
+        <small>Antwort aus genau diesen Dokumenten, mit Quellen</small>
+      </div>
+      <span class="pfeil fragment hoch" data-fragment-index="2"><svg class="icon"><use href="#i-pfeil"/></svg></span>
+      <div class="dok-stapel fragment hoch" data-fragment-index="2" style="gap: 14px;">
+        <div class="kachel quer"><span class="ikon"><svg class="icon"><use href="#i-gruppe"/></svg></span><span><b>Ratsmitglieder</b><small>bei der Arbeit unterstützen</small></span></div>
+        <div class="kachel quer"><span class="ikon"><svg class="icon"><use href="#i-person"/></svg></span><span><b>Bürger*innen</b><small>verständlich informieren</small></span></div>
+      </div>
+    </div>
+    <div class="zahlenzeile">
+      <div><b data-ziel="1063">1.063</b><span>Sitzungen</span></div>
+      <div><b data-ziel="5604">5.604</b><span>Vorlagen</span></div>
+      <div><b data-ziel="6779">6.779</b><span>Anlagen</span></div>
+      <div><b data-ziel="9586">9.586</b><span>Beschlüsse</span></div>
+      <div><b data-ziel="53047">53.047</b><span>Wortbeiträge</span></div>
+      <div><b data-ziel="3599">3.599</b><span>Pressemitteilungen</span></div>
+    </div>
+    <div class="fuss"><img src="img/marke.png" alt="">Ratslotse · Bestand Oldenburg seit 01/2018, Stand 23.11.2026</div>
+  </div>
+  <aside class="notes">
+    Die Grundidee: Zu fast jeder Frage hat die Stadt schon etwas geschrieben, in Beschlüssen, Vorlagen, Protokollen und Pressemitteilungen. Wer fragt, soll die Antwort aus genau diesen Dokumenten bekommen. Daraus wurde „Frag den Rat“, der Anfang von Ratslotse.
+    Zwei Gruppen von Anfang an: Ratsmitglieder sollen bei ihrer Arbeit Zeit sparen. Politisch interessierte Bürger*innen sollen besser aufbereitete Informationen bekommen als im Ratsinformationssystem.
+    Die Zahlen unten: der Bestand, aus dem heute geantwortet wird.
+  </aside>
+</section>
+
+<!-- ============================================================ 01 WACHSTUM -->
+<section>
+  <div class="frame">
+    <div class="kopf">
+      <p class="kicker">01 · Entstehung</p>
+      <h2>Wie Ratslotse gewachsen ist</h2>
+      <p class="unterzeile-k">Der Kern von Anfang an: Ratsdaten aufbereiten und anreichern.</p>
+    </div>
+    <div class="zeitleiste">
+      <div class="station verworfen"><span class="marke"><svg class="icon"><use href="#i-zeitung"/></svg></span><span class="wann">erste Idee</span><b>+ Lokalzeitung</b><span class="badge warn">fallen gelassen</span></div>
+      <div class="station fragment hoch"><span class="marke"><svg class="icon"><use href="#i-frage"/></svg></span><span class="wann">der Anfang</span><b>Frag den Rat</b><small>Fragen an alle Dokumente</small></div>
+      <div class="station fragment hoch"><span class="marke"><svg class="icon"><use href="#i-offen"/></svg></span><span class="wann">Juli 2026</span><b>Version 1.0</b><small>öffentlich, Open Source</small></div>
+      <div class="station fragment hoch"><span class="marke"><svg class="icon"><use href="#i-euro"/></svg></span><span class="wann">August</span><b>Stadtfinanzen</b><small>Haushalt mit Beleg je Zahl</small></div>
+      <div class="station fragment hoch"><span class="marke"><svg class="icon"><use href="#i-karte"/></svg></span><span class="wann">September</span><b>Vor Ort und anderswo</b><small>Mein Viertel, Ideen aus anderen Städten</small></div>
+      <div class="station jetzt fragment hoch"><span class="marke"><svg class="icon"><use href="#i-funke"/></svg></span><span class="wann">Okt., Nov.</span><b>Version 3</b><small>Lotti, KI-Assistenten, Werkzeuge</small></div>
+    </div>
+    <div class="eckdaten fragment hoch">
+      <div><b>41</b><span>Versionen in fünf Monaten</span></div>
+      <div><b>über 2.000</b><span>einzelne Änderungen</span></div>
+      <div><b>AGPL-3.0</b><span>Open Source auf GitHub</span></div>
+      <div><b>unabhängig</b><span>kein Angebot der Stadt</span></div>
+    </div>
+    <div class="fuss"><img src="img/marke.png" alt="">Ratslotse</div>
+  </div>
+  <aside class="notes">
+    Ganz am Anfang sollten auch Artikel der Lokalzeitung (NWZ) einfließen. Das habe ich fallen lassen: Die nötigen Rechte zu bekommen ist rechtlich zu kompliziert, und die NWZ möchte das vermutlich auch nicht. Vielleicht frage ich irgendwann noch einmal an. Seitdem nur öffentlich zugängliche Informationen.
+    Dann zuerst „Frag den Rat“. Alles Weitere ist gewachsen: zum Teil aus Rückmeldungen, größtenteils aus eigener Einschätzung, was noch fehlt oder wie man es anders zeigen kann. Beispiel: die Viertelkarte, also was genau bei einem vor Ort passiert.
+    Version 1.0 brachte auch Kurzfassungen in einfacher Sprache und Benachrichtigungen. Stadtfinanzen zuerst für Ratsmitglieder.
+    September: Mein Viertel (was im eigenen Stadtteil passiert) und der Vergleich mit anderen Städten. Ratslotse liest die Ratsdokumente von Osnabrück, Braunschweig, Potsdam, Wolfsburg, Münster und Magdeburg mit und zeigt, was andere Räte beschlossen haben und Oldenburg fehlt, etwa einen Hitzeaktionsplan.
+    Die Wahlabende im September waren nie zentral, eher ein Nebenprojekt. Sie haben aber viel Besuch gebracht, weil viele dort die Auswertung der öffentlichen Wahldaten verfolgt haben.
+  </aside>
+</section>
+
+<!-- ============================================================ 01 MOEGLICH -->
+<section>
+  <div class="frame">
+    <div class="kopf">
+      <p class="kicker">01 · Entstehung</p>
+      <h2>Was das möglich gemacht hat</h2>
+    </div>
+    <div class="raster r3" style="flex: 1;">
+      <div class="kennzahl">
+        <span class="ikon gross signal"><svg class="icon"><use href="#i-funke"/></svg></span>
+        <b>Bessere Sprachmodelle</b>
+        <small>Sehr gute Ergebnisse für wenig Geld, je Frage 0,004&nbsp;€</small>
+        <span class="wert signal">3&nbsp;€</span>
+        <span class="fussnote">KI-Kosten im Monat für Aufbereitung und alle Fragen</span>
+      </div>
+      <div class="kennzahl fragment hoch">
+        <span class="ikon gross"><svg class="icon"><use href="#i-code"/></svg></span>
+        <b>KI schreibt den Code</b>
+        <small>Claude Code, teils Codex. Ich beschreibe, prüfe, entscheide.</small>
+        <span class="wert">0</span>
+        <span class="fussnote">Zeilen Code von Hand geschrieben</span>
+      </div>
+      <div class="kennzahl fragment hoch">
+        <span class="ikon gross"><svg class="icon"><use href="#i-person"/></svg></span>
+        <b>Ein Mensch, nebenbei</b>
+        <small>Neben dem Hauptjob, nicht kommerziell</small>
+        <span class="wert">99,9&nbsp;%</span>
+        <span class="fussnote">allein gebaut, kurz mit einer Hilfe</span>
+      </div>
+    </div>
+    <div class="fuss"><img src="img/marke.png" alt="">Ratslotse</div>
+  </div>
+  <aside class="notes">
+    Ermöglicht haben das vor allem die verbesserten Sprachmodelle: Viele liefern inzwischen für sehr wenig Geld sehr gute Ergebnisse. Beispiel: Eine Frage an „Frag den Rat“ kostet im Schnitt 0,004 €, also weniger als einen halben Cent. Gemessen auf Prod in den letzten 30 Tagen bis 26.11.2026: 225 Fragen, zusammen 0,77 € für Frage-Analyse, Antwort und Fraktionspositionen (über 90 Tage ebenfalls rund 0,003 € je Frage). Suche und Sortierung laufen auf dem eigenen Server und kosten nichts extra. Noch kleiner: Drei passende Vorschlagsfragen zu einer Seite kosten rund 0,0005 €.
+    Ich habe keine einzige Zeile Code selbst geschrieben. Entwickelt wird überwiegend mit Claude Code, manches mit Codex (OpenAI-Modelle). Meine Rolle: Idee, Anforderungen, Prüfen, Entscheiden.
+    Ratslotse läuft nebenbei, ich habe einen Hauptjob. Die Idee ist nicht, das kommerziell zu machen. Kurzzeitig hat eine andere Person geholfen; 99,9 % habe ich gemacht.
+    Interessant für alle, die so etwas planen: Was vor zwei Jahren ein Team gebraucht hätte, geht heute mit einer Person und KI-Werkzeugen. Die Verantwortung für Qualität, Datenschutz und Recht bleibt aber beim Menschen.
+    Alle Beträge in Euro, umgerechnet aus den Dollar-Rechnungen der Anbieter mit 1 $ ≈ 0,90 € (Kurs Mitte November 2026).
+    KOSTEN (30 Tage bis 26.11.2026, nur Kernfunktionen): Ratsdokumente aufbereiten 2,00 € (Protokolle lesen, Kurzfassungen, Themen, Dossiers 0,50 €, Scans per Texterkennung 0,40 €), Fragen beantworten 0,95 € (225 Fragen, je 0,004 €). Zusammen rund 3 €. Das Auslesen selbst kostet nichts, dabei läuft keine KI.
+    Je Monat: August 45 € (Bestand einmalig nachverarbeitet: Wortbeiträge, Scans, Protokolle), September 14 €, Oktober 8 €, November bisher knapp 3 €. Erfasst erst seit August.
+    Nicht eingerechnet: Vergleich mit anderen Städten (rund 5 € in 30 Tagen), Prüfläufe für die Qualitätsmessung (rund 3 €), Server.
+  </aside>
+</section>
+
+<!-- ============================================================ 02 FUNKTIONEN -->
+<section>
+  <div class="frame">
+    <div class="kopf">
+      <p class="kicker">02 · Was Ratslotse kann</p>
+      <h2>Ein Zugang zur Stadtpolitik</h2>
+    </div>
+    <div class="raster r3">
+      <div class="kachel"><span class="ikon"><svg class="icon"><use href="#i-suche"/></svg></span><b>Beschlüsse finden</b><small>alle seit 2018, mit Quellen</small></div>
+      <div class="kachel"><span class="ikon signal"><svg class="icon"><use href="#i-frage"/></svg></span><b>Frag den Rat</b><small>Fragen in Alltagssprache</small></div>
+      <div class="kachel"><span class="ikon"><svg class="icon"><use href="#i-kalender"/></svg></span><b>Sitzungen</b><small>eine Seite je Punkt</small></div>
+      <div class="kachel"><span class="ikon"><svg class="icon"><use href="#i-glocke"/></svg></span><b>Benachrichtigungen</b><small>per Mail oder Push</small></div>
+      <div class="kachel"><span class="ikon"><svg class="icon"><use href="#i-karte"/></svg></span><b>Mein Viertel</b><small>was vor Ort passiert</small></div>
+      <div class="kachel"><span class="ikon"><svg class="icon"><use href="#i-euro"/></svg></span><b>Stadtfinanzen</b><small>Haushalt mit Beleg je Zahl</small></div>
+    </div>
+    <div class="leiste">
+      <span class="pille"><svg class="icon"><use href="#i-welt"/></svg>ratslotse.de</span>
+      <span class="pille"><svg class="icon"><use href="#i-handy"/></svg>App für iPhone und iPad</span>
+      <span class="pille"><svg class="icon"><use href="#i-stecker"/></svg>Schnittstelle für eigene KI-Assistenten (MCP)</span>
+    </div>
+    <div class="fuss"><img src="img/marke.png" alt="">Ratslotse</div>
+  </div>
+  <aside class="notes">
+    Überblick, nicht vollständig. Daneben gibt es Quiz, Personen- und Fraktionsseiten, Analysen und den Vergleich mit anderen Städten.
+    Stadtfinanzen sind für Ratsmitglieder und Fachpublikum freigeschaltet.
+    MCP heißt: Wer Claude oder ChatGPT nutzt, kann Ratslotse dort als Werkzeug anschließen und die Ratsdaten direkt abfragen.
+  </aside>
+</section>
+
+<!-- ============================================================ 02 FRAG DEN RAT -->
+<section>
+  <div class="frame">
+    <div class="kopf">
+      <p class="kicker">02 · Was Ratslotse kann</p>
+      <h2>Frag den Rat und Lotti</h2>
+    </div>
+    <div class="bild-folie" style="grid-template-columns: 0.55fr 1.45fr; gap: 32px;">
+      <ul class="zeilen eng">
+        <li><span class="ikon"><svg class="icon"><use href="#i-beschluss"/></svg></span><span><b>Antworten mit Belegen</b><small>jede Aussage verlinkt</small></span></li>
+        <li><span class="ikon"><svg class="icon"><use href="#i-gruppe"/></svg></span><span><b>Positionen der Fraktionen</b><small>aus den Protokollen</small></span></li>
+        <li><span class="ikon"><svg class="icon"><use href="#i-buch"/></svg></span><span><b>Gründliche Recherche</b><small>für längere Berichte</small></span></li>
+        <li><span class="ikon signal"><svg class="icon"><use href="#i-funke"/></svg></span><span><b>Lotti erklärt</b><small>Fachwörter und Seiten</small></span></li>
+      </ul>
+      <div class="bild" style="border-radius: 14px; border: 1px solid var(--rule);"><img src="img/frag-den-rat-antwort.webp" alt="„Frag den Rat“: Frage „Was hat der Rat zum neuen Fußballstadion beschlossen?“, darunter die Antwort mit „Kurz gesagt“ und „Weg zum Beschluss“, rechts die zitierten Beschlüsse"></div>
+    </div>
+    <div class="fuss"><img src="img/marke.png" alt="">Ratslotse</div>
+  </div>
+  <aside class="notes">
+    Beispiel Stadion: Frage in Alltagssprache, Antwort mit „Kurz gesagt“ und dem Weg zum Beschluss seit 2022, rechts die zitierten Beschlüsse (19). Weiter unten in der Antwort stehen die Argumente der Fraktionen aus den Protokollen. Paraphrasen stehen kursiv und ohne Anführungszeichen, weil die Protokolle Verlaufsprotokolle sind, keine Wortprotokolle.
+    Gründliche Recherche: zerlegt die Frage in Teilfragen und schreibt einen längeren Bericht; läuft im Hintergrund weiter, auch wenn man den Tab schließt.
+    Lotti: bewusste Rollentrennung. Lotti erklärt (Wörter, Zahlen, Bausteine), „Frag den Rat“ recherchiert. Ihr Fenster öffnet sich nie von selbst.
+    Live-Demo hier möglich: ratslotse.de vorher im Browser öffnen, Frage z. B. „Was ist der Stand beim Stadion an der Maastrichter Straße?“
+  </aside>
+</section>
+
+<!-- ============================================================ 02 ANNAHME -->
+<section>
+  <div class="frame">
+    <div class="kopf">
+      <p class="kicker">02 · Annahme</p>
+      <h2>Der Fokus rückt zu den Ratsmitgliedern</h2>
+    </div>
+    <div class="spalten" style="grid-template-columns: 0.95fr 1.05fr; gap: 48px;">
+      <div class="zeilen eng">
+        <div class="kachel quer" style="border: 2px solid var(--hafen);"><span class="ikon"><svg class="icon"><use href="#i-gruppe"/></svg></span><span style="flex:1;"><b>Ratsmitglieder</b><small>Haushalt, Mehrheiten, alle Meldungen</small></span><span class="badge lokal">Fokus</span></div>
+        <div class="kachel quer"><span class="ikon grau"><svg class="icon"><use href="#i-person"/></svg></span><span><b>Bürger*innen</b><small>Kurzfassungen, Viertel, Meldungen</small></span></div>
+      </div>
+      <ul class="zeilen">
+        <li><span class="ikon ok"><svg class="icon"><use href="#i-herz"/></svg></span><span><b>Mund-zu-Mund</b><small>Ratsmitglieder kamen von selbst</small></span></li>
+        <li><span class="ikon ok"><svg class="icon"><use href="#i-glocke"/></svg></span><span><b>Mails holen zurück</b><small>wer benachrichtigt wird, kommt wieder</small></span></li>
+        <li><span class="ikon ok"><svg class="icon"><use href="#i-blitz"/></svg></span><span><b>Anlässe bringen Besuch</b><small>Wahlabend: rund 1.000 Aufrufe am Tag</small></span></li>
+      </ul>
+    </div>
+    <div class="fuss"><img src="img/marke.png" alt="">Ratslotse</div>
+  </div>
+  <aside class="notes">
+    Gedacht war Ratslotse für beide Gruppen. Bekannt geworden ist es vor allem bei Ratsmitgliedern, ohne Werbung, über Mund-zu-Mund-Propaganda. Einige nutzen es schon für ihre Arbeit. Deshalb hat sich der Fokus verschoben.
+    Ratsmitglieder brauchen anderes: Haushaltszahlen, Mehrheiten in Ausschüssen (Mehrheitsrechner), vollständige Benachrichtigungen. Dafür gibt es eigene Rollen und Rechte; eine neue Rolle braucht kein App-Update.
+    Mails: Ohne Mail sammeln Abos Treffer, die niemand sieht. Wer Benachrichtigungen einschaltet, kommt wieder.
+    Zahlen aus der Auswertung im September (nach der Kommunalwahl). Die Reichweite insgesamt ist noch klein: etwa eine neue Anmeldung am Tag.
+    Weitere Gruppen: Fachpublikum und Presse (Recherche über Jahre) sowie eigene KI-Assistenten über die MCP-Schnittstelle.
+    Noch eine Lehre: Lesen kommt vor Fragen. Neue Konten nutzen erst Abos und Kurzfassungen; die KI-Frage muss man erst finden.
+  </aside>
+</section>
+
+<!-- ============================================================ 03 KLAUSUR -->
+<section>
+  <div class="frame">
+    <div class="kopf">
+      <p class="kicker">03 · Wie die KI antwortet</p>
+      <h2>Warum nicht einfach ChatGPT fragen?</h2>
+    </div>
+    <div class="spalten" style="grid-template-columns: 1fr 1fr; gap: 28px; align-items: start;">
+      <div class="karte">
+        <div class="karte-kopf"><span class="ikon grau"><svg class="icon"><use href="#i-welt"/></svg></span><h3>KI mit Websuche</h3></div>
+        <div class="sprechblase luecke">Der Rat hat 2024 dem Neubau eines Stadions an der Maastrichter Straße zugestimmt.<small>stimmt, aber lückenhaft: Preis und Bürgschaft von 2026 fehlen</small></div>
+        <ul class="haken">
+          <li class="warnung"><svg class="icon"><use href="#i-warn"/></svg>Ratsinfo schwer zu durchsuchen</li>
+          <li class="warnung"><svg class="icon"><use href="#i-warn"/></svg>Findet Treffer, nicht den Vorgang</li>
+          <li class="warnung"><svg class="icon"><use href="#i-warn"/></svg>Wenig aus Vorlagen und Protokollen</li>
+        </ul>
+      </div>
+      <div class="karte betont fragment hoch">
+        <div class="karte-kopf"><span class="ikon"><svg class="icon"><use href="#i-buch"/></svg></span><h3>Mit Ratslotse</h3></div>
+        <div class="sprechblase belegt">Am 01.06.2026 hat der Rat dem Neubau zum Pauschalpreis von 57,3&nbsp;Mio.&nbsp;€ zugestimmt und eine Ausfallbürgschaft übernommen. <span class="fu">1</span><span class="fu">2</span><small>Beschlüsse des Rats, TOP 6.1 und 6.2</small></div>
+        <ul class="haken">
+          <li class="plus"><svg class="icon"><use href="#i-check"/></svg>Alle Dokumente vorab aufbereitet</li>
+          <li class="plus"><svg class="icon"><use href="#i-check"/></svg>Der ganze Vorgang seit 2022</li>
+          <li class="plus"><svg class="icon"><use href="#i-check"/></svg>Jede Aussage mit Quelle</li>
+        </ul>
+      </div>
+    </div>
+    <div class="fuss"><img src="img/marke.png" alt="">Ratslotse</div>
+  </div>
+  <aside class="notes">
+    Die naheliegende Frage: Warum nicht einfach ChatGPT oder einen anderen Assistenten fragen? Die meisten suchen inzwischen selbst im Netz und antworten nicht nur aus ihrem antrainierten Wissen.
+    Das Problem ist die Quelle: Das Ratsinformationssystem ist schwer zu durchsuchen. Inhalte stecken in PDFs, Protokolle sind lange Verlaufsprotokolle, ein Vorgang verteilt sich über Jahre und mehrere Gremien. Eine Websuche findet einzelne Treffer, oft Presseberichte, aber selten den ganzen Vorgang und den aktuellen Stand. Die Antworten werden dadurch dünner und lassen Stationen aus.
+    Das linke Beispiel ist bewusst konstruiert: Es stimmt, ist aber veraltet. Rechts die echten Beschlüsse vom 01.06.2026 (TOP 6.1 Stadionneubau, TOP 6.2 Ausfallbürgschaft).
+    Ratslotse macht die Vorarbeit: Alle Dokumente sind ausgelesen, aufbereitet und zu Vorgängen verknüpft. Das Sprachmodell bekommt genau die passenden Belege mitgeliefert. Dieses Prinzip heißt RAG (Retrieval-Augmented Generation): erst im eigenen, aufbereiteten Bestand nachschlagen, dann antworten.
+    Übrigens: Wer ChatGPT oder Claude nutzt, kann Ratslotse dort über die MCP-Schnittstelle als Werkzeug anschließen. Dann bekommt auch der allgemeine Assistent die aufbereiteten Daten.
+  </aside>
+</section>
+
+<!-- ============================================================ 03 PIPELINE -->
+<section data-pipeline>
+  <div class="frame" style="gap: 22px;">
+    <div class="kopf" style="gap: 10px;">
+      <p class="kicker">03 · Wie die KI antwortet</p>
+      <h2>Der Weg einer Frage</h2>
+    </div>
+    <div class="frage-chip"><svg class="icon"><use href="#i-frage"/></svg>Was hat der Rat zum Stadion an der Maastrichter Straße beschlossen?</div>
+
+    <div class="pipe">
+      <div class="pipe-linie"><i></i></div>
+      <div class="node"><span class="punkt">1</span><span class="name">Verstehen</span><span class="badge cloud">Cloud-KI</span></div>
+      <div class="node"><span class="punkt">2</span><span class="name">Suchen</span><span class="badge lokal">lokal</span></div>
+      <div class="node"><span class="punkt">3</span><span class="name">Sortieren</span><span class="badge lokal">lokal</span></div>
+      <div class="node"><span class="punkt">4</span><span class="name">Zusammenstellen</span><span class="badge code">Regeln</span></div>
+      <div class="node"><span class="punkt">5</span><span class="name">Antworten</span><span class="badge cloud">Cloud-KI</span></div>
+      <div class="node"><span class="punkt">6</span><span class="name">Prüfen</span><span class="badge code">Regeln</span></div>
+    </div>
+
+    <div class="panels">
+      <div class="panel intro is-active">
+        <div class="text">
+          <h3>Sechs Schritte, nur zwei davon mit einem großen Sprachmodell</h3>
+          <p>Suche und Sortierung laufen auf dem eigenen Server. Feste Regeln im Code stellen die Belege zusammen und prüfen am Ende jede Quellenangabe.</p>
+          <div class="legende">
+            <span><span class="badge cloud">Cloud-KI</span> Sprachmodell über eine Schnittstelle</span>
+            <span><span class="badge lokal">lokal</span> kleines Modell auf dem eigenen Server</span>
+            <span><span class="badge code">Regeln</span> ohne KI</span>
+          </div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="text"><h3>Verstehen</h3><p>Ein kleines Sprachmodell formuliert die Frage eigenständig und schlägt Suchbegriffe vor. Bekannte Orte, Personen und Sitzungen erkennt der Code ohne KI.</p></div>
+        <div class="chips"><span class="chip ort">Ort erkannt: Maastrichter Straße</span><span class="chip">Stadion</span><span class="chip">Stadionneubau</span><span class="chip">Ausfallbürgschaft</span><span class="chip">Fußballstadion</span></div>
+      </div>
+      <div class="panel">
+        <div class="text"><h3>Suchen</h3><p>Drei Suchen laufen gleichzeitig. Jede findet, was die anderen übersehen.</p></div>
+        <div class="wege">
+          <div class="weg"><b>Wörter</b><span>findet „Maastrichter Straße“ genau so, wie es dasteht</span></div>
+          <div class="weg"><b>Bedeutung</b><span>findet „Neubau einer Spielstätte“ auch ohne das Wort Stadion</span></div>
+          <div class="weg"><b>Vorlagentexte</b><span>findet Begründung und Kosten in den Unterlagen</span></div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="text"><h3>Sortieren</h3><p>Ein zweites kleines Modell liest jedes Paar aus Frage und Treffer und ordnet neu. Fragt jemand nach dem Stand, zählt Jüngeres mehr.</p></div>
+        <ol class="rangliste">
+          <li><span class="fn">1</span><span>Stadionneubau Maastrichter Straße<span class="m">Rat · 01.06.2026</span></span></li>
+          <li><span class="fn">2</span><span>Ausfallbürgschaft für die Stadion Oldenburg GmbH &amp; Co. KG<span class="m">Rat · 01.06.2026</span></span></li>
+          <li><span class="fn">3</span><span>Stadionneubau Maastrichter Straße<span class="m">Rat · 15.04.2024</span></span></li>
+          <li><span class="fn">4</span><span>Neubau eines drittligatauglichen Fußball-Stadions<span class="m">Sportausschuss · 11.05.2022</span></span></li>
+        </ol>
+      </div>
+      <div class="panel">
+        <div class="text"><h3>Zusammenstellen</h3><p>Die besten Belege gehen an das Antwortmodell, zusammen mit dem Datum und dem Hinweis, wie alt der jüngste Beleg ist.</p></div>
+        <div class="kontext">
+          <span class="zeile">Beschlusstexte mit Abstimmungsergebnis</span>
+          <span class="zeile">Vorlagen-Auszüge mit Kosten</span>
+          <span class="zeile">Wortbeiträge der Fraktionen aus den Protokollen</span>
+          <span class="zeile">Der ganze Vorgang seit 2022 als Zeitleiste</span>
+          <span class="stand">Stand der Belege: 01.06.2026</span>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="text"><h3>Antworten</h3><p>Das Sprachmodell schreibt nur aus diesen Belegen und setzt an jede Aussage einen Quellenverweis.</p></div>
+        <p class="antwort">Der Rat hat am 01.06.2026 dem Neubau zum Pauschalpreis von 57,3 Mio.&nbsp;€ zugestimmt, mehrheitlich bei 18 Gegenstimmen <span class="fu">1</span>. Für die Finanzierung übernimmt die Stadt Ausfallbürgschaften <span class="fu">2</span>.</p>
+      </div>
+      <div class="panel">
+        <div class="text"><h3>Prüfen</h3><p>Der Code gleicht jeden Verweis mit den Belegen ab. Was dort nicht stand, fliegt raus. Grafiken mit Zahlen entstehen aus der Datenbank, nie aus dem Modell.</p></div>
+        <ul class="pruefliste">
+          <li class="gut"><svg class="icon"><use href="#i-check"/></svg><span class="fu">1</span> stand in den Belegen</li>
+          <li class="gut"><svg class="icon"><use href="#i-check"/></svg><span class="fu">2</span> stand in den Belegen</li>
+          <li class="schlecht"><svg class="icon"><use href="#i-x"/></svg><span class="fu weg-damit">7</span> stand nicht darin, wird entfernt</li>
+        </ul>
+      </div>
+    </div>
+
+    <span class="fragment schritt" data-fragment-index="1"></span>
+    <span class="fragment schritt" data-fragment-index="2"></span>
+    <span class="fragment schritt" data-fragment-index="3"></span>
+    <span class="fragment schritt" data-fragment-index="4"></span>
+    <span class="fragment schritt" data-fragment-index="5"></span>
+    <span class="fragment schritt" data-fragment-index="6"></span>
+    <div class="fuss"><img src="img/marke.png" alt="">Ratslotse</div>
+  </div>
+  <aside class="notes">
+    Mit Pfeil rechts Schritt für Schritt. Kernbotschaft: Das Sprachmodell ist ein Baustein. Ob die Antwort gut ist, entscheidet vor allem die Suche davor.
+    1 Verstehen: Die Frage wird umformuliert, bei Anschlussfragen mit dem Gesprächsverlauf. Orte aus einem eigenen Ortskatalog erkennt der Code selbst.
+    2 Suchen: Wortsuche (Volltext) findet Vorlagennummern und Eigennamen, Bedeutungssuche (Embeddings) findet Umschreibungen, dazu die Begründungstexte der Vorlagen.
+    3 Sortieren: ein sogenannter Reranker, ein kleines Modell auf dem eigenen Server. Dabei verlassen keine Daten den Server.
+    4 Zusammenstellen: Wichtig ist das Alter der Belege. Eine Antwort hat einmal einen Stand von 2018 als Gegenwart erzählt, weil das Modell nicht wusste, wie alt seine Quellen sind.
+    5 Antworten: Auftrag ans Modell: nur aus den Belegen antworten und zitieren.
+    6 Prüfen: Quellenverweise, die nicht im Kontext standen, werden verworfen. Zahlen-Grafiken baut der Code aus den Rohdaten.
+  </aside>
+</section>
+
+
+<!-- ============================================================ 03 FOLGEN -->
+<section>
+  <div class="frame">
+    <div class="kopf">
+      <p class="kicker">03 · Wie die KI antwortet</p>
+      <h2>Was RAG bewirkt</h2>
+    </div>
+    <div class="spalten" style="grid-template-columns: 1fr 1fr; gap: 28px;">
+      <div class="karte">
+        <div class="karte-kopf"><h3>Stärken</h3><span class="badge ok">gewonnen</span></div>
+        <ul class="zeilen eng">
+          <li><span class="ikon klein ok"><svg class="icon"><use href="#i-beschluss"/></svg></span><span><b>Nachprüfbar</b><small>jede Aussage mit Quelle</small></span></li>
+          <li><span class="ikon klein ok"><svg class="icon"><use href="#i-uhr"/></svg></span><span><b>Aktuell</b><small>neue Protokolle täglich, ohne Training</small></span></li>
+          <li><span class="ikon klein ok"><svg class="icon"><use href="#i-schild"/></svg></span><span><b>Ehrlich</b><small>„nichts gefunden“ statt Erfindung</small></span></li>
+          <li><span class="ikon klein ok"><svg class="icon"><use href="#i-stecker"/></svg></span><span><b>Austauschbar</b><small>das Modell ist nur ein Baustein</small></span></li>
+        </ul>
+      </div>
+      <div class="karte fragment hoch">
+        <div class="karte-kopf"><h3>Grenzen</h3><span class="badge warn">bleibt Arbeit</span></div>
+        <ul class="zeilen eng">
+          <li><span class="ikon klein warn"><svg class="icon"><use href="#i-suche"/></svg></span><span style="flex:1;"><b>Nicht gefunden = fehlt</b>
+            <span class="meter"><span class="spur"><i style="width:77%"></i></span><span>153 von 198 Belegen</span></span></span></li>
+          <li><span class="ikon klein warn"><svg class="icon"><use href="#i-puzzle"/></svg></span><span><b>Datenlücken</b><small>fehlt das Protokoll, fehlt die Debatte</small></span></li>
+          <li><span class="ikon klein warn"><svg class="icon"><use href="#i-warn"/></svg></span><span><b>Belege übergangen</b><small>das Modell gewichtet falsch</small></span></li>
+          <li><span class="ikon klein warn"><svg class="icon"><use href="#i-uhr"/></svg></span><span><b>Zeit und Geld</b><small>je Antwort einige Sekunden</small></span></li>
+        </ul>
+      </div>
+    </div>
+    <div class="fuss"><img src="img/marke.png" alt="">Ratslotse</div>
+  </div>
+  <aside class="notes">
+    153 von 198: aus dem Gold-Lauf auf Prod am 09.11.2026 (27 Fragen). Gut drei Viertel der nötigen Belege kommen also beim Modell an. Der Rest ist Arbeit an der Suche, nicht am Modell.
+    Beispiel für „nicht gefunden“: Die Aussage der Verwaltung zum Spielplatz am Schlossplatz stand unter dem Punkt „Spielleitplanung“ und lag in der Bedeutungssuche auf Rang 310. Deshalb bündelt Ratslotse Vorgänge zu Akten, ohne KI, über die Vorlagennummer.
+    Wartezeit: Erst wird gesucht, dann geschrieben. Wer länger warten mag, nimmt die gründliche Recherche.
+  </aside>
+</section>
+
+<!-- ============================================================ 04 DATEN -->
+<section>
+  <div class="frame">
+    <div class="kopf">
+      <p class="kicker">04 · Datenaufbereitung</p>
+      <h2>Die meiste Arbeit steckt in den Daten</h2>
+    </div>
+    <div class="spalten" style="grid-template-columns: 0.8fr 1.2fr; gap: 48px; align-items: center;">
+      <ol class="fluss">
+        <li><span class="ikon klein grau"><svg class="icon"><use href="#i-dokument"/></svg></span><span><b>Seiten und PDFs</b><small>ausgelesen, ohne KI</small></span></li>
+        <li><span class="ikon klein signal"><svg class="icon"><use href="#i-scan"/></svg></span><span><b>Text</b><small>Scans: ein Modell liest, eins prüft</small></span></li>
+        <li><span class="ikon klein"><svg class="icon"><use href="#i-tabelle"/></svg></span><span><b>Struktur</b><small>Beschluss, Abstimmung, Wortbeitrag</small></span></li>
+        <li><span class="ikon klein signal"><svg class="icon"><use href="#i-funke"/></svg></span><span><b>Anreicherung</b><small>Kurzfassung, Themen, Orte</small></span></li>
+      </ol>
+      <ul class="zeilen eng">
+        <li><span class="ikon warn"><svg class="icon"><use href="#i-stecker"/></svg></span><span><b>Keine Schnittstelle</b><small>Seite für Seite auslesen</small></span></li>
+        <li><span class="ikon warn"><svg class="icon"><use href="#i-warn"/></svg></span><span><b>Stille Fehler</b><small>„0 Termine“ nach dem Umzug, ohne Alarm</small></span></li>
+        <li><span class="ikon warn"><svg class="icon"><use href="#i-kalender"/></svg></span><span><b>Protokolle kommen später</b><small>bis dahin fehlt die Debatte</small></span></li>
+      </ul>
+    </div>
+    <div class="fuss"><img src="img/marke.png" alt="">Ratslotse</div>
+  </div>
+  <aside class="notes">
+    Faustregel aus dem Projekt: Die KI ist der kleinere Teil. Der größere ist, die Daten vollständig, richtig und aktuell zu halten.
+    Warum eine eigene Kopie? Nur mit den Daten im eigenen Speicher sind schnelle Suche, Verknüpfung über Jahre und Kurzfassungen möglich. Direkt aus dem Ratsinformationssystem ginge das nicht. (Rechtlich dazu gleich mehr.)
+    Keine Schnittstelle: Oldenburgs Ratsinformationssystem hat keine offene API, also wird jede Seite ausgelesen.
+    Fraktionen: Das System zeigt die heutige Fraktion auch für 1996. Deshalb liest Ratslotse die Zugehörigkeit aus den Anwesenheitslisten der Protokolle.
+    Umzug 11/2026: buergerinfo.oldenburg.de → ratsinfo.oldenburg.de. Die alte Adresse lieferte nur noch die Startseite, „0 Termine“ sah nicht wie ein Fehler aus. Seitdem schlägt ein Alarm an, und ein täglicher Check fragt von außen nach.
+    Weitere Stolpersteine: Abstimmungen stehen nur im Protokoll, das System kennt kein Stimmverhalten.
+  </aside>
+</section>
+
+<!-- ============================================================ 04 QUALITÄT -->
+<section>
+  <div class="frame">
+    <div class="kopf">
+      <p class="kicker">04 · Antwortqualität</p>
+      <h2>Messen statt schätzen</h2>
+    </div>
+    <div class="raster r2" style="flex: 1;">
+      <div class="kennzahl">
+        <span class="ikon gross"><svg class="icon"><use href="#i-ziel"/></svg></span>
+        <span class="wert">62&nbsp;%</span>
+        <b>der Pflichtfakten getroffen</b>
+        <small>27 schwere, echte Fragen mit geprüften Soll-Antworten</small>
+        <span class="fussnote">Richter: ein zweites Sprachmodell · 09.11.2026</span>
+      </div>
+      <div class="kennzahl">
+        <span class="ikon gross"><svg class="icon"><use href="#i-check"/></svg></span>
+        <b>Modellwahl per Faktencheck</b>
+        <div class="einheiten" style="grid-template-columns: 1fr auto;" role="img" aria-label="Neues Modell: 12 von 14 Antworten fehlerfrei. Altes Modell: 5 von 14.">
+          <span class="wer">neues Modell</span><span class="wert">12/14</span>
+          <span class="punktreihe" style="grid-column: 1 / -1;"><i class="voll"></i><i class="voll"></i><i class="voll"></i><i class="voll"></i><i class="voll"></i><i class="voll"></i><i class="voll"></i><i class="voll"></i><i class="voll"></i><i class="voll"></i><i class="voll"></i><i class="voll"></i><i></i><i></i></span>
+          <span class="wer">altes Modell</span><span class="wert">5/14</span>
+          <span class="punktreihe alt" style="grid-column: 1 / -1;"><i class="voll"></i><i class="voll"></i><i class="voll"></i><i class="voll"></i><i class="voll"></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>
+        </div>
+        <span class="fussnote">fehlerfreie Antworten, Aussage für Aussage geprüft</span>
+      </div>
+    </div>
+    <div class="fuss"><img src="img/marke.png" alt="">Ratslotse</div>
+  </div>
+  <aside class="notes">
+    Gold-Set: echte Fragen, deren richtige Antwort von Hand recherchiert ist. Jede Änderung an der Suche läuft dagegen, bevor sie live geht.
+    62 % klingt wenig. Die Fragen sind aber bewusst schwer (mehrjährige Vorgänge, Fraktionspositionen, Haushalt). Der Wert ist ein Maßstab für Vergleiche, keine Trefferquote für Alltagsfragen. Einzelmessungen schwanken: Im Oktober ergab derselbe Code einmal 51 % und einmal 45 %. Also zweimal messen.
+    Faktencheck vom 23.09.2026: 14 echte Antworten. Neues Modell GPT-6 Luna 12/14 fehlerfrei, altes Modell Gemini 2.5 Flash 5/14. Danach wurde gewechselt.
+    Auftrag schlägt Preis: Einordnung fremder Ratsvorlagen. Ein besser formulierter Auftrag (Prompt) brachte 87 %, ein elfmal teureres Modell nur 71 %.
+    Lehre: Neue Modelle sind nicht automatisch besser, teure nicht automatisch genauer. Ohne Messung entscheidet das Bauchgefühl.
+  </aside>
+</section>
+
+<!-- ============================================================ 04 DATENSCHUTZ -->
+<section>
+  <div class="frame">
+    <div class="kopf">
+      <p class="kicker">04 · Datenschutz</p>
+      <h2>Was geht an die KI?</h2>
+      <p class="unterzeile-k">Die Modelle laufen extern, überwiegend in der EU und ohne Speicherung. Trotzdem zählt, was man hineingibt.</p>
+    </div>
+    <div class="spalten" style="grid-template-columns: 1fr 1fr; gap: 24px;">
+      <div class="karte">
+        <div class="karte-kopf"><span class="ikon grau"><svg class="icon"><use href="#i-dokument"/></svg></span><h3>Aufbereitung</h3><span class="badge ok">unkritisch</span></div>
+        <ul class="zeilen mini">
+          <li><span class="ikon klein ok"><svg class="icon"><use href="#i-welt"/></svg></span><span><b>Öffentliche Dokumente</b><small>Beschlüsse, Vorlagen, Protokolle stehen ohnehin im Netz</small></span></li>
+          <li><span class="ikon klein ok"><svg class="icon"><use href="#i-schild"/></svg></span><span><b>Kein Training</b><small>und keine Anbieter aus China</small></span></li>
+          <li><span class="ikon klein grau"><svg class="icon"><use href="#i-euro"/></svg></span><span><b>Modell nach Aufgabe</b><small>das günstigste, das gut genug ist</small></span></li>
+        </ul>
+      </div>
+      <div class="karte betont fragment hoch">
+        <div class="karte-kopf"><span class="ikon"><svg class="icon"><use href="#i-frage"/></svg></span><h3>Fragen der Nutzer*innen</h3></div>
+        <ul class="zeilen mini">
+          <li><span class="ikon klein"><svg class="icon"><use href="#i-eu"/></svg></span><span><b>Nur Server in der EU</b><small>nichts gespeichert, kein Training</small></span></li>
+          <li><span class="ikon klein warn"><svg class="icon"><use href="#i-person"/></svg></span><span><b>Hinweis im Eingabefeld</b><small>keine persönlichen Daten eingeben</small></span></li>
+        </ul>
+        <div class="beispiel gut"><svg class="icon"><use href="#i-check"/></svg><span class="sprechblase">Wie hat sich der Busverkehr in den letzten Jahren entwickelt?</span></div>
+        <div class="beispiel schlecht"><svg class="icon"><use href="#i-x"/></svg><span class="sprechblase">Ich bin 34, Pflegekraft, wohne in der Gartenstraße und …</span></div>
+      </div>
+    </div>
+    <div class="fuss"><img src="img/marke.png" alt="">Ratslotse</div>
+  </div>
+  <aside class="notes">
+    Natürlich nutzen wir KI-Modelle, und zwar extern gehostete. Überwiegend in Europa und mit Zero Data Retention, das heißt, der Anbieter speichert nichts. Trotzdem muss man darüber nachdenken, welche Daten man hineingibt.
+    Aufbereitung: Das sind öffentliche Daten, die jede*r im Netz findet. Beschlüsse und Protokolle zur Aufbereitung an ein Modell zu geben, halte ich datenschutzrechtlich für unproblematisch. Einschränkung: Auch in öffentlichen Protokollen stehen manchmal Namen von Bürger*innen. Die Aufsichtsbehörden verlangen, dass die Stadt solche Daten vor der Veröffentlichung schwärzt.
+    Hinweis zu Trainingsdaten: Vieles war lange frei im Netz. Inzwischen bittet Oldenburgs Ratsinfo die KI-Anbieter in seiner robots.txt ausdrücklich, nicht damit zu trainieren (GPTBot, ClaudeBot, CCBot, Google-Extended …). Ratslotse trainiert nicht und schließt Training auch bei den Modell-Anbietern aus.
+    Fragen der Nutzer*innen: gehen nur an Server in der EU, ohne Speicherung und ohne Training (seit 08.11.2026 ohne Ausnahme). Der Vermittler (OpenRouter) sitzt in den USA, das steht in der Datenschutzerklärung.
+    Im Eingabefeld steht der Hinweis, keine personenbezogenen Daten einzugeben. Normalerweise braucht man sie auch nicht: Typische Fragen sind „Wie sieht es mit Fahrradstraßen aus?“ oder „Wie wurde der ÖPNV weiterentwickelt?“.
+    Weitere Punkte bei Nachfrage: Fehlerprotokoll ohne Inhalte, Konten und Adressen. Gespeicherte Recherchen ohne Einwilligung nach sieben Tagen gelöscht. Anweisungen an KI-Systeme in Vorlagen werden vor dem Modell herausgefiltert (Schutz vor Prompt Injection).
+  </aside>
+</section>
+
+<!-- ============================================================ 04 RECHT -->
+<section>
+  <div class="frame" style="gap: 20px;">
+    <div class="kopf">
+      <p class="kicker">04 · Recht</p>
+      <h2>Rechtlich: nicht alles ist sicher</h2>
+    </div>
+    <div class="ampel">
+      <div class="ampel-spalte gruen">
+        <div class="ampel-kopf"><span class="lampe"></span><b>Trägt</b></div>
+        <ul class="zeilen mini">
+          <li><span class="ikon klein weiss"><svg class="icon"><use href="#i-gruppe"/></svg></span><span><b>Öffentliche Sitzungen</b><small>Unterlagen sind zur Kenntnis bestimmt</small></span></li>
+          <li><span class="ikon klein weiss"><svg class="icon"><use href="#i-person"/></svg></span><span><b>Ratsmitglieder</b><small>in ihrer öffentlichen Rolle</small></span></li>
+          <li><span class="ikon klein weiss"><svg class="icon"><use href="#i-funke"/></svg></span><span><b>KI gekennzeichnet</b><small>Pflicht seit 02.08.2026</small></span></li>
+          <li><span class="ikon klein weiss"><svg class="icon"><use href="#i-roboter"/></svg></span><span><b>Kein Training</b><small>wie es die Stadt von KI-Anbietern verlangt</small></span></li>
+        </ul>
+      </div>
+      <div class="ampel-spalte gelb fragment hoch">
+        <div class="ampel-kopf"><span class="lampe"></span><b>Graubereich</b></div>
+        <ul class="zeilen mini">
+          <li><span class="ikon klein weiss"><svg class="icon"><use href="#i-kopie"/></svg></span><span><b>Eigene Kopie</b><small>Datenbankrecht der Stadt (§ 87b UrhG)</small></span></li>
+          <li><span class="ikon klein weiss" style="font-family:var(--font-display);font-weight:700;font-size:21px;">§</span><span><b>Urheberrecht</b><small>Ratsunterlagen nicht automatisch frei, Gutachten Dritter erst recht nicht</small></span></li>
+          <li><span class="ikon klein weiss"><svg class="icon"><use href="#i-radiergummi"/></svg></span><span><b>Löschungen</b><small>schwärzt die Stadt, muss die Kopie folgen</small></span></li>
+        </ul>
+      </div>
+      <div class="ampel-spalte rot fragment hoch">
+        <div class="ampel-kopf"><span class="lampe"></span><b>Bewusst gelassen</b></div>
+        <ul class="zeilen mini">
+          <li><span class="ikon klein weiss"><svg class="icon"><use href="#i-zeitung"/></svg></span><span><b>Zeitungsartikel</b><small>Verlag untersagt Text- und Data-Mining</small></span></li>
+          <li><span class="ikon klein weiss"><svg class="icon"><use href="#i-handy"/></svg></span><span><b>Kontaktdaten</b><small>aus dem Ratsinfo nicht übernommen</small></span></li>
+        </ul>
+      </div>
+    </div>
+    <div class="hebel fragment hoch"><span class="ikon klein"><svg class="icon"><use href="#i-haus"/></svg></span><span><b>Was Sicherheit schafft:</b> eine offene Lizenz der Stadt für ihre Ratsdaten oder eine Absprache mit ihr.</span></div>
+    <div class="fuss"><img src="img/marke.png" alt="">Ratslotse · keine Rechtsberatung</div>
+  </div>
+  <aside class="notes">
+    Ehrlich: Rechtlich ist das nur mittelmäßig sicher. Das Problem: Für schnelle Suche und Aufbereitung müssen wir die Daten selbst speichern. Damit entsteht eine Art Schattendatenbank neben dem Ratsinformationssystem.
+    Grün: Ratssitzungen sind öffentlich, die Unterlagen sind zur Kenntnisnahme veröffentlicht. Die Aufsicht in Niedersachsen hält die Veröffentlichung von Niederschriften öffentlicher Sitzungen grundsätzlich für zulässig (LfD Niedersachsen). Ratsmitglieder erscheinen in ihrer öffentlichen Rolle. KI-Verordnung Art. 50: Chatbots müssen sich seit 02.08.2026 als KI zu erkennen geben; Ratslotse kennzeichnet KI-Inhalte.
+    Gelb, Datenbankrecht: Die Stadt ist Herstellerin ihrer Datenbank. Wesentliche Teile zu übernehmen, braucht grundsätzlich ihre Zustimmung (§ 87b UrhG). Der BGH hat 2006 die Ausnahme für amtliche Werke auch auf Datenbanken übertragen (I ZR 261/03, „Sächsischer Ausschreibungsdienst“), die Frage aber dem EuGH vorgelegt. Eine abschließende Antwort habe ich nicht gefunden.
+    Gelb, Urheberrecht: Amtliche Werke sind frei (§ 5 UrhG), aber Ratsvorlagen und Protokolle fallen nur unter § 5 Abs. 2, wenn sie im amtlichen Interesse zur allgemeinen Kenntnisnahme veröffentlicht wurden. Das ist eine Einzelfallfrage, der BGH legt den Begriff eng aus. Dann gelten Quellenangabe und Änderungsverbot. Anlagen von Dritten (Gutachten, Pläne von Büros) sind eher geschützt.
+    Gelb, Löschungen: Wer in einem Protokoll steht, kann Löschung verlangen (Art. 17 DSGVO). Die Stadt muss dann auch Stellen informieren, die Kopien haben (Art. 17 Abs. 2). Die hessische Aufsicht empfiehlt, Bürgerdaten vorab zu schwärzen und nur so lange online zu halten wie nötig (HBDI-Handreichung 07/2024). Eine Kopie, die das nicht nachzieht, behält, was die Stadt längst entfernt hat.
+    Grün, kein Training: Die robots.txt von ratsinfo.oldenburg.de sperrt die Trainings-Crawler der KI-Anbieter (GPTBot, ClaudeBot, CCBot, Google-Extended, Applebot-Extended, Meta) und einige SEO-Tools. Suchmaschinen, KI-Suche und Abrufe im Auftrag von Nutzer*innen sind nicht gesperrt. Ratslotse trainiert nicht und verbietet den Modell-Anbietern das Training mit den Daten; das passt zur Haltung der Stadt.
+    Rot: Zeitung wegen Nutzungsvorbehalt für Text- und Data-Mining (§ 44b UrhG) gelöscht. Kontaktdaten (dort teils Privatadressen) nicht übernommen. Nur der öffentliche Teil des Ratsinfos.
+    Viele OParl-Schnittstellen nennen keine Lizenz. Mit der Stadt klären, unter welchen Bedingungen die Daten genutzt werden dürfen. Eine offene Lizenz würde fast alle gelben Punkte entschärfen.
+  </aside>
+</section>
+
+<!-- ============================================================ 05 UEBERTRAGBAR -->
+<section>
+  <div class="frame">
+    <div class="kopf">
+      <p class="kicker">05 · Übertragbarkeit</p>
+      <h2>Übertragbar auf andere Städte?</h2>
+    </div>
+    <div class="fluss-quer" style="grid-template-columns: 1fr auto 1fr auto 1fr;">
+      <div class="glied"><span class="ikon gross"><svg class="icon"><use href="#i-haus"/></svg></span><b>Eine andere Stadt</b><small>Ratsinfo eines großen Herstellers</small><span class="badge ok">OParl offen</span></div>
+      <span class="pfeil fragment hoch" data-fragment-index="1"><svg class="icon"><use href="#i-pfeil"/></svg></span>
+      <div class="glied fragment hoch" data-fragment-index="1"><span class="ikon gross"><svg class="icon"><use href="#i-stecker"/></svg></span><b>Adapter</b><small>einmal je Hersteller</small><span class="badge ok">teils vorhanden</span></div>
+      <span class="pfeil fragment hoch" data-fragment-index="2"><svg class="icon"><use href="#i-pfeil"/></svg></span>
+      <div class="glied fragment hoch" data-fragment-index="2"><span class="ikon gross signal"><svg class="icon"><use href="#i-frage"/></svg></span><b>Frag den Rat</b><small>für die neue Stadt</small><span class="badge lokal">Probelauf</span></div>
+    </div>
+    <div class="spalten fragment hoch" data-fragment-index="3" style="grid-template-columns: 1fr 1fr; gap: 24px; flex: 0 0 auto;">
+      <div class="karte" style="gap: 12px;">
+        <div class="karte-kopf"><span class="ikon klein"><svg class="icon"><use href="#i-stecker"/></svg></span><h3>Ein Adapter je Hersteller</h3></div>
+        <div class="oparl-kurz">
+          <div><b>162</b><span>Kommunen mit offener Schnittstelle</span></div>
+          <div><b>141</b><span>vorhanden, aber abgeschaltet</span></div>
+        </div>
+      </div>
+      <div class="karte" style="gap: 12px;">
+        <div class="karte-kopf"><span class="ikon klein warn"><svg class="icon"><use href="#i-buch"/></svg></span><h3>Anzupassen und zu klären</h3></div>
+        <div class="chips">
+          <span class="chip warn">Lizenz der Daten</span>
+          <span class="chip warn">Landesrecht und Begriffe</span>
+          <span class="chip warn">Prüfset mit echten Fragen</span>
+        </div>
+      </div>
+    </div>
+    <div class="fuss"><img src="img/marke.png" alt="">Ratslotse</div>
+  </div>
+  <aside class="notes">
+    Oberfläche, Suche, Antworten und Messung wissen nichts von Oldenburg. Anzupassen sind Begriffe, Ortskatalog und die Gemeindeordnung des Landes (z. B. Stadtverordnetenversammlung statt Rat). Der Anschluss ans Ratsinfo braucht je Hersteller einen Adapter, nicht je Stadt. Wenige Hersteller bedienen die meisten Kommunen; jede Reparatur hilft allen Städten dieses Systems.
+    Adapter gibt es für SessionNet, ALLRIS und more! rubin. Für den Städtevergleich laufen schon Osnabrück, Braunschweig, Potsdam, Wolfsburg, Münster und Magdeburg. Ehrlich sagen: Nicht jeder Adapter ist schon gegen eine echte Stadt gelaufen; ein Probelauf zeigt, was fehlt.
+    OParl ist der offene Standard für Ratsinformationen. Eigene Erhebung vom 10.09.2026 über 394 Kommunen: Bei 162 antwortet die Schnittstelle, bei 141 steckt sie im Produkt, ist aber abgeschaltet („Webservice OParl ist nicht aktiviert“). Offene Daten sind dort eher eine organisatorische als eine technische Frage. Mit offener Schnittstelle ist der Anschluss leichter als in Oldenburg, wo jede Seite ausgelesen werden muss; manche liefern sogar die Volltexte mit.
+    Lizenz: Viele Schnittstellen nennen keine. Vor dem Speichern und Weitergeben mit der Stadt klären.
+    Nach jedem Abruf prüft Ratslotse, ob der Bestand plausibel ist (einmal hatten 0 von 700 Vorlagen ein Ergebnis, ohne dass etwas abstürzte).
+  </aside>
+</section>
+
+<!-- ============================================================ 05 LEHREN -->
+<section>
+  <div class="frame">
+    <div class="kopf">
+      <p class="kicker">05 · Für eigene Projekte</p>
+      <h2>Vier Lehren für einen Chatbot für Ratsmitglieder</h2>
+    </div>
+    <div class="raster r2">
+      <div class="kachel"><span class="ikon"><svg class="icon"><use href="#i-dokument"/></svg></span><b>Mit den Daten anfangen</b><small>Vollständigkeit vor Modellwahl</small></div>
+      <div class="kachel"><span class="ikon"><svg class="icon"><use href="#i-beschluss"/></svg></span><b>Quellen sind Pflicht</b><small>jede Aussage prüfbar</small></div>
+      <div class="kachel"><span class="ikon"><svg class="icon"><use href="#i-liste"/></svg></span><b>Echte Fragen sammeln</b><small>20 bis 30, mit geprüften Antworten</small></div>
+      <div class="kachel"><span class="ikon" style="font-family:var(--font-display);font-weight:700;font-size:26px;">§</span><b>Recht mit der Stadt klären</b><small>Lizenz, Löschungen, EU-Modelle</small></div>
+    </div>
+    <div class="fuss"><img src="img/marke.png" alt="">Ratslotse</div>
+  </div>
+  <aside class="notes">
+    Ratsmitglieder fragen anders als Bürger*innen: zur Vorbereitung einer Sitzung, nach Positionen anderer Fraktionen, nach Haushaltszahlen. Ein Prüfset sollte genau diese Fragen enthalten.
+    Mit den Daten anfangen: Welche Dokumente gibt es, wie vollständig, wie aktuell? Das entscheidet mehr als das Modell.
+    Quellen: Wer eine Aussage in der Sitzung verwendet, muss sie vorher prüfen können.
+    Echte Fragen: lieber 25 gute Fragen mit geprüften Antworten als 500 ungeprüfte.
+    Recht: Wer mit der Stadt zusammenarbeitet, ist in einer besseren Lage. Ist die Stadt Partnerin, kann sie die Nutzung ihrer Daten erlauben, Löschungen mitteilen und den Datenschutz mittragen. Dazu: Welche Modelle, wo gehostet, mit oder ohne Speicherung? Und die KI-Kennzeichnung nach Art. 50 KI-Verordnung.
+    Fachwissen als Regel: Was sich sicher berechnen lässt (Vorlagennummern, Daten, Gremienwege), gehört in Code, nicht ins Sprachmodell.
+    Zwei weitere Lehren bei Bedarf: „Weiß ich nicht“ erlauben (eine ehrliche Lücke ist besser als eine plausible Erfindung). Fachwissen als Regel fassen (Vorlagennummern, Daten, Gremienwege kennt Code verlässlicher als jede KI).
+  </aside>
+</section>
+
+<!-- ============================================================ DANKE -->
+<section class="danke blau" data-background-gradient="linear-gradient(160deg, hsl(205 70% 48%) 0%, hsl(205 92% 34%) 48%, hsl(207 90% 24%) 100%)" data-blau>
+  <div class="frame">
+    <svg class="wellen" viewBox="0 0 1280 720" preserveAspectRatio="none" aria-hidden="true"></svg>
+    <p class="kicker">Leinen los</p>
+    <h2>Danke!</h2>
+    <p class="unterzeile" style="font-size:32px; color:var(--weiss);">Und jetzt: Fragen.</p>
+    <ul class="links">
+      <li><span class="wozu">Ausprobieren</span><a href="https://ratslotse.de" target="_blank" rel="noopener">ratslotse.de</a></li>
+      <li><span class="wozu">Technik-Doku</span><a href="https://ratslotse.de/docs" target="_blank" rel="noopener">ratslotse.de/docs</a></li>
+      <li><span class="wozu">Quellcode</span><a href="https://github.com/Schereo/Ratslotse" target="_blank" rel="noopener">github.com/Schereo/Ratslotse</a></li>
+    </ul>
+    <div class="ideen-karte">
+      <h3>Ideen fürs Gespräch</h3>
+      <ul class="zeilen eng">
+        <li><span class="ikon klein"><svg class="icon"><use href="#i-code"/></svg></span><span><b>Code und Doku nutzen</b><small>frei unter AGPL-3.0</small></span></li>
+        <li><span class="ikon klein"><svg class="icon"><use href="#i-frage"/></svg></span><span><b>Austausch</b><small>Erfahrungen aus dem Betrieb</small></span></li>
+        <li><span class="ikon klein"><svg class="icon"><use href="#i-liste"/></svg></span><span><b>Gemeinsames Prüfset</b><small>echte Fragen aus der Ratsarbeit</small></span></li>
+        <li><span class="ikon klein"><svg class="icon"><use href="#i-stecker"/></svg></span><span><b>Probelauf mit einer Stadt</b><small>Daten über OParl einlesen</small></span></li>
+      </ul>
+    </div>
+    <img class="lotti-klein" src="img/lotti-verbeugt-sich.webp" alt="Lotti verbeugt sich">
+  </div>
+  <aside class="notes">
+    Diese Folie bleibt während der Fragerunde stehen.
+    Die Ideen sind offen formuliert. Hier entscheiden, was ich konkret anbieten möchte.
+    AGPL kurz erklärt: Nutzen, ändern und betreiben ist frei. Wer eine geänderte Fassung als Dienst anbietet, muss den Quellcode dieser Fassung offenlegen.
+    Zurückfragen: Was ist das Ziel (Konzept, Prototyp, Empfehlung an die Stadt), und ist die Stadt schon eingebunden?
+  </aside>
+</section>
+
+</div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/5.1.0/reveal.min.js" integrity="sha384-Xxv4gyBFvSgy+SmWELnBPSWXP3n3fVSRQZVduifAPNK/+S0/6C/lBAQIYRipwM9k" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/5.1.0/plugin/notes/notes.min.js" integrity="sha384-QcCOYOrqoXs2UT9+rVHwUYT/YlLiJfmQvFwnOPpGBTA5gg4r63gHAIaQX61WZCux" crossorigin="anonymous"></script>
+<script>
+(function () {
+  document.querySelectorAll("svg.wellen").forEach(function (svg) {
+    var ns = "http://www.w3.org/2000/svg";
+    for (var i = 0; i < 7; i++) {
+      var y = 70 + i * 105;
+      var p = document.createElementNS(ns, "path");
+      p.setAttribute("d", "M-20 " + y + " C 300 " + (y - 22) + ", 620 " + (y + 20) + ", 940 " + (y - 6) + " S 1260 " + (y + 14) + ", 1300 " + (y + 2));
+      svg.appendChild(p);
+    }
+  });
+
+  var ruhig = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var fmt = new Intl.NumberFormat("de-DE");
+
+  function zaehlen(slide) {
+    if (ruhig) return;
+    slide.querySelectorAll("[data-ziel]").forEach(function (el, idx) {
+      var ziel = +el.getAttribute("data-ziel");
+      var start = null, dauer = 900, verzug = idx * 90;
+      el.textContent = fmt.format(0);
+      function tick(t) {
+        if (start === null) start = t + verzug;
+        var k = Math.min(1, Math.max(0, (t - start) / dauer));
+        var e = 1 - Math.pow(1 - k, 3);
+        el.textContent = fmt.format(Math.round(ziel * e));
+        if (k < 1) requestAnimationFrame(tick);
+      }
+      requestAnimationFrame(tick);
+    });
+  }
+
+  function pipeline(slide) {
+    var n = slide.querySelectorAll(".fragment.schritt.visible").length;
+    slide.querySelectorAll(".node").forEach(function (node, i) {
+      node.classList.toggle("is-done", i < n - 1);
+      node.classList.toggle("is-active", i === n - 1);
+    });
+    slide.querySelectorAll(".panel").forEach(function (p, i) { p.classList.toggle("is-active", i === n); });
+    var linie = slide.querySelector(".pipe-linie i");
+    if (linie) linie.style.transform = "scaleX(" + (n <= 1 ? 0 : (n - 1) / 5) + ")";
+  }
+
+  function aufFolie(slide) {
+    if (!slide) return;
+    document.querySelector(".reveal").classList.toggle("blau-aktiv", slide.hasAttribute("data-blau"));
+    if (slide.hasAttribute("data-countup")) zaehlen(slide);
+    if (slide.hasAttribute("data-pipeline")) pipeline(slide);
+  }
+
+  Reveal.initialize({
+    width: 1280, height: 720, margin: 0.04,
+    center: false, hash: false, history: false,
+    controls: true, progress: true, slideNumber: "c/t",
+    transition: "fade", backgroundTransition: "fade", transitionSpeed: "default",
+    plugins: [RevealNotes]
+  }).then(function () { aufFolie(Reveal.getCurrentSlide()); });
+
+  Reveal.on("slidechanged", function (e) { aufFolie(e.currentSlide); });
+  Reveal.on("fragmentshown", function () { var s = Reveal.getCurrentSlide(); if (s.hasAttribute("data-pipeline")) pipeline(s); });
+  Reveal.on("fragmenthidden", function () { var s = Reveal.getCurrentSlide(); if (s.hasAttribute("data-pipeline")) pipeline(s); });
+})();
+</script>
+</body>
+</html>
