@@ -43,7 +43,8 @@ import { type ApiAntwort, vertrag } from "@/lib/vertrag";
 import { useAuth } from "@/lib/auth";
 import { entwurfAbholen, entwurfMelden } from "@/lib/draft";
 import { leseSseStrom } from "@/lib/sse";
-import { ASK_SCHRITTE, type AskSchritt } from "@/lib/qa-schritte";
+import { ASK_SCHRITTE, suchwegWeiter, type AskSchritt, type SuchwegEintrag } from "@/lib/qa-schritte";
+import { SuchwegKlappe, SuchwegListe } from "@/components/suchweg";
 import { GespraecheEinwilligung } from "@/components/gespraeche-einwilligung";
 import {
   advanceExampleOffset, exampleWindow, leseHatGespraeche, merkeHatGespraeche, readExampleOffset,
@@ -197,6 +198,8 @@ type Turn = {
   chart?: QaGrafik | null;
   /** Der Verlauf des Vorgangs (Akte), fertig gebaut vom Backend. */
   timeline?: AkteZeitleisteDaten | null;
+  /** Der Suchweg: jeder Schritt der Frage mit seinem Ergebnis (`lib/qa-schritte.ts`). */
+  suchweg?: SuchwegEintrag[];
   /** Die Eckdaten dazu: Abstimmung, Betrag, Stand, nächster Termin. */
   key_facts?: KeyFacts | null;
   /** Ein langer Vorgang — die Gründliche Recherche anbieten (Backend entscheidet). */
@@ -824,7 +827,10 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
       // Leser (seit Lottis Fenster sind es zwei). Was ein Rahmen BEDEUTET,
       // bleibt hier: Das weiß nur diese Ansicht.
       await leseSseStrom(res.body, (msg) => {
-          if (msg.type === "step") setStep(msg.step as Step);
+          if (msg.type === "step") {
+            setStep(msg.step as Step);
+            patchLast((t) => ({ suchweg: suchwegWeiter(t.suchweg ?? [], msg) }));
+          }
           else if (msg.type === "sources") patchLast({
             sources: msg.sources as QaSource[],
             mode: (msg.mode as string) ?? null,
@@ -2407,13 +2413,19 @@ function TurnView({ turn, turnIdx, istLetzter, loading, step, word, flashId, onJ
       {loading && !hatAntwort && !turn.fehler && (
         <div role="status" className="flex flex-wrap items-center gap-3 rounded-xl border-2 border-dashed border-border px-4 py-3 text-sm text-muted-foreground">
           {/* `denkt` ist die gebackene Ladeanzeige — läuft, bis Text streamt. */}
-          <Mascot regung="denkt" className="h-12 w-12 shrink-0" />
-          <div className="min-w-0">
-            <span className="flex items-center gap-2 font-medium text-foreground">
-              <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
-              {step ? STEP_LABELS[step] : "Wird vorbereitet"}…
-            </span>
-            <span className="hidden text-xs text-muted-foreground sm:inline">{word} …</span>
+          <Mascot regung="denkt" className="h-12 w-12 shrink-0 self-start" />
+          <div className="min-w-0 flex-1">
+            {(turn.suchweg?.length ?? 0) > 0 ? (
+              <SuchwegListe eintraege={turn.suchweg ?? []} laeuft />
+            ) : (
+              <>
+                <span className="flex items-center gap-2 font-medium text-foreground">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
+                  {step ? STEP_LABELS[step] : "Wird vorbereitet"}…
+                </span>
+                <span className="hidden text-xs text-muted-foreground sm:inline">{word} …</span>
+              </>
+            )}
             {dauertLaenger && (
               <span className="mt-0.5 block text-xs text-muted-foreground">
                 Das dauert länger als üblich. Du kannst warten oder mit „Stopp" abbrechen.
@@ -2425,6 +2437,10 @@ function TurnView({ turn, turnIdx, istLetzter, loading, step, word, flashId, onJ
 
       {hatAntwort && (
         <div aria-busy={beschaeftigt} className="flex flex-col gap-3.5">
+          {/* Wie die Antwort zustande kam — zugeklappt, sobald sie schreibt. */}
+          {!turn.research && (turn.suchweg?.length ?? 0) > 0 && (
+            <SuchwegKlappe eintraege={turn.suchweg ?? []} laeuft={Boolean(loading && istLetzter)} />
+          )}
           {/* RG-10 (8b): Sprungmarken — Pflicht ab 4 Abschnitten. */}
           {turn.research && abschnitte.length >= 4 && (
             <Sprungmarken abschnitte={abschnitte} ankerPrefix={`qa-section-${turnIdx}`} />

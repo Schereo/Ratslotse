@@ -39,6 +39,7 @@ from council import self_check
 from starlette.background import BackgroundTask
 from council import akte_suche, beteiligungsbericht, qa
 from council import rules_of_procedure
+from council import search_trail as trail
 from council import ernte
 from kern import features, knowledge, seitenaufrufe
 from kern import roles as rollen
@@ -5838,7 +5839,9 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             # Fenster eine leere Anschlussfrage (`qa.verlauf_ohne_dieselbe_frage`).
             verlauf = qa.verlauf_ohne_dieselbe_frage(
                 [r.model_dump() for r in body.history], q)
-            yield _sse({"type": "step", "step": "expand"})
+            # Der Suchweg (council/search_trail.py): jeder Schritt mit Text, sein
+            # Ergebnis als zweiter Rahmen. Ältere Clients lesen nur `step`.
+            yield _sse(trail.start("expand", "Frage einordnen"))
             t0 = time.perf_counter()
             # Findet der Wortlaut keinen Katalogort, wählt die Analyse aus der
             # Liste (`qa._ortsblock`) — kostet keinen zusätzlichen Aufruf.
@@ -6010,7 +6013,14 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                 analyse.get("rechercheplan") or {}, typ=typ, question=q_suche,
                 person=bool(person), place=bool(ort), sessions=bool(sitzungen),
                 latest_decision=latest_place, eng=eng)
-            yield _sse({"type": "step", "step": "search"})
+            eingeordnet = trail.analysis_detail(
+                terms=expanded, question=q_suche, place=ort, person=person,
+                sessions=sitzungen, party=analyse.get("party") if typ == "party" else None,
+                procedure=bool(rules_sel))
+            if eingeordnet:
+                yield _sse(trail.result("expand", eingeordnet))
+            yield _sse(trail.start("search", trail.search_text(
+                latest_place=latest_place, overview=overview, place=ort)))
             t0 = time.perf_counter()
             place_ids = (store.decision_ids_for_place(ort["id"], limit=120)
                          if ort else None)
@@ -6067,6 +6077,7 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                     zeiten["themen_hinweis"] = analyse["themen_ids"]
                 if ort_hinweis:
                     zeiten["ort_hinweis"] = ort_hinweis["id"]
+            yield _sse(trail.result("search", trail.found_detail(candidates)))
             # Nachrecherche (Schalter `nachrecherche`): Ein kleines Modell sieht
             # die Titel der Treffer und nennt, wenn etwas Gefragtes fehlt, bis
             # zu drei Anfragen in Verwaltungssprache; deren Funde werden gegen
@@ -6076,8 +6087,10 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             # und nicht beim Vereinfachen (schreibt die vorige Antwort um).
             if (features.an("nachrecherche") and not latest_place and typ != "session"
                     and not einfach and mode == "semantisch"):
+                yield _sse(trail.start("search", "Treffer auf Lücken prüfen"))
                 t_nach = time.perf_counter()
                 anfragen = qa.nachrecherche_anfragen(q_suche, candidates)
+                neue: list[dict] = []
                 if anfragen:
                     from council import embeddings as emb
                     ranked = emb.nachsuche(store, q_suche, anfragen,
@@ -6093,6 +6106,7 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                     qa.markiere_veraltete(store, candidates)
                     zeiten["nachrecherche"] = {"anfragen": anfragen, "neu": len(neue)}
                 zeiten["nachrecherche_ms"] = round((time.perf_counter() - t_nach) * 1000)
+                yield _sse(trail.result("search", trail.follow_up_detail(anfragen or [], len(neue))))
             partei_ids: set[int] = set()
             if typ == "party" and analyse.get("party"):
                 # Anträge der gefragten Fraktion zum Thema in den Pool — die
@@ -6193,6 +6207,7 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             anlagen_enabled = qa.research_channel_enabled(
                 shadow_plan, "documents", fallback=False)
             if anlagen_enabled and not einfach:
+                yield _sse(trail.start("search", "Anlagen durchsuchen"))
                 try:
                     # Fachliche Details stecken oft nicht im Beschluss, sondern
                     # in Gutachten, Konzepten und Stellungnahmen. Die schnelle
@@ -6228,9 +6243,12 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                         [i for i in dict.fromkeys(related_ids) if i not in have])
                 except Exception:  # noqa: BLE001 — Dokumente sind Zusatz, nie Blocker
                     anlagen_rows = []
+                yield _sse(trail.result("search", trail.count(
+                    len(anlagen_rows), "Anlage", "Anlagen")))
             presse_rows: list[dict] = []
             press_enabled = qa.research_channel_enabled(shadow_plan, "press")
             if press_enabled:
+                yield _sse(trail.start("search", "Pressemitteilungen der Stadt durchsuchen"))
                 try:
                     # Eigener Kanal neben den Beschlüssen: „Aktuelles von der
                     # Stadt" (Pressemitteilungen) — nur wenn der validierte
@@ -6245,6 +6263,8 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                     presse_rows = store.presse_by_ids([pid for pid, _ in hits_p])
                 except Exception:  # noqa: BLE001 — Presse ist Zusatz, nie Blocker
                     pass
+                yield _sse(trail.result("search", trail.count(
+                    len(presse_rows), "Pressemitteilung", "Pressemitteilungen")))
             # „Wie machen das andere Städte?" — nur wenn der Plan danach fragt.
             # Hinter dem Schalter `andere-staedte`, wie der Block auf der
             # Beschluss-Seite: Ohne aufgebauten Städte-Speicher gibt es hier
@@ -6253,11 +6273,14 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             if (qa.research_channel_enabled(shadow_plan, "other_cities",
                                             fallback=False)
                     and features.an("andere-staedte")):
+                yield _sse(trail.start("search", "Andere Städte durchsuchen"))
                 try:
                     staedte_rows = cities.search_ideas(
                         q_suche, EMBED_MODEL_FUER_SUCHE, limit=6)
                 except Exception:  # noqa: BLE001 — Zusatz, nie Blocker
                     staedte_rows = []
+                yield _sse(trail.result("search", trail.count(
+                    len(staedte_rows), "Fund", "Funde")))
 
             debatten_rows: list[dict] = []
             newest_speech_ids: set[int] = set()
@@ -6276,8 +6299,12 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             # das alte Verhalten. Enge neueste Ortsfragen bleiben unabhängig
             # davon deterministisch ohne Debatten.
             debates_enabled = qa.research_channel_enabled(shadow_plan, "debates")
-            if (not latest_place and debates_enabled
-                    and (typ != "session" or sitzung_ids)):
+            debatten_gesucht = bool(not latest_place and debates_enabled
+                                    and (typ != "session" or sitzung_ids))
+            if debatten_gesucht:
+                yield _sse(trail.start("search", (
+                    f"Wortbeiträge von {person['name']} lesen" if person and person.get("name")
+                    else "Wortbeiträge aus den Protokollen lesen")))
                 try:
                     # Task 16: Wortbeiträge aus den Protokollen (Reden, Anfragen,
                     # Einwohnerfragen, Zusagen) — die Substanz, die nicht in den
@@ -6385,6 +6412,9 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                 debatten_rows = [d for d in debatten_rows
                                   if d.get("zu_beschluss") in candidate_ids
                                   or qa.nennt_ort(d, ort, store)]
+            if debatten_gesucht:
+                yield _sse(trail.result("search", trail.count(
+                    len(debatten_rows), "Wortbeitrag", "Wortbeiträge")))
             # Plan „Akte“, Phase 3 (Schalter `akten-suche`): Die besten Treffer
             # bestimmen die Akte des Vorgangs, und aus ihr kommt zusätzlich,
             # was ähnlich klingende Suche nicht findet — die neuesten
@@ -6409,6 +6439,7 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             # Überblick braucht die Breite über viele.
             if (features.an("akten-suche") and not einfach and typ != "session" and not person
                     and not rules_sel and not overview and candidates):
+                yield _sse(trail.start("search", "Den Vorgang zusammenstellen"))
                 try:
                     akte = akte_suche.material(store, q_suche, candidates)
                     have = {c["id"] for c in candidates}
@@ -6429,6 +6460,8 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                     schon = {p["id"] for p in presse_rows}
                     presse_rows += [p for p in akte["press"] if p["id"] not in schon]
                     zeiten["akte"] = akte["akte"]
+                    yield _sse(trail.result("search", trail.dossier_detail(
+                        len(akte_beschluesse), len(neu))))
                 except Exception:  # noqa: BLE001 — die Akte ist Zusatz, nie Blocker
                     _log.exception("Akte nicht geladen")
             # Aussprache zu den Beschlüssen im Prompt, die JÜNGER sind als die
@@ -6578,6 +6611,10 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             # VORIGE Antwort um (eigener Prompt ohne Zusatz-Bausteine), die
             # Abfragen wären sicher umsonst.
             geld = {} if einfach else qa.geld_kontext(store, q_suche, expanded, typ)
+            if geld.get("facets"):
+                yield _sse(trail.start("search", "Haushaltszahlen heranziehen"))
+                yield _sse(trail.result("search", trail.count(
+                    len(geld["facets"]), "Haushaltsquelle", "Haushaltsquellen")))
             if lage == "duenn" and qa.geld_belegt(geld):
                 # Ein gezielter Haushaltstreffer (Konto, Schulden, Steuern) ist
                 # ein direkter Beleg wie ein Anlagenfund. Bei den Parkgebühren
@@ -6641,7 +6678,7 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                                          "beschreibung": s["description"]}
                                         for s in steckbriefe]
                         if qa.steckbrief_karte_zeigen(q_suche) else []})
-            yield _sse({"type": "step", "step": "answer"})
+            yield _sse(trail.start("answer", "Antwort schreiben"))
             # Eine Haushaltsfrage ohne passenden Beschluss ist KEIN Leerlauf: Die
             # Geld-Bausteine tragen die Antwort („Was kostet eine Restmülltonne?“
             # trifft keinen Beschluss, aber die Gebührensätze). Bis 09/2026 kam
